@@ -388,13 +388,14 @@ export default function ActionDetailPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Telefone</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Data/Hora</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {winners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 6 : 5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 7 : 6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
                     ) : (
                       winners.map((w, i) => (
                         <tr
@@ -411,6 +412,9 @@ export default function ActionDetailPage() {
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
                           {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                          </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
                             {w.pixKey || '—'}
                           </td>
