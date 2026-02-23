@@ -40,6 +40,17 @@ const Index = () => {
     statusCounts[w.status] = (statusCounts[w.status] || 0) + 1;
   });
 
+  // Operational KPIs (same as support dashboard)
+  const pending = winners.filter(w => ['imported', 'pix_requested', 'awaiting_pix'].includes(w.status)).length;
+  const inProcess = winners.filter(w => ['pix_received', 'ready_to_pay', 'sent_to_batch'].includes(w.status)).length;
+  const awaitingReceipt = winners.filter(w => w.status === 'awaiting_receipt').length;
+  const completed = winners.filter(w => ['paid', 'receipt_sent'].includes(w.status)).length;
+  const today = new Date().toISOString().slice(0, 10);
+  const paidToday = winners.filter(w =>
+    (w.status === 'paid' || w.status === 'receipt_sent') &&
+    w.createdAt?.slice(0, 10) === today
+  ).length;
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -217,6 +228,40 @@ const Index = () => {
                 </div>
               </>
             )}
+          </div>
+        </div>
+
+        {/* Operational Overview (macro view) */}
+        <div className="rounded-xl border bg-card p-4 lg:p-5">
+          <h2 className="text-sm font-semibold mb-4">Visão Operacional</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatsCard
+              title="Pendentes"
+              value={String(pending)}
+              icon={Clock}
+              variant="warning"
+              subtitle="Aguardando Pix ou importados"
+            />
+            <StatsCard
+              title="Em Processo"
+              value={String(inProcess)}
+              icon={AlertCircle}
+              variant="accent"
+              subtitle="Pix recebido → Enviado p/ lote"
+            />
+            <StatsCard
+              title="Aguardando Comprovante"
+              value={String(awaitingReceipt)}
+              icon={Users}
+              variant="primary"
+            />
+            <StatsCard
+              title="Concluídos"
+              value={String(completed)}
+              icon={CheckCircle2}
+              variant="success"
+              subtitle={`${paidToday} pagos hoje`}
+            />
           </div>
         </div>
       </div>
