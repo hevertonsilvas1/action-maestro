@@ -613,7 +613,17 @@ export default function ActionDetailPage() {
                               3: { cellWidth: 22 },
                               4: { cellWidth: 'auto' },
                             },
-                            margin: { left: 14, right: 14 },
+                            margin: { left: 14, right: 14, bottom: 22 },
+                            didDrawPage: (data: { pageNumber: number }) => {
+                              const pageCount = (doc as any).internal.getNumberOfPages();
+                              const pageHeight = doc.internal.pageSize.getHeight();
+                              const pageWidth = doc.internal.pageSize.getWidth();
+                              doc.setFontSize(7);
+                              doc.setTextColor(130, 130, 130);
+                              doc.text('ActionPay — Sistema de Gestão de Ações Promocionais', 14, pageHeight - 8);
+                              doc.text(`Página ${data.pageNumber} de ${pageCount}`, pageWidth - 14, pageHeight - 8, { align: 'right' });
+                              doc.text(`Documento gerado em ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                            },
                           });
 
                           doc.save(`auditoria-${action.name.replace(/\s+/g, '_')}.pdf`);
