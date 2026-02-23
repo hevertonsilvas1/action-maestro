@@ -17,7 +17,7 @@ import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
-  History, User, CalendarIcon, X,
+  History, User, CalendarIcon, X, Search,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
@@ -25,6 +25,7 @@ import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction
 import { useArchiveAction, useRestoreAction } from '@/hooks/useArchiveAction';
 import { DeleteActionDialog } from '@/components/DeleteActionDialog';
 import { useState, useMemo } from 'react';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -51,8 +52,10 @@ export default function ActionDetailPage() {
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
   const [auditPage, setAuditPage] = useState(1);
   const [auditPageSize, setAuditPageSize] = useState(10);
+  const [auditSearch, setAuditSearch] = useState('');
 
   const filteredAuditLog = useMemo(() => {
+    const searchLower = auditSearch.toLowerCase().trim();
     return auditLog.filter((entry) => {
       if (auditOpFilter !== 'all' && entry.operation !== auditOpFilter) return false;
       const entryDate = new Date(entry.createdAt);
@@ -62,9 +65,18 @@ export default function ActionDetailPage() {
         endOfDay.setHours(23, 59, 59, 999);
         if (entryDate > endOfDay) return false;
       }
+      if (searchLower) {
+        const searchable = [
+          entry.userName,
+          entry.operation,
+          entry.tableName,
+          entry.changes ? JSON.stringify(entry.changes) : '',
+        ].join(' ').toLowerCase();
+        if (!searchable.includes(searchLower)) return false;
+      }
       return true;
     });
-  }, [auditLog, auditOpFilter, auditDateFrom, auditDateTo]);
+  }, [auditLog, auditOpFilter, auditDateFrom, auditDateTo, auditSearch]);
 
   // Reset page when filters change
   const auditTotalPages = Math.max(1, Math.ceil(filteredAuditLog.length / auditPageSize));
@@ -583,12 +595,22 @@ export default function ActionDetailPage() {
                       </PopoverContent>
                     </Popover>
 
-                    {(auditOpFilter !== 'all' || auditDateFrom || auditDateTo) && (
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar alterações..."
+                        value={auditSearch}
+                        onChange={(e) => { setAuditSearch(e.target.value); setAuditPage(1); }}
+                        className="h-7 text-xs pl-7 w-[180px]"
+                      />
+                    </div>
+
+                    {(auditOpFilter !== 'all' || auditDateFrom || auditDateTo || auditSearch) && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs text-muted-foreground"
-                        onClick={() => { setAuditOpFilter('all'); setAuditDateFrom(undefined); setAuditDateTo(undefined); setAuditPage(1); }}
+                        onClick={() => { setAuditOpFilter('all'); setAuditDateFrom(undefined); setAuditDateTo(undefined); setAuditSearch(''); setAuditPage(1); }}
                       >
                         <X className="h-3 w-3 mr-1" />
                         Limpar
