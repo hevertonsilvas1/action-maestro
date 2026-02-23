@@ -172,22 +172,22 @@ export function useImportWinners(actionId: string, actionName: string) {
     // Check duplicates against DB
     const { data: existingWinners } = await supabase
       .from('winners')
-      .select('cpf, prize_type, prize_datetime, value')
+      .select('name, cpf, prize_type, prize_datetime, value')
       .eq('action_id', actionId);
 
     const existingKeys = new Set(
-      (existingWinners || [])
-        .filter((w) => w.cpf && w.prize_datetime)
-        .map((w) => `${w.prize_type}|${w.cpf}|${w.prize_datetime}|${w.value}`)
+      (existingWinners || []).map((w) => {
+        const identifier = w.cpf || w.name;
+        return `${w.prize_type}|${identifier}|${w.prize_datetime || ''}|${w.value}`;
+      })
     );
 
     const result = validated.map((w) => {
       if (w.isInvalid) return w;
-      if (w.cpf && w.prize_datetime) {
-        const key = `${normalizePrizeType(w.prize_type)}|${w.cpf}|${w.prize_datetime}|${w.value}`;
-        if (existingKeys.has(key)) {
-          return { ...w, isDuplicate: true };
-        }
+      const identifier = w.cpf || w.name;
+      const key = `${normalizePrizeType(w.prize_type)}|${identifier}|${w.prize_datetime || ''}|${w.value}`;
+      if (existingKeys.has(key)) {
+        return { ...w, isDuplicate: true };
       }
       return w;
     });
@@ -196,13 +196,12 @@ export function useImportWinners(actionId: string, actionName: string) {
     const seenKeys = new Set<string>();
     const finalResult = result.map((w) => {
       if (w.isInvalid || w.isDuplicate) return w;
-      if (w.cpf && w.prize_datetime) {
-        const key = `${normalizePrizeType(w.prize_type)}|${w.cpf}|${w.prize_datetime}|${w.value}`;
-        if (seenKeys.has(key)) {
-          return { ...w, isDuplicate: true };
-        }
-        seenKeys.add(key);
+      const identifier = w.cpf || w.name;
+      const key = `${normalizePrizeType(w.prize_type)}|${identifier}|${w.prize_datetime || ''}|${w.value}`;
+      if (seenKeys.has(key)) {
+        return { ...w, isDuplicate: true };
       }
+      seenKeys.add(key);
       return w;
     });
 
