@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useImportWinners, ParsedWinner } from '@/hooks/useImportWinners';
 import { formatCurrency } from '@/lib/format';
+import { toast } from 'sonner';
 
 interface ImportWinnersModalProps {
   open: boolean;
@@ -113,9 +114,12 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   };
 
   const handleApplyMapping = async () => {
-    // Re-parse with manual mapping
     const file = fileInputRef.current?.files?.[0];
-    if (!file) return;
+    if (!file) {
+      toast.error('Arquivo não encontrado. Por favor, selecione novamente.');
+      reset();
+      return;
+    }
 
     try {
       const XLSX = await import('xlsx');
@@ -124,11 +128,12 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-      const col = (key: string) => {
+      const col = (key: string): string | undefined => {
         const v = columnMapping[key];
         return v && v !== '__none__' ? v : undefined;
       };
-      const mapped = rawRows.map((row) => ({
+
+      const mapped: ParsedWinner[] = rawRows.map((row) => ({
         name: String(col('name') ? row[col('name')!] : '').trim(),
         cpf: String(col('cpf') ? row[col('cpf')!] : '').trim() || null,
         phone: String(col('phone') ? row[col('phone')!] : '').trim() || null,
@@ -142,8 +147,9 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
       setParsedWinners(result.winners);
       setStats(result.stats);
       setStep('preview');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Mapping error:', error);
+      toast.error('Erro ao processar mapeamento: ' + (error?.message || 'Erro desconhecido'));
     }
   };
 
