@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import Index from "./pages/Index";
+import SupportDashboard from "./pages/SupportDashboard";
 import ActionsPage from "./pages/ActionsPage";
 import NewActionPage from "./pages/NewActionPage";
 import ActionDetailPage from "./pages/ActionDetailPage";
@@ -31,6 +33,35 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
+
+  if (authLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function RoleDashboard() {
+  const { isAdmin, loading } = useUserRole();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  return isAdmin ? <Index /> : <SupportDashboard />;
+}
+
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
@@ -49,11 +80,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
-    <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-    <Route path="/actions" element={<ProtectedRoute><ActionsPage /></ProtectedRoute>} />
-    <Route path="/actions/new" element={<ProtectedRoute><NewActionPage /></ProtectedRoute>} />
+    <Route path="/" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
+    <Route path="/actions" element={<AdminRoute><ActionsPage /></AdminRoute>} />
+    <Route path="/actions/new" element={<AdminRoute><NewActionPage /></AdminRoute>} />
     <Route path="/actions/:id" element={<ProtectedRoute><ActionDetailPage /></ProtectedRoute>} />
-    <Route path="/actions/:id/edit" element={<ProtectedRoute><EditActionPage /></ProtectedRoute>} />
+    <Route path="/actions/:id/edit" element={<AdminRoute><EditActionPage /></AdminRoute>} />
     <Route path="/winners" element={<ProtectedRoute><WinnersPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>

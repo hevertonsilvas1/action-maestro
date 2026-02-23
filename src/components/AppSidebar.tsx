@@ -22,22 +22,36 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useUserRole } from '@/hooks/useUserRole';
 
-const mainNav = [
+const adminMainNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Ações', url: '/actions', icon: Megaphone },
   { title: 'Ganhadores', url: '/winners', icon: Trophy },
 ];
 
-const settingsNav = [
+const supportMainNav = [
+  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+  { title: 'Ganhadores', url: '/winners', icon: Trophy },
+];
+
+const adminSettingsNav = [
   { title: 'Equipe', url: '/team', icon: Users },
+  { title: 'Configurações', url: '/settings', icon: Settings },
+];
+
+const supportSettingsNav = [
   { title: 'Configurações', url: '/settings', icon: Settings },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
+  const { isAdmin } = useUserRole();
   const collapsed = state === 'collapsed';
+
+  const mainNav = isAdmin ? adminMainNav : supportMainNav;
+  const settingsNav = isAdmin ? adminSettingsNav : supportSettingsNav;
 
   const isActive = (url: string) =>
     url === '/' ? location.pathname === '/' : location.pathname.startsWith(url);
