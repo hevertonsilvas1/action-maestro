@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
-  Target, Loader2,
+  Target, Loader2, Pencil, Copy,
 } from 'lucide-react';
 
 export default function ActionDetailPage() {
@@ -79,6 +79,12 @@ export default function ActionDetailPage() {
               <Button variant="ghost" size="sm" className="h-8 text-xs">
                 <ArrowLeft className="h-3.5 w-3.5 mr-1" />
                 Voltar
+              </Button>
+            </Link>
+            <Link to={`/actions/${id}/edit`}>
+              <Button variant="outline" size="sm" className="h-8 text-xs">
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                {action.status === 'completed' ? 'Visualizar / Duplicar' : 'Editar'}
               </Button>
             </Link>
             <StatusBadge
