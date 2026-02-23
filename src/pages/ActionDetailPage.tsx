@@ -456,9 +456,60 @@ export default function ActionDetailPage() {
           {isAdmin && (
             <TabsContent value="audit" className="space-y-3">
               <div className="rounded-xl border bg-card p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <History className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Histórico de Auditoria</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">Histórico de Auditoria</h3>
+                  </div>
+                  {auditLog.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        const opLabels: Record<string, string> = {
+                          create: 'Criação', update: 'Atualização', delete: 'Exclusão',
+                          archive: 'Arquivamento', restore: 'Restauração', duplicate: 'Duplicação',
+                        };
+                        const tableLabels: Record<string, string> = {
+                          actions: 'Ação', prizes: 'Premiações', costs: 'Custos',
+                        };
+                        const roleLabels: Record<string, string> = { admin: 'Admin', support: 'Suporte' };
+
+                        const header = 'Data/Hora;Usuário;Role;Operação;Tabela;Alterações';
+                        const rows = auditLog.map((entry) => {
+                          const date = new Date(entry.createdAt).toLocaleString('pt-BR');
+                          const user = entry.userName || 'Sistema';
+                          const role = entry.userRole ? (roleLabels[entry.userRole] || entry.userRole) : '';
+                          const op = opLabels[entry.operation] || entry.operation;
+                          const table = tableLabels[entry.tableName] || entry.tableName;
+                          let changesStr = '';
+                          if (entry.changes) {
+                            changesStr = Object.entries(entry.changes).map(([key, val]) => {
+                              if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+                                return `${key}: ${val.before} → ${val.after}`;
+                              }
+                              if (Array.isArray(val)) return `${key}: ${val.join(', ')}`;
+                              return `${key}: ${val}`;
+                            }).join(' | ');
+                          }
+                          return `${date};${user};${role};${op};${table};"${changesStr}"`;
+                        });
+
+                        const csv = '\uFEFF' + [header, ...rows].join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `auditoria-${action.name.replace(/\s+/g, '_')}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1" />
+                      Exportar CSV
+                    </Button>
+                  )}
                 </div>
                 {auditLog.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4 text-center">Nenhum registro de auditoria.</p>
