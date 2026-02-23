@@ -640,38 +640,53 @@ export default function ActionDetailPage() {
                               </span>
                             )}
                           </div>
-                          {entry.changes && Object.keys(entry.changes).length > 0 && (
-                            <div className="space-y-1 pt-1 border-t border-border/50">
-                              {Object.entries(entry.changes).map(([key, val]) => {
-                                if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+                          {entry.changes && Object.keys(entry.changes).length > 0 && (() => {
+                            const monetaryKeys = new Set([
+                              'Valor Cota', 'Receita Esperada', 'Lucro Bruto', 'Total Prêmios',
+                              'Total Operacional', 'Total Impostos', 'Custo Total', 'Real Pago',
+                              'Valor Unitário', 'Valor Total', 'Valor', 'value', 'unit_value',
+                              'total_value', 'expected_revenue', 'gross_profit', 'total_cost',
+                              'total_prizes', 'total_operational', 'total_taxes', 'real_paid',
+                              'quota_value',
+                            ]);
+                            const fmtVal = (key: string, v: unknown) => {
+                              if (v === null || v === undefined) return '—';
+                              if (monetaryKeys.has(key) && typeof v === 'number') return formatCurrency(v);
+                              return String(v);
+                            };
+                            return (
+                              <div className="space-y-1 pt-1 border-t border-border/50">
+                                {Object.entries(entry.changes).map(([key, val]) => {
+                                  if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+                                    return (
+                                      <div key={key} className="flex flex-wrap gap-1.5 items-baseline">
+                                        <span className="text-muted-foreground font-medium min-w-[120px]">{key}:</span>
+                                        <span className="text-destructive line-through">{fmtVal(key, val.before)}</span>
+                                        <span className="text-muted-foreground">→</span>
+                                        <span className="text-success font-medium">{fmtVal(key, val.after)}</span>
+                                      </div>
+                                    );
+                                  }
+                                  if (Array.isArray(val)) {
+                                    return (
+                                      <div key={key}>
+                                        <span className="text-muted-foreground font-medium">{key}:</span>
+                                        <ul className="ml-4 list-disc">
+                                          {val.map((item, idx) => <li key={idx}>{String(item)}</li>)}
+                                        </ul>
+                                      </div>
+                                    );
+                                  }
                                   return (
-                                    <div key={key} className="flex flex-wrap gap-1.5 items-baseline">
-                                      <span className="text-muted-foreground font-medium min-w-[120px]">{key}:</span>
-                                      <span className="text-destructive line-through">{String(val.before ?? '—')}</span>
-                                      <span className="text-muted-foreground">→</span>
-                                      <span className="text-success font-medium">{String(val.after ?? '—')}</span>
-                                    </div>
-                                  );
-                                }
-                                if (Array.isArray(val)) {
-                                  return (
-                                    <div key={key}>
+                                    <div key={key} className="flex gap-1.5">
                                       <span className="text-muted-foreground font-medium">{key}:</span>
-                                      <ul className="ml-4 list-disc">
-                                        {val.map((item, idx) => <li key={idx}>{String(item)}</li>)}
-                                      </ul>
+                                      <span>{fmtVal(key, val)}</span>
                                     </div>
                                   );
-                                }
-                                return (
-                                  <div key={key} className="flex gap-1.5">
-                                    <span className="text-muted-foreground font-medium">{key}:</span>
-                                    <span>{String(val)}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                                })}
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })}
