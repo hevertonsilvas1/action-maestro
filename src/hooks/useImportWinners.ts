@@ -126,13 +126,13 @@ export function useImportWinners(actionId: string, actionName: string) {
       if (rows.length === 0) return [];
 
       return rows.map((row) => ({
-        name: String(row.Nome || row.nome || row.NAME || '').trim(),
+        name: String(row.Ganhador || row.ganhador || row.Nome || row.nome || row.NAME || '').trim(),
         cpf: normalizeCpf(String(row.CPF || row.cpf || row.Cpf || '')),
         phone: normalizePhone(String(row.Telefone || row.telefone || row.Phone || row.phone || row.TELEFONE || '')),
-        value: normalizeValue(row.Valor || row.valor || row.Value || row.value || row.VALOR || 0),
-        prize_datetime: row.Data || row.data || row['Data/Hora'] || row.date || null,
-        prize_type: String(row['Tipo de Premiação'] || row['Tipo'] || row.tipo || row['Premio'] || row.prize_type || '').trim(),
-        title: String(row['Título'] || row.titulo || row.title || '').trim() || undefined,
+        value: normalizeValue(row['Prêmio'] || row.Premio || row.Valor || row.valor || row.Value || row.value || row.VALOR || 0),
+        prize_datetime: row['Associado em'] || row.Data || row.data || row['Data/Hora'] || row.date || null,
+        prize_type: String(row['Tipo de Premiação'] || row['Tipo'] || row.tipo || row.Status || row.status || row['Premio'] || row.prize_type || '').trim(),
+        title: String(row['Título'] || row.Titulo || row.titulo || row.title || '').trim() || undefined,
       }));
     } finally {
       setIsParsing(false);

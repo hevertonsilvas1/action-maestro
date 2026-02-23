@@ -24,13 +24,13 @@ interface ImportWinnersModalProps {
 type ImportStep = 'choose' | 'mapping' | 'preview' | 'done';
 
 const EXPECTED_COLUMNS = [
-  { key: 'name', label: 'Nome', required: true },
-  { key: 'cpf', label: 'CPF', required: false },
+  { key: 'name', label: 'Ganhador / Nome', required: true },
   { key: 'phone', label: 'Telefone', required: false },
-  { key: 'value', label: 'Valor', required: true },
-  { key: 'prize_type', label: 'Tipo de Premiação', required: true },
   { key: 'title', label: 'Título', required: false },
-  { key: 'prize_datetime', label: 'Data/Hora', required: false },
+  { key: 'prize_type', label: 'Status / Tipo de Premiação', required: true },
+  { key: 'value', label: 'Prêmio / Valor', required: true },
+  { key: 'prize_datetime', label: 'Associado em / Data', required: false },
+  { key: 'cpf', label: 'CPF', required: false },
 ];
 
 export function ImportWinnersModal({ open, onClose, actionId, actionName }: ImportWinnersModalProps) {
