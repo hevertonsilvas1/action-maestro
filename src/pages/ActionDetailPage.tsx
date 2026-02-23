@@ -715,7 +715,19 @@ export default function ActionDetailPage() {
                 ) : (
                   <>
                   <div className="space-y-3">
-                    {paginatedAuditLog.map((entry) => {
+                     {paginatedAuditLog.map((entry) => {
+                      const highlightMatch = (text: string) => {
+                        const q = auditSearch.trim();
+                        if (!q) return text;
+                        const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                        const parts = text.split(regex);
+                        if (parts.length <= 1) return text;
+                        return parts.map((part, i) =>
+                          regex.test(part)
+                            ? <mark key={i} className="bg-yellow-300/60 dark:bg-yellow-500/40 rounded-sm px-0.5">{part}</mark>
+                            : part
+                        );
+                      };
                       const opLabels: Record<string, string> = {
                         create: 'Criação',
                         update: 'Atualização',
@@ -736,10 +748,10 @@ export default function ActionDetailPage() {
                           <div className="flex flex-wrap justify-between items-start gap-2">
                             <div className="flex items-center gap-2">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold text-[10px]">
-                                {opLabels[entry.operation] || entry.operation}
+                                {highlightMatch(opLabels[entry.operation] || entry.operation)}
                               </span>
                               <span className="text-muted-foreground">
-                                {tableLabels[entry.tableName] || entry.tableName}
+                                {highlightMatch(tableLabels[entry.tableName] || entry.tableName)}
                               </span>
                             </div>
                             <span className="text-muted-foreground text-[10px]">
@@ -748,7 +760,7 @@ export default function ActionDetailPage() {
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <User className="h-3 w-3" />
-                            <span className="font-medium text-foreground">{entry.userName || 'Sistema'}</span>
+                            <span className="font-medium text-foreground">{highlightMatch(entry.userName || 'Sistema')}</span>
                             {entry.userRole && (
                               <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px]">
                                 {roleLabels[entry.userRole] || entry.userRole}
@@ -776,9 +788,9 @@ export default function ActionDetailPage() {
                                     return (
                                       <div key={key} className="flex flex-wrap gap-1.5 items-baseline">
                                         <span className="text-muted-foreground font-medium min-w-[120px]">{key}:</span>
-                                        <span className="text-destructive line-through">{fmtVal(key, val.before)}</span>
+                                      <span className="text-destructive line-through">{highlightMatch(fmtVal(key, val.before))}</span>
                                         <span className="text-muted-foreground">→</span>
-                                        <span className="text-success font-medium">{fmtVal(key, val.after)}</span>
+                                        <span className="text-success font-medium">{highlightMatch(fmtVal(key, val.after))}</span>
                                       </div>
                                     );
                                   }
@@ -787,7 +799,7 @@ export default function ActionDetailPage() {
                                       <div key={key}>
                                         <span className="text-muted-foreground font-medium">{key}:</span>
                                         <ul className="ml-4 list-disc">
-                                          {val.map((item, idx) => <li key={idx}>{String(item)}</li>)}
+                                          {val.map((item, idx) => <li key={idx}>{highlightMatch(String(item))}</li>)}
                                         </ul>
                                       </div>
                                     );
@@ -795,7 +807,7 @@ export default function ActionDetailPage() {
                                   return (
                                     <div key={key} className="flex gap-1.5">
                                       <span className="text-muted-foreground font-medium">{key}:</span>
-                                      <span>{fmtVal(key, val)}</span>
+                                      <span>{highlightMatch(fmtVal(key, val))}</span>
                                     </div>
                                   );
                                 })}
