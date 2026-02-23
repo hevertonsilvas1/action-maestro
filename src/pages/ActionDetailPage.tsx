@@ -557,7 +557,7 @@ export default function ActionDetailPage() {
                         className="h-7 text-xs"
                         onClick={async () => {
                           const { default: jsPDF } = await import('jspdf');
-                          await import('jspdf-autotable');
+                          const { autoTable } = await import('jspdf-autotable');
 
                           const opLabels: Record<string, string> = {
                             create: 'Criação', update: 'Atualização', delete: 'Exclusão',
@@ -599,7 +599,7 @@ export default function ActionDetailPage() {
                             return [date, `${user}\n${role}`, op, table, changesStr];
                           });
 
-                          (doc as any).autoTable({
+                          autoTable(doc, {
                             startY: 36,
                             head: [['Data/Hora', 'Usuário', 'Operação', 'Tabela', 'Alterações']],
                             body: tableRows,
