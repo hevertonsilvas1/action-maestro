@@ -50,7 +50,7 @@ export default function ActionDetailPage() {
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
   const [auditPage, setAuditPage] = useState(1);
-  const AUDIT_PAGE_SIZE = 10;
+  const [auditPageSize, setAuditPageSize] = useState(10);
 
   const filteredAuditLog = useMemo(() => {
     return auditLog.filter((entry) => {
@@ -67,9 +67,9 @@ export default function ActionDetailPage() {
   }, [auditLog, auditOpFilter, auditDateFrom, auditDateTo]);
 
   // Reset page when filters change
-  const auditTotalPages = Math.max(1, Math.ceil(filteredAuditLog.length / AUDIT_PAGE_SIZE));
+  const auditTotalPages = Math.max(1, Math.ceil(filteredAuditLog.length / auditPageSize));
   const safeAuditPage = Math.min(auditPage, auditTotalPages);
-  const paginatedAuditLog = filteredAuditLog.slice((safeAuditPage - 1) * AUDIT_PAGE_SIZE, safeAuditPage * AUDIT_PAGE_SIZE);
+  const paginatedAuditLog = filteredAuditLog.slice((safeAuditPage - 1) * auditPageSize, safeAuditPage * auditPageSize);
 
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
@@ -595,9 +595,21 @@ export default function ActionDetailPage() {
                       </Button>
                     )}
 
-                    <span className="text-[10px] text-muted-foreground ml-auto">
-                      {filteredAuditLog.length} de {auditLog.length} registros
-                    </span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Select value={String(auditPageSize)} onValueChange={(v) => { setAuditPageSize(Number(v)); setAuditPage(1); }}>
+                        <SelectTrigger className="h-7 w-[80px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="25">25</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-[10px] text-muted-foreground">
+                        {filteredAuditLog.length} de {auditLog.length} registros
+                      </span>
+                    </div>
                   </div>
                 )}
 
