@@ -124,14 +124,18 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
+      const col = (key: string) => {
+        const v = columnMapping[key];
+        return v && v !== '__none__' ? v : undefined;
+      };
       const mapped = rawRows.map((row) => ({
-        name: String(row[columnMapping.name] || '').trim(),
-        cpf: String(row[columnMapping.cpf] || '').trim() || null,
-        phone: String(row[columnMapping.phone] || '').trim() || null,
-        value: row[columnMapping.value] || 0,
-        prize_type: String(row[columnMapping.prize_type] || '').trim(),
-        title: columnMapping.title ? String(row[columnMapping.title] || '').trim() : undefined,
-        prize_datetime: row[columnMapping.prize_datetime] || null,
+        name: String(col('name') ? row[col('name')!] : '').trim(),
+        cpf: String(col('cpf') ? row[col('cpf')!] : '').trim() || null,
+        phone: String(col('phone') ? row[col('phone')!] : '').trim() || null,
+        value: col('value') ? row[col('value')!] : 0,
+        prize_type: String(col('prize_type') ? row[col('prize_type')!] : '').trim(),
+        title: col('title') ? String(row[col('title')!] || '').trim() : undefined,
+        prize_datetime: col('prize_datetime') ? row[col('prize_datetime')!] : null,
       }));
 
       const result = await checkDuplicatesAndValidate(mapped);
@@ -278,7 +282,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                       <SelectValue placeholder="Selecionar coluna..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">— Nenhuma —</SelectItem>
+                      <SelectItem value="__none__">— Nenhuma —</SelectItem>
                       {excelColumns.map((c) => (
                         <SelectItem key={c} value={c}>{c}</SelectItem>
                       ))}
