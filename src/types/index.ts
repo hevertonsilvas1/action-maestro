@@ -2,6 +2,8 @@ export interface Action {
   id: string;
   name: string;
   status: 'planning' | 'active' | 'completed' | 'cancelled';
+  quotaCount: number;
+  quotaValue: number;
   expectedRevenue: number;
   totalPrizes: number;
   totalOperational: number;

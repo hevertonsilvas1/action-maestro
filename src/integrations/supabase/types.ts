@@ -14,10 +14,52 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_audit_log: {
+        Row: {
+          action_id: string
+          changes: Json | null
+          created_at: string
+          id: string
+          operation: string
+          record_id: string | null
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          action_id: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          operation: string
+          record_id?: string | null
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          action_id?: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          operation?: string
+          record_id?: string | null
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_audit_log_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       actions: {
         Row: {
           created_at: string
           created_by: string | null
+          end_date: string | null
           expected_revenue: number
           gross_profit: number
           id: string
@@ -25,8 +67,12 @@ export type Database = {
           name: string
           paid_count: number
           pending_count: number
+          quota_count: number
+          quota_value: number
           real_paid: number
+          start_date: string | null
           status: Database["public"]["Enums"]["action_status"]
+          tax_percent: number
           total_cost: number
           total_operational: number
           total_prizes: number
@@ -37,6 +83,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           expected_revenue?: number
           gross_profit?: number
           id?: string
@@ -44,8 +91,12 @@ export type Database = {
           name: string
           paid_count?: number
           pending_count?: number
+          quota_count?: number
+          quota_value?: number
           real_paid?: number
+          start_date?: string | null
           status?: Database["public"]["Enums"]["action_status"]
+          tax_percent?: number
           total_cost?: number
           total_operational?: number
           total_prizes?: number
@@ -56,6 +107,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           expected_revenue?: number
           gross_profit?: number
           id?: string
@@ -63,8 +115,12 @@ export type Database = {
           name?: string
           paid_count?: number
           pending_count?: number
+          quota_count?: number
+          quota_value?: number
           real_paid?: number
+          start_date?: string | null
           status?: Database["public"]["Enums"]["action_status"]
+          tax_percent?: number
           total_cost?: number
           total_operational?: number
           total_prizes?: number
@@ -74,31 +130,67 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_type_configs: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       costs: {
         Row: {
           action_id: string
           category: Database["public"]["Enums"]["cost_category"]
+          cost_type_config_id: string | null
           created_at: string
           description: string
           id: string
+          quantity: number
+          unit_value: number
           updated_at: string
           value: number
         }
         Insert: {
           action_id: string
           category: Database["public"]["Enums"]["cost_category"]
+          cost_type_config_id?: string | null
           created_at?: string
           description: string
           id?: string
+          quantity?: number
+          unit_value?: number
           updated_at?: string
           value?: number
         }
         Update: {
           action_id?: string
           category?: Database["public"]["Enums"]["cost_category"]
+          cost_type_config_id?: string | null
           created_at?: string
           description?: string
           id?: string
+          quantity?: number
+          unit_value?: number
           updated_at?: string
           value?: number
         }
@@ -110,13 +202,50 @@ export type Database = {
             referencedRelation: "actions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "costs_cost_type_config_id_fkey"
+            columns: ["cost_type_config_id"]
+            isOneToOne: false
+            referencedRelation: "cost_type_configs"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      prize_type_configs: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       prizes: {
         Row: {
           action_id: string
           created_at: string
+          description: string | null
           id: string
+          item_status: string
+          prize_type_config_id: string | null
           quantity: number
           title: string
           total_value: number
@@ -127,7 +256,10 @@ export type Database = {
         Insert: {
           action_id: string
           created_at?: string
+          description?: string | null
           id?: string
+          item_status?: string
+          prize_type_config_id?: string | null
           quantity?: number
           title: string
           total_value?: number
@@ -138,7 +270,10 @@ export type Database = {
         Update: {
           action_id?: string
           created_at?: string
+          description?: string | null
           id?: string
+          item_status?: string
+          prize_type_config_id?: string | null
           quantity?: number
           title?: string
           total_value?: number
@@ -152,6 +287,13 @@ export type Database = {
             columns: ["action_id"]
             isOneToOne: false
             referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prizes_prize_type_config_id_fkey"
+            columns: ["prize_type_config_id"]
+            isOneToOne: false
+            referencedRelation: "prize_type_configs"
             referencedColumns: ["id"]
           },
         ]
