@@ -67,6 +67,7 @@ export type Database = {
           name: string
           paid_count: number
           pending_count: number
+          previous_status: Database["public"]["Enums"]["action_status"] | null
           quota_count: number
           quota_value: number
           real_paid: number
@@ -91,6 +92,7 @@ export type Database = {
           name: string
           paid_count?: number
           pending_count?: number
+          previous_status?: Database["public"]["Enums"]["action_status"] | null
           quota_count?: number
           quota_value?: number
           real_paid?: number
@@ -115,6 +117,7 @@ export type Database = {
           name?: string
           paid_count?: number
           pending_count?: number
+          previous_status?: Database["public"]["Enums"]["action_status"] | null
           quota_count?: number
           quota_value?: number
           real_paid?: number
@@ -418,7 +421,12 @@ export type Database = {
       is_authenticated_user: { Args: never; Returns: boolean }
     }
     Enums: {
-      action_status: "planning" | "active" | "completed" | "cancelled"
+      action_status:
+        | "planning"
+        | "active"
+        | "completed"
+        | "cancelled"
+        | "archived"
       app_role: "admin" | "support"
       cost_category:
         | "marketing"
@@ -571,7 +579,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      action_status: ["planning", "active", "completed", "cancelled"],
+      action_status: [
+        "planning",
+        "active",
+        "completed",
+        "cancelled",
+        "archived",
+      ],
       app_role: ["admin", "support"],
       cost_category: [
         "marketing",

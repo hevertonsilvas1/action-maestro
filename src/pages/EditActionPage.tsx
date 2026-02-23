@@ -120,8 +120,9 @@ export default function EditActionPage() {
   const marginPercent = expectedRevenue > 0 ? (grossProfit / expectedRevenue) * 100 : 0;
 
   const isCompleted = action?.status === 'completed';
+  const isArchived = action?.status === 'archived';
   const isActive = action?.status === 'active';
-  const readOnly = isCompleted;
+  const readOnly = isCompleted || isArchived;
 
   const isLoading = roleLoading || actionLoading || prizesLoading || costsLoading || ptLoading || ctLoading;
 
@@ -270,6 +271,14 @@ export default function EditActionPage() {
             <Lock className="h-4 w-4" />
             <AlertDescription>
               Ação concluída não pode ser editada. Use "Duplicar Ação" para criar uma cópia editável.
+            </AlertDescription>
+          </Alert>
+        )}
+        {isArchived && (
+          <Alert variant="destructive">
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              Ação arquivada não pode ser editada. Restaure a ação primeiro ou use "Duplicar Ação".
             </AlertDescription>
           </Alert>
         )}

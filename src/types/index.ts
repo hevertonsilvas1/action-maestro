@@ -1,7 +1,8 @@
 export interface Action {
   id: string;
   name: string;
-  status: 'planning' | 'active' | 'completed' | 'cancelled';
+  status: 'planning' | 'active' | 'completed' | 'cancelled' | 'archived';
+  previousStatus?: string | null;
   quotaCount: number;
   quotaValue: number;
   startDate?: string | null;
@@ -102,6 +103,7 @@ export const ACTION_STATUS_LABELS: Record<Action['status'], string> = {
   active: 'Ativa',
   completed: 'Concluída',
   cancelled: 'Cancelada',
+  archived: 'Arquivada',
 };
 
 export const ACTION_STATUS_COLORS: Record<Action['status'], string> = {
@@ -109,4 +111,5 @@ export const ACTION_STATUS_COLORS: Record<Action['status'], string> = {
   active: 'bg-success/15 text-success',
   completed: 'bg-primary/15 text-primary',
   cancelled: 'bg-destructive/15 text-destructive',
+  archived: 'bg-muted text-muted-foreground',
 };
