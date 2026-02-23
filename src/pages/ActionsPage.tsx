@@ -5,15 +5,25 @@ import { formatCurrency, formatPercent, formatDate, formatNumber } from '@/lib/f
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Filter, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpDown, Loader2, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 
 export default function ActionsPage() {
   const [search, setSearch] = useState('');
   const { data: actions = [], isLoading } = useActions();
+  const { isAdmin } = useUserRole();
+  const { duplicate, isPending: isDuplicating } = useDuplicateAction();
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  const handleDuplicate = async (actionId: string) => {
+    setDuplicatingId(actionId);
+    try { await duplicate(actionId); } finally { setDuplicatingId(null); }
+  };
 
   const filtered = actions.filter((a) =>
     a.name.toLowerCase().includes(search.toLowerCase())
@@ -82,6 +92,7 @@ export default function ActionsPage() {
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Lucro</th>
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Margem</th>
                     <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Progresso</th>
+                    {isAdmin && <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -117,6 +128,18 @@ export default function ActionsPage() {
                             <span className="text-[10px] text-muted-foreground w-8 text-right">{progress.toFixed(0)}%</span>
                           </div>
                         </td>
+                        {isAdmin && (
+                          <td className="px-4 py-3 text-center">
+                            <Button
+                              variant="ghost" size="sm" className="h-7 text-xs"
+                              onClick={(e) => { e.preventDefault(); handleDuplicate(action.id); }}
+                              disabled={duplicatingId === action.id}
+                            >
+                              {duplicatingId === action.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3 mr-1" />}
+                              Duplicar
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

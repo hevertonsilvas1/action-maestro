@@ -17,6 +17,8 @@ import {
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy,
 } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 
 export default function ActionDetailPage() {
   const { id } = useParams();
@@ -24,6 +26,8 @@ export default function ActionDetailPage() {
   const { data: winners = [], isLoading: loadingWinners } = useWinners(id);
   const { data: prizes = [], isLoading: loadingPrizes } = usePrizes(id ?? '');
   const { data: costs = [], isLoading: loadingCosts } = useCosts(id ?? '');
+  const { isAdmin } = useUserRole();
+  const { duplicate, isPending: isDuplicating } = useDuplicateAction();
 
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
@@ -87,6 +91,12 @@ export default function ActionDetailPage() {
                 {action.status === 'completed' ? 'Visualizar / Duplicar' : 'Editar'}
               </Button>
             </Link>
+            {isAdmin && (
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => duplicate(id!)} disabled={isDuplicating}>
+                {isDuplicating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                Duplicar Ação
+              </Button>
+            )}
             <StatusBadge
               status={action.status}
               labels={ACTION_STATUS_LABELS}

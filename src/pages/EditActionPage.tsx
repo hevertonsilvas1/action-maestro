@@ -9,6 +9,7 @@ import { useCosts } from '@/hooks/useCosts';
 import { usePrizeTypeConfigs, useCostTypeConfigs, useCreatePrizeType, useCreateCostType } from '@/hooks/useTypeConfigs';
 import { useUpdateAction } from '@/hooks/useUpdateAction';
 import { useCreateAction, PrizeInput, CostInput } from '@/hooks/useCreateAction';
+import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ export default function EditActionPage() {
   const createCostType = useCreateCostType();
   const updateAction = useUpdateAction();
   const createAction = useCreateAction();
+  const { duplicate: duplicateAction, isPending: isDuplicating } = useDuplicateAction();
 
   // Form state
   const [name, setName] = useState('');
@@ -212,26 +214,8 @@ export default function EditActionPage() {
   }
 
   async function handleDuplicate() {
-    const prizesInput: PrizeInput[] = prizes.map(p => ({
-      prizeTypeConfigId: p.typeConfigId, title: p.title, description: p.description || undefined,
-      quantity: parseInt(p.quantity) || 1, unitValue: parseFloat(p.unitValue) || 0,
-      totalValue: (parseInt(p.quantity) || 1) * (parseFloat(p.unitValue) || 0),
-    }));
-    const costsInput: CostInput[] = costs.map(c => ({
-      costTypeConfigId: c.typeConfigId, description: c.description,
-      quantity: parseInt(c.quantity) || 1, unitValue: parseFloat(c.unitValue) || 0,
-      value: (parseInt(c.quantity) || 1) * (parseFloat(c.unitValue) || 0),
-    }));
-
     try {
-      const result = await createAction.mutateAsync({
-        name: `${name} - CÓPIA`, status: 'planning',
-        quotaCount: quotaCount ?? 0, quotaValue: quotaValueNum,
-        startDate: null, endDate: null, taxPercent: taxPercentNum,
-        prizes: prizesInput, costs: costsInput,
-      });
-      toast.success('Ação duplicada com sucesso!');
-      navigate(`/actions/${result.id}/edit`);
+      await duplicateAction(id!);
     } catch (err: any) {
       toast.error(`Erro ao duplicar: ${err.message}`);
     }
@@ -270,8 +254,9 @@ export default function EditActionPage() {
                 <ArrowLeft className="h-3.5 w-3.5 mr-1" />Voltar
               </Button>
             </Link>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleDuplicate} disabled={createAction.isPending}>
-              <Copy className="h-3.5 w-3.5 mr-1" />Duplicar Ação
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleDuplicate} disabled={isDuplicating}>
+              {isDuplicating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+              Duplicar Ação
             </Button>
           </div>
         }
