@@ -49,6 +49,8 @@ export default function ActionDetailPage() {
   const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
+  const [auditPage, setAuditPage] = useState(1);
+  const AUDIT_PAGE_SIZE = 10;
 
   const filteredAuditLog = useMemo(() => {
     return auditLog.filter((entry) => {
@@ -63,6 +65,11 @@ export default function ActionDetailPage() {
       return true;
     });
   }, [auditLog, auditOpFilter, auditDateFrom, auditDateTo]);
+
+  // Reset page when filters change
+  const auditTotalPages = Math.max(1, Math.ceil(filteredAuditLog.length / AUDIT_PAGE_SIZE));
+  const safeAuditPage = Math.min(auditPage, auditTotalPages);
+  const paginatedAuditLog = filteredAuditLog.slice((safeAuditPage - 1) * AUDIT_PAGE_SIZE, safeAuditPage * AUDIT_PAGE_SIZE);
 
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
@@ -581,7 +588,7 @@ export default function ActionDetailPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs text-muted-foreground"
-                        onClick={() => { setAuditOpFilter('all'); setAuditDateFrom(undefined); setAuditDateTo(undefined); }}
+                        onClick={() => { setAuditOpFilter('all'); setAuditDateFrom(undefined); setAuditDateTo(undefined); setAuditPage(1); }}
                       >
                         <X className="h-3 w-3 mr-1" />
                         Limpar
@@ -599,8 +606,9 @@ export default function ActionDetailPage() {
                     {auditLog.length === 0 ? 'Nenhum registro de auditoria.' : 'Nenhum registro encontrado com os filtros selecionados.'}
                   </p>
                 ) : (
-                  <div className="space-y-3 max-h-[600px] overflow-auto">
-                    {filteredAuditLog.map((entry) => {
+                  <>
+                  <div className="space-y-3">
+                    {paginatedAuditLog.map((entry) => {
                       const opLabels: Record<string, string> = {
                         create: 'Criação',
                         update: 'Atualização',
@@ -691,7 +699,59 @@ export default function ActionDetailPage() {
                       );
                     })}
                   </div>
-                )}
+
+                  {/* Pagination */}
+                  {auditTotalPages > 1 && (
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <span className="text-[10px] text-muted-foreground">
+                        Página {safeAuditPage} de {auditTotalPages}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs px-2"
+                          disabled={safeAuditPage <= 1}
+                          onClick={() => setAuditPage(safeAuditPage - 1)}
+                        >
+                          Anterior
+                        </Button>
+                        {Array.from({ length: auditTotalPages }, (_, i) => i + 1)
+                          .filter(p => p === 1 || p === auditTotalPages || Math.abs(p - safeAuditPage) <= 1)
+                          .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
+                            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('ellipsis');
+                            acc.push(p);
+                            return acc;
+                          }, [])
+                          .map((item, idx) =>
+                            item === 'ellipsis' ? (
+                              <span key={`e-${idx}`} className="px-1 text-xs text-muted-foreground">…</span>
+                            ) : (
+                              <Button
+                                key={item}
+                                variant={item === safeAuditPage ? 'default' : 'outline'}
+                                size="sm"
+                                className="h-7 w-7 text-xs p-0"
+                                onClick={() => setAuditPage(item)}
+                              >
+                                {item}
+                              </Button>
+                            )
+                          )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs px-2"
+                          disabled={safeAuditPage >= auditTotalPages}
+                          onClick={() => setAuditPage(safeAuditPage + 1)}
+                        >
+                          Próximo
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
               </div>
             </TabsContent>
           )}
