@@ -8,24 +8,17 @@ import { toast } from 'sonner';
 import { Loader2, Shield } from 'lucide-react';
 
 export default function AuthPage() {
-  const { signIn, signUp } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isLogin) {
-        await signIn(email, password);
-        toast.success('Login realizado com sucesso!');
-      } else {
-        await signUp(email, password, displayName);
-        toast.success('Conta criada com sucesso!');
-      }
+      await signIn(email, password);
+      toast.success('Login realizado com sucesso!');
     } catch (error: any) {
       toast.error(error.message || 'Erro na autenticação');
     } finally {
@@ -40,25 +33,13 @@ export default function AuthPage() {
           <div className="mx-auto w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-2">
             <Shield className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-xl">{isLogin ? 'Entrar' : 'Criar Conta'}</CardTitle>
+          <CardTitle className="text-xl">Entrar</CardTitle>
           <CardDescription>
-            {isLogin ? 'Acesse o painel de gestão' : 'Registre-se para começar'}
+            Acesse o painel de gestão
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Nome</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Seu nome"
-                  required={!isLogin}
-                />
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -84,18 +65,12 @@ export default function AuthPage() {
             </div>
             <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {isLogin ? 'Entrar' : 'Criar Conta'}
+              Entrar
             </Button>
           </form>
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isLogin ? 'Não tem conta? Registre-se' : 'Já tem conta? Entre'}
-            </button>
-          </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Conta criada pelo administrador do sistema.
+          </p>
         </CardContent>
       </Card>
     </div>
