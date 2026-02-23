@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { StatsCard } from '@/components/StatsCard';
@@ -15,19 +15,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
-  Target, Loader2, Pencil, Copy,
+  Target, Loader2, Pencil, Copy, Trash2,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
+import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
+import { DeleteActionDialog } from '@/components/DeleteActionDialog';
+import { useState } from 'react';
 
 export default function ActionDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { data: action, isLoading: loadingAction } = useAction(id);
   const { data: winners = [], isLoading: loadingWinners } = useWinners(id);
   const { data: prizes = [], isLoading: loadingPrizes } = usePrizes(id ?? '');
   const { data: costs = [], isLoading: loadingCosts } = useCosts(id ?? '');
   const { isAdmin } = useUserRole();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
+  const { deleteAction, isPending: isDeleting } = useDeleteAction();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
 
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
@@ -95,6 +102,20 @@ export default function ActionDetailPage() {
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => duplicate(id!)} disabled={isDuplicating}>
                 {isDuplicating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
                 Duplicar Ação
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="outline" size="sm"
+                className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={async () => {
+                  const validation = await validateActionDeletion(id!);
+                  setDeleteBlockReason(validation.canDelete ? null : (validation.reason ?? null));
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Excluir
               </Button>
             )}
             <StatusBadge
@@ -344,6 +365,20 @@ export default function ActionDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {action && (
+        <DeleteActionDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          actionName={action.name}
+          blockReason={deleteBlockReason}
+          isPending={isDeleting}
+          onConfirm={async () => {
+            await deleteAction(id!);
+            navigate('/actions');
+          }}
+        />
+      )}
     </AppLayout>
   );
 }
