@@ -5,24 +5,35 @@ import { formatCurrency, formatPercent, formatDate, formatNumber } from '@/lib/f
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Filter, ArrowUpDown, Loader2, Copy } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpDown, Loader2, Copy, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
+import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
+import { DeleteActionDialog } from '@/components/DeleteActionDialog';
 
 export default function ActionsPage() {
   const [search, setSearch] = useState('');
   const { data: actions = [], isLoading } = useActions();
   const { isAdmin } = useUserRole();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
+  const { deleteAction, isPending: isDeleting } = useDeleteAction();
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
 
   const handleDuplicate = async (actionId: string) => {
     setDuplicatingId(actionId);
     try { await duplicate(actionId); } finally { setDuplicatingId(null); }
+  };
+
+  const handleDeleteClick = async (actionId: string, actionName: string) => {
+    const validation = await validateActionDeletion(actionId);
+    setDeleteBlockReason(validation.canDelete ? null : (validation.reason ?? null));
+    setDeleteTarget({ id: actionId, name: actionName });
   };
 
   const filtered = actions.filter((a) =>
@@ -130,14 +141,23 @@ export default function ActionsPage() {
                         </td>
                         {isAdmin && (
                           <td className="px-4 py-3 text-center">
-                            <Button
-                              variant="ghost" size="sm" className="h-7 text-xs"
-                              onClick={(e) => { e.preventDefault(); handleDuplicate(action.id); }}
-                              disabled={duplicatingId === action.id}
-                            >
-                              {duplicatingId === action.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3 mr-1" />}
-                              Duplicar
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost" size="sm" className="h-7 text-xs"
+                                onClick={(e) => { e.preventDefault(); handleDuplicate(action.id); }}
+                                disabled={duplicatingId === action.id}
+                              >
+                                {duplicatingId === action.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3 mr-1" />}
+                                Duplicar
+                              </Button>
+                              <Button
+                                variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive"
+                                onClick={(e) => { e.preventDefault(); handleDeleteClick(action.id, action.name); }}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Excluir
+                              </Button>
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -187,6 +207,17 @@ export default function ActionsPage() {
           </>
         )}
       </div>
+
+      {deleteTarget && (
+        <DeleteActionDialog
+          open={!!deleteTarget}
+          onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
+          actionName={deleteTarget.name}
+          blockReason={deleteBlockReason}
+          isPending={isDeleting}
+          onConfirm={async () => { await deleteAction(deleteTarget.id); setDeleteTarget(null); }}
+        />
+      )}
     </AppLayout>
   );
 }
