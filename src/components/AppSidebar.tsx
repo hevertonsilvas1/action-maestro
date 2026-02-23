@@ -5,8 +5,8 @@ import {
   Trophy,
   Users,
   Settings,
-  ChevronLeft,
   Zap,
+  LogOut,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
 
 const adminMainNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -48,6 +50,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const { isAdmin } = useUserRole();
+  const { user, signOut } = useAuth();
   const collapsed = state === 'collapsed';
 
   const mainNav = isAdmin ? adminMainNav : supportMainNav;
@@ -126,12 +129,32 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3">
         {!collapsed && (
-          <div className="rounded-lg bg-sidebar-accent p-3">
+          <div className="rounded-lg bg-sidebar-accent p-3 space-y-2">
             <p className="text-[11px] font-medium text-sidebar-accent-foreground">
-              Admin
+              {isAdmin ? 'Admin' : 'Suporte'}
             </p>
-            <p className="text-[10px] text-sidebar-muted">admin@actionpay.com</p>
+            <p className="text-[10px] text-sidebar-muted truncate">{user?.email}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 h-8 text-xs text-muted-foreground hover:text-destructive"
+              onClick={signOut}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sair
+            </Button>
           </div>
+        )}
+        {collapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-full h-8 text-muted-foreground hover:text-destructive"
+            onClick={signOut}
+            title="Sair"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         )}
       </SidebarFooter>
     </Sidebar>
