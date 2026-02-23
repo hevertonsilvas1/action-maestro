@@ -17,14 +17,19 @@ import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
-  History, User,
+  History, User, CalendarIcon, X,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
 import { useArchiveAction, useRestoreAction } from '@/hooks/useArchiveAction';
 import { DeleteActionDialog } from '@/components/DeleteActionDialog';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function ActionDetailPage() {
   const { id } = useParams();
@@ -41,6 +46,23 @@ export default function ActionDetailPage() {
   const { restore, isPending: isRestoring } = useRestoreAction();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
+  const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
+  const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
+  const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
+
+  const filteredAuditLog = useMemo(() => {
+    return auditLog.filter((entry) => {
+      if (auditOpFilter !== 'all' && entry.operation !== auditOpFilter) return false;
+      const entryDate = new Date(entry.createdAt);
+      if (auditDateFrom && entryDate < auditDateFrom) return false;
+      if (auditDateTo) {
+        const endOfDay = new Date(auditDateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (entryDate > endOfDay) return false;
+      }
+      return true;
+    });
+  }, [auditLog, auditOpFilter, auditDateFrom, auditDateTo]);
 
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
@@ -477,7 +499,7 @@ export default function ActionDetailPage() {
                         const roleLabels: Record<string, string> = { admin: 'Admin', support: 'Suporte' };
 
                         const header = 'Data/Hora;Usuário;Role;Operação;Tabela;Alterações';
-                        const rows = auditLog.map((entry) => {
+                        const rows = filteredAuditLog.map((entry) => {
                           const date = new Date(entry.createdAt).toLocaleString('pt-BR');
                           const user = entry.userName || 'Sistema';
                           const role = entry.userRole ? (roleLabels[entry.userRole] || entry.userRole) : '';
@@ -511,11 +533,74 @@ export default function ActionDetailPage() {
                     </Button>
                   )}
                 </div>
-                {auditLog.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhum registro de auditoria.</p>
+
+                {/* Filters */}
+                {auditLog.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b">
+                    <Select value={auditOpFilter} onValueChange={setAuditOpFilter}>
+                      <SelectTrigger className="h-7 w-[160px] text-xs">
+                        <SelectValue placeholder="Operação" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas operações</SelectItem>
+                        <SelectItem value="create">Criação</SelectItem>
+                        <SelectItem value="update">Atualização</SelectItem>
+                        <SelectItem value="delete">Exclusão</SelectItem>
+                        <SelectItem value="archive">Arquivamento</SelectItem>
+                        <SelectItem value="restore">Restauração</SelectItem>
+                        <SelectItem value="duplicate">Duplicação</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("h-7 text-xs w-[140px] justify-start", !auditDateFrom && "text-muted-foreground")}>
+                          <CalendarIcon className="h-3 w-3 mr-1" />
+                          {auditDateFrom ? format(auditDateFrom, 'dd/MM/yyyy') : 'De'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={auditDateFrom} onSelect={setAuditDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("h-7 text-xs w-[140px] justify-start", !auditDateTo && "text-muted-foreground")}>
+                          <CalendarIcon className="h-3 w-3 mr-1" />
+                          {auditDateTo ? format(auditDateTo, 'dd/MM/yyyy') : 'Até'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={auditDateTo} onSelect={setAuditDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+
+                    {(auditOpFilter !== 'all' || auditDateFrom || auditDateTo) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-muted-foreground"
+                        onClick={() => { setAuditOpFilter('all'); setAuditDateFrom(undefined); setAuditDateTo(undefined); }}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Limpar
+                      </Button>
+                    )}
+
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {filteredAuditLog.length} de {auditLog.length} registros
+                    </span>
+                  </div>
+                )}
+
+                {filteredAuditLog.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    {auditLog.length === 0 ? 'Nenhum registro de auditoria.' : 'Nenhum registro encontrado com os filtros selecionados.'}
+                  </p>
                 ) : (
                   <div className="space-y-3 max-h-[600px] overflow-auto">
-                    {auditLog.map((entry) => {
+                    {filteredAuditLog.map((entry) => {
                       const opLabels: Record<string, string> = {
                         create: 'Criação',
                         update: 'Atualização',
