@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { insertAuditLog } from './useAuditLogger';
 import { toast } from 'sonner';
 
 export function useArchiveAction() {
@@ -7,10 +8,9 @@ export function useArchiveAction() {
 
   const archive = useMutation({
     mutationFn: async (actionId: string) => {
-      // Get current status to store as previous_status
       const { data: action, error: fetchError } = await supabase
         .from('actions')
-        .select('status')
+        .select('status, name')
         .eq('id', actionId)
         .single();
       if (fetchError || !action) throw new Error('Ação não encontrada.');
@@ -20,6 +20,15 @@ export function useArchiveAction() {
         .update({ status: 'archived' as any, previous_status: action.status } as any)
         .eq('id', actionId);
       if (error) throw error;
+
+      await insertAuditLog({
+        actionId,
+        actionName: action.name,
+        tableName: 'actions',
+        recordId: actionId,
+        operation: 'archive',
+        changes: { Status: { before: action.status, after: 'archived' } },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actions'] });
@@ -40,7 +49,7 @@ export function useRestoreAction() {
     mutationFn: async (actionId: string) => {
       const { data: action, error: fetchError } = await supabase
         .from('actions')
-        .select('previous_status')
+        .select('previous_status, name')
         .eq('id', actionId)
         .single();
       if (fetchError || !action) throw new Error('Ação não encontrada.');
@@ -52,6 +61,15 @@ export function useRestoreAction() {
         .update({ status: restoreStatus, previous_status: null } as any)
         .eq('id', actionId);
       if (error) throw error;
+
+      await insertAuditLog({
+        actionId,
+        actionName: action.name,
+        tableName: 'actions',
+        recordId: actionId,
+        operation: 'restore',
+        changes: { Status: { before: 'archived', after: restoreStatus } },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actions'] });

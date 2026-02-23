@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreateAction, PrizeInput, CostInput } from './useCreateAction';
+import { insertAuditLog } from './useAuditLogger';
 import { toast } from 'sonner';
 
 export function useDuplicateAction() {
@@ -56,6 +56,19 @@ export function useDuplicateAction() {
       taxPercent: Number(action.tax_percent),
       prizes: prizesInput,
       costs: costsInput,
+    });
+
+    // Log duplication on the ORIGINAL action
+    await insertAuditLog({
+      actionId,
+      actionName: action.name,
+      tableName: 'actions',
+      recordId: actionId,
+      operation: 'duplicate',
+      changes: {
+        'Ação duplicada para': `${action.name} - CÓPIA`,
+        'Nova ação ID': result.id,
+      },
     });
 
     toast.success('Ação duplicada com sucesso!');

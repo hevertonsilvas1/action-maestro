@@ -547,36 +547,57 @@ export default function EditActionPage() {
             <p className="text-xs text-muted-foreground">Nenhuma alteração registrada.</p>
           ) : (
             <div className="space-y-3 max-h-96 overflow-auto">
-              {auditLog.map(entry => (
-                <div key={entry.id} className="p-3 rounded-lg border bg-muted/30 text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="font-semibold capitalize">{entry.operation === 'create' ? 'Criação' : 'Atualização'}</span>
-                    <span className="text-muted-foreground">{formatDate(entry.createdAt)}</span>
-                  </div>
-                  {entry.changes && Object.keys(entry.changes).length > 0 && (
-                    <div className="space-y-0.5 mt-1">
-                      {Object.entries(entry.changes).map(([key, val]) => {
-                        if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+              {auditLog.map(entry => {
+                const opLabels: Record<string, string> = {
+                  create: 'Criação', update: 'Atualização', delete: 'Exclusão',
+                  archive: 'Arquivamento', restore: 'Restauração', duplicate: 'Duplicação',
+                };
+                return (
+                  <div key={entry.id} className="p-3 rounded-lg border bg-muted/30 text-xs space-y-1">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{opLabels[entry.operation] || entry.operation}</span>
+                        {entry.userName && (
+                          <span className="text-muted-foreground">por {entry.userName}</span>
+                        )}
+                      </div>
+                      <span className="text-muted-foreground">{new Date(entry.createdAt).toLocaleString('pt-BR')}</span>
+                    </div>
+                    {entry.changes && Object.keys(entry.changes).length > 0 && (
+                      <div className="space-y-0.5 mt-1">
+                        {Object.entries(entry.changes).map(([key, val]) => {
+                          if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+                            return (
+                              <div key={key} className="flex gap-2">
+                                <span className="text-muted-foreground w-32 shrink-0">{key}:</span>
+                                <span className="text-destructive line-through">{String(val.before ?? '—')}</span>
+                                <span>→</span>
+                                <span className="text-success">{String(val.after ?? '—')}</span>
+                              </div>
+                            );
+                          }
+                          if (Array.isArray(val)) {
+                            return (
+                              <div key={key}>
+                                <span className="text-muted-foreground">{key}:</span>
+                                <ul className="ml-4 list-disc">
+                                  {val.map((item, idx) => <li key={idx}>{String(item)}</li>)}
+                                </ul>
+                              </div>
+                            );
+                          }
                           return (
                             <div key={key} className="flex gap-2">
                               <span className="text-muted-foreground w-32 shrink-0">{key}:</span>
-                              <span className="text-destructive line-through">{String(val.before ?? '—')}</span>
-                              <span>→</span>
-                              <span className="text-success">{String(val.after ?? '—')}</span>
+                              <span>{String(val)}</span>
                             </div>
                           );
-                        }
-                        return (
-                          <div key={key} className="flex gap-2">
-                            <span className="text-muted-foreground w-32 shrink-0">{key}:</span>
-                            <span>{String(val)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))}
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

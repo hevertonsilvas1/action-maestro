@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { insertAuditLog } from './useAuditLogger';
 import type { PrizeInput, CostInput } from './useCreateAction';
 
 export interface UpdateActionInput {
@@ -28,14 +29,12 @@ export function useUpdateAction() {
       const grossProfit = expectedRevenue - totalCost;
       const marginPercent = expectedRevenue > 0 ? (grossProfit / expectedRevenue) * 100 : 0;
 
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Fetch old action for diff
-      const { data: oldAction } = await supabase
-        .from('actions')
-        .select('*')
-        .eq('id', input.id)
-        .single();
+      // Fetch old action + old prizes + old costs for diff
+      const [{ data: oldAction }, { data: oldPrizes }, { data: oldCosts }] = await Promise.all([
+        supabase.from('actions').select('*').eq('id', input.id).single(),
+        supabase.from('prizes').select('*').eq('action_id', input.id),
+        supabase.from('costs').select('*').eq('action_id', input.id),
+      ]);
 
       // Update action
       const { data: action, error: actionError } = await supabase
@@ -97,42 +96,88 @@ export function useUpdateAction() {
         if (costsError) throw costsError;
       }
 
-      // Build changes diff
-      const changes: Record<string, { before: any; after: any }> = {};
+      // Build action field changes diff
+      const actionChanges: Record<string, { before: any; after: any }> = {};
       if (oldAction) {
-        const fields = [
-          ['name', 'name'], ['status', 'status'],
-          ['quota_count', 'quotaCount'], ['quota_value', 'quotaValue'],
-          ['tax_percent', 'taxPercent'], ['start_date', 'startDate'],
-          ['end_date', 'endDate'],
-        ] as const;
-        for (const [dbKey, inputKey] of fields) {
+        const fieldMap: [string, string, string][] = [
+          ['name', 'name', 'Nome'],
+          ['status', 'status', 'Status'],
+          ['quota_count', 'quotaCount', 'Qtd Cotas'],
+          ['quota_value', 'quotaValue', 'Valor Cota'],
+          ['tax_percent', 'taxPercent', 'Impostos (%)'],
+          ['start_date', 'startDate', 'Data Início'],
+          ['end_date', 'endDate', 'Data Fim'],
+        ];
+        for (const [dbKey, inputKey, label] of fieldMap) {
           const oldVal = oldAction[dbKey as keyof typeof oldAction];
           const newVal = (input as any)[inputKey];
           if (String(oldVal ?? '') !== String(newVal ?? '')) {
-            changes[dbKey] = { before: oldVal, after: newVal };
+            actionChanges[label] = { before: oldVal, after: newVal };
           }
         }
         if (Number(oldAction.expected_revenue) !== expectedRevenue) {
-          changes.expected_revenue = { before: oldAction.expected_revenue, after: expectedRevenue };
+          actionChanges['Receita Esperada'] = { before: oldAction.expected_revenue, after: expectedRevenue };
         }
         if (Number(oldAction.total_prizes) !== totalPrizes) {
-          changes.total_prizes = { before: oldAction.total_prizes, after: totalPrizes };
+          actionChanges['Total Premiações'] = { before: oldAction.total_prizes, after: totalPrizes };
         }
         if (Number(oldAction.total_operational) !== totalCostsRaw) {
-          changes.total_operational = { before: oldAction.total_operational, after: totalCostsRaw };
+          actionChanges['Total Custos Operacionais'] = { before: oldAction.total_operational, after: totalCostsRaw };
+        }
+        if (Number(oldAction.gross_profit) !== grossProfit) {
+          actionChanges['Lucro Bruto'] = { before: oldAction.gross_profit, after: grossProfit };
         }
       }
 
-      // Audit log
-      await supabase.from('action_audit_log').insert({
-        action_id: input.id,
-        table_name: 'actions',
-        record_id: input.id,
-        operation: 'update',
-        changes,
-        user_id: user?.id || null,
-      });
+      // Log action changes
+      if (Object.keys(actionChanges).length > 0) {
+        await insertAuditLog({
+          actionId: input.id,
+          actionName: input.name,
+          tableName: 'actions',
+          recordId: input.id,
+          operation: 'update',
+          changes: actionChanges,
+        });
+      }
+
+      // Log prize changes
+      const oldPrizesList = (oldPrizes ?? []).map(p => `${p.title} (${p.quantity}x R$${p.unit_value})`);
+      const newPrizesList = input.prizes.map(p => `${p.title} (${p.quantity}x R$${p.unitValue})`);
+      const prizesChanged = JSON.stringify(oldPrizesList.sort()) !== JSON.stringify(newPrizesList.sort());
+      if (prizesChanged) {
+        await insertAuditLog({
+          actionId: input.id,
+          actionName: input.name,
+          tableName: 'prizes',
+          operation: 'update',
+          changes: {
+            'Premiações anteriores': oldPrizesList.length > 0 ? oldPrizesList : ['Nenhuma'],
+            'Premiações atuais': newPrizesList.length > 0 ? newPrizesList : ['Nenhuma'],
+            'Total anterior': oldPrizes?.reduce((s, p) => s + Number(p.total_value), 0) ?? 0,
+            'Total atual': totalPrizes,
+          },
+        });
+      }
+
+      // Log cost changes
+      const oldCostsList = (oldCosts ?? []).map(c => `${c.description} (${c.quantity}x R$${c.unit_value})`);
+      const newCostsList = input.costs.map(c => `${c.description} (${c.quantity}x R$${c.unitValue})`);
+      const costsChanged = JSON.stringify(oldCostsList.sort()) !== JSON.stringify(newCostsList.sort());
+      if (costsChanged) {
+        await insertAuditLog({
+          actionId: input.id,
+          actionName: input.name,
+          tableName: 'costs',
+          operation: 'update',
+          changes: {
+            'Custos anteriores': oldCostsList.length > 0 ? oldCostsList : ['Nenhum'],
+            'Custos atuais': newCostsList.length > 0 ? newCostsList : ['Nenhum'],
+            'Total anterior': oldCosts?.reduce((s, c) => s + Number(c.value), 0) ?? 0,
+            'Total atual': totalCostsRaw,
+          },
+        });
+      }
 
       return action;
     },

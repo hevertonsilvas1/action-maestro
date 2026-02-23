@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { insertAuditLog } from './useAuditLogger';
 
 export interface PrizeInput {
   prizeTypeConfigId: string;
@@ -43,10 +44,8 @@ export function useCreateAction() {
       const grossProfit = expectedRevenue - totalCost;
       const marginPercent = expectedRevenue > 0 ? (grossProfit / expectedRevenue) * 100 : 0;
 
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Insert action
       const { data: action, error: actionError } = await supabase
         .from('actions')
         .insert({
@@ -71,7 +70,6 @@ export function useCreateAction() {
 
       if (actionError) throw actionError;
 
-      // Insert prizes
       if (input.prizes.length > 0) {
         const { error: prizesError } = await supabase.from('prizes').insert(
           input.prizes.map((p) => ({
@@ -79,7 +77,7 @@ export function useCreateAction() {
             prize_type_config_id: p.prizeTypeConfigId,
             title: p.title,
             description: p.description || null,
-            type: 'main' as const, // keep enum compatibility
+            type: 'main' as const,
             quantity: p.quantity,
             unit_value: p.unitValue,
             total_value: p.totalValue,
@@ -88,14 +86,13 @@ export function useCreateAction() {
         if (prizesError) throw prizesError;
       }
 
-      // Insert costs
       if (input.costs.length > 0) {
         const { error: costsError } = await supabase.from('costs').insert(
           input.costs.map((c) => ({
             action_id: action.id,
             cost_type_config_id: c.costTypeConfigId,
             description: c.description,
-            category: 'other' as const, // keep enum compatibility
+            category: 'other' as const,
             quantity: c.quantity,
             unit_value: c.unitValue,
             value: c.value,
@@ -105,13 +102,21 @@ export function useCreateAction() {
       }
 
       // Audit log
-      await supabase.from('action_audit_log').insert({
-        action_id: action.id,
-        table_name: 'actions',
-        record_id: action.id,
+      await insertAuditLog({
+        actionId: action.id,
+        actionName: input.name,
+        tableName: 'actions',
+        recordId: action.id,
         operation: 'create',
-        changes: { name: input.name, status: input.status, prizes: input.prizes.length, costs: input.costs.length },
-        user_id: user?.id || null,
+        changes: {
+          nome: input.name,
+          status: input.status,
+          cotas: input.quotaCount,
+          valor_cota: input.quotaValue,
+          premiacoes: input.prizes.length,
+          custos: input.costs.length,
+          receita_esperada: expectedRevenue,
+        },
       });
 
       return action;
