@@ -15,11 +15,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
-  Target, Loader2, Pencil, Copy, Trash2,
+  Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
+import { useArchiveAction, useRestoreAction } from '@/hooks/useArchiveAction';
 import { DeleteActionDialog } from '@/components/DeleteActionDialog';
 import { useState } from 'react';
 
@@ -33,6 +34,8 @@ export default function ActionDetailPage() {
   const { isAdmin } = useUserRole();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();
+  const { archive, isPending: isArchiving } = useArchiveAction();
+  const { restore, isPending: isRestoring } = useRestoreAction();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
 
@@ -79,32 +82,58 @@ export default function ActionDetailPage() {
     ? (winners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length / winners.length) * 100
     : 0;
 
+  const isArchived = action.status === 'archived';
+
   return (
     <AppLayout>
       <AppHeader
         title={action.name}
-        subtitle="Detalhes da ação"
+        subtitle={isArchived ? 'Ação arquivada (somente leitura)' : 'Detalhes da ação'}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Link to="/actions">
               <Button variant="ghost" size="sm" className="h-8 text-xs">
                 <ArrowLeft className="h-3.5 w-3.5 mr-1" />
                 Voltar
               </Button>
             </Link>
-            <Link to={`/actions/${id}/edit`}>
-              <Button variant="outline" size="sm" className="h-8 text-xs">
-                <Pencil className="h-3.5 w-3.5 mr-1" />
-                {action.status === 'completed' ? 'Visualizar / Duplicar' : 'Editar'}
-              </Button>
-            </Link>
+            {!isArchived && (
+              <Link to={`/actions/${id}/edit`}>
+                <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  {action.status === 'completed' ? 'Visualizar / Duplicar' : 'Editar'}
+                </Button>
+              </Link>
+            )}
             {isAdmin && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => duplicate(id!)} disabled={isDuplicating}>
                 {isDuplicating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
                 Duplicar Ação
               </Button>
             )}
-            {isAdmin && (
+            {isAdmin && isArchived && (
+              <Button
+                variant="outline" size="sm"
+                className="h-8 text-xs"
+                onClick={() => restore(id!)}
+                disabled={isRestoring}
+              >
+                {isRestoring ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5 mr-1" />}
+                Restaurar Ação
+              </Button>
+            )}
+            {isAdmin && !isArchived && (
+              <Button
+                variant="outline" size="sm"
+                className="h-8 text-xs"
+                onClick={() => archive(id!)}
+                disabled={isArchiving}
+              >
+                {isArchiving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Archive className="h-3.5 w-3.5 mr-1" />}
+                Arquivar
+              </Button>
+            )}
+            {isAdmin && !isArchived && (
               <Button
                 variant="outline" size="sm"
                 className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"

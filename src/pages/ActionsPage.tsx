@@ -1,11 +1,11 @@
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { useActions } from '@/hooks/useActions';
-import { formatCurrency, formatPercent, formatDate, formatNumber } from '@/lib/format';
+import { formatCurrency, formatPercent, formatNumber } from '@/lib/format';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Filter, ArrowUpDown, Loader2, Copy, Trash2 } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Loader2, Copy, Trash2, Archive } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -13,15 +13,22 @@ import { useState } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
+import { useArchiveAction } from '@/hooks/useArchiveAction';
 import { DeleteActionDialog } from '@/components/DeleteActionDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type StatusFilter = 'all' | 'active_only' | 'planning' | 'active' | 'completed' | 'archived';
 
 export default function ActionsPage() {
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const { data: actions = [], isLoading } = useActions();
   const { isAdmin } = useUserRole();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();
+  const { archive, isPending: isArchiving } = useArchiveAction();
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
 
@@ -30,21 +37,37 @@ export default function ActionsPage() {
     try { await duplicate(actionId); } finally { setDuplicatingId(null); }
   };
 
+  const handleArchive = async (actionId: string) => {
+    setArchivingId(actionId);
+    try { await archive(actionId); } finally { setArchivingId(null); }
+  };
+
   const handleDeleteClick = async (actionId: string, actionName: string) => {
     const validation = await validateActionDeletion(actionId);
     setDeleteBlockReason(validation.canDelete ? null : (validation.reason ?? null));
     setDeleteTarget({ id: actionId, name: actionName });
   };
 
-  const filtered = actions.filter((a) =>
-    a.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Default: hide archived. 'all' means all non-archived.
+  const filtered = actions.filter((a) => {
+    if (!a.name.toLowerCase().includes(search.toLowerCase())) return false;
+    switch (statusFilter) {
+      case 'all': return a.status !== 'archived';
+      case 'active_only': return a.status === 'active';
+      case 'planning': return a.status === 'planning';
+      case 'completed': return a.status === 'completed';
+      case 'archived': return a.status === 'archived';
+      default: return true;
+    }
+  });
+
+  const nonArchivedCount = actions.filter(a => a.status !== 'archived').length;
 
   return (
     <AppLayout>
       <AppHeader
         title="Ações"
-        subtitle={`${actions.length} ações cadastradas`}
+        subtitle={`${nonArchivedCount} ações cadastradas`}
         actions={
           <Link to="/actions/new">
             <Button size="sm" className="gradient-primary text-primary-foreground hover:opacity-90 h-8 text-xs">
@@ -67,16 +90,18 @@ export default function ActionsPage() {
               className="pl-9 h-9"
             />
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="h-9">
-              <Filter className="h-3.5 w-3.5 mr-1.5" />
-              Filtrar
-            </Button>
-            <Button variant="outline" size="sm" className="h-9">
-              <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
-              Ordenar
-            </Button>
-          </div>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Filtrar status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas (não arquivadas)</SelectItem>
+              <SelectItem value="planning">Planejamento</SelectItem>
+              <SelectItem value="active_only">Ativas</SelectItem>
+              <SelectItem value="completed">Concluídas</SelectItem>
+              <SelectItem value="archived">Arquivadas</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (
@@ -85,7 +110,7 @@ export default function ActionsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-sm text-muted-foreground">
-            {search ? 'Nenhuma ação encontrada.' : 'Nenhuma ação cadastrada ainda.'}
+            {search || statusFilter !== 'all' ? 'Nenhuma ação encontrada.' : 'Nenhuma ação cadastrada ainda.'}
           </div>
         ) : (
           <>
@@ -111,10 +136,11 @@ export default function ActionsPage() {
                     const progress = action.winnersCount > 0
                       ? (action.paidCount / action.winnersCount) * 100
                       : 0;
+                    const isArchived = action.status === 'archived';
                     return (
                       <tr
                         key={action.id}
-                        className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
+                        className={`border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in ${isArchived ? 'opacity-60' : ''}`}
                         style={{ animationDelay: `${i * 30}ms` }}
                       >
                         <td className="px-4 py-3">
@@ -150,13 +176,25 @@ export default function ActionsPage() {
                                 {duplicatingId === action.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3 mr-1" />}
                                 Duplicar
                               </Button>
-                              <Button
-                                variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive"
-                                onClick={(e) => { e.preventDefault(); handleDeleteClick(action.id, action.name); }}
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Excluir
-                              </Button>
+                              {!isArchived && (
+                                <Button
+                                  variant="ghost" size="sm" className="h-7 text-xs"
+                                  onClick={(e) => { e.preventDefault(); handleArchive(action.id); }}
+                                  disabled={archivingId === action.id}
+                                >
+                                  {archivingId === action.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Archive className="h-3 w-3 mr-1" />}
+                                  Arquivar
+                                </Button>
+                              )}
+                              {!isArchived && (
+                                <Button
+                                  variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive"
+                                  onClick={(e) => { e.preventDefault(); handleDeleteClick(action.id, action.name); }}
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Excluir
+                                </Button>
+                              )}
                             </div>
                           </td>
                         )}
@@ -173,11 +211,12 @@ export default function ActionsPage() {
                 const progress = action.winnersCount > 0
                   ? (action.paidCount / action.winnersCount) * 100
                   : 0;
+                const isArchived = action.status === 'archived';
                 return (
                   <Link
                     key={action.id}
                     to={`/actions/${action.id}`}
-                    className="block rounded-xl border bg-card p-4 transition-all duration-200 hover:shadow-card-hover animate-fade-in"
+                    className={`block rounded-xl border bg-card p-4 transition-all duration-200 hover:shadow-card-hover animate-fade-in ${isArchived ? 'opacity-60' : ''}`}
                     style={{ animationDelay: `${i * 50}ms` }}
                   >
                     <div className="flex items-start justify-between mb-2">

@@ -27,11 +27,13 @@ const Index = () => {
 
   const isLoading = loadingActions || loadingWinners;
 
-  const totalRevenue = actions.reduce((s, a) => s + a.expectedRevenue, 0);
-  const totalProfit = actions.reduce((s, a) => s + a.grossProfit, 0);
-  const totalWinners = actions.reduce((s, a) => s + a.winnersCount, 0);
-  const totalPaid = actions.reduce((s, a) => s + a.paidCount, 0);
-  const activeActions = actions.filter((a) => a.status === 'active').length;
+  // Exclude archived from operational KPIs
+  const operationalActions = actions.filter(a => a.status !== 'archived');
+  const totalRevenue = operationalActions.reduce((s, a) => s + a.expectedRevenue, 0);
+  const totalProfit = operationalActions.reduce((s, a) => s + a.grossProfit, 0);
+  const totalWinners = operationalActions.reduce((s, a) => s + a.winnersCount, 0);
+  const totalPaid = operationalActions.reduce((s, a) => s + a.paidCount, 0);
+  const activeActions = operationalActions.filter((a) => a.status === 'active').length;
 
   const statusCounts: Record<string, number> = {};
   winners.forEach((w) => {
@@ -91,7 +93,7 @@ const Index = () => {
             value={String(activeActions)}
             icon={Megaphone}
             variant="warning"
-            subtitle={`${actions.length} total`}
+            subtitle={`${operationalActions.length} total`}
           />
         </div>
 
@@ -108,7 +110,7 @@ const Index = () => {
               <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma ação cadastrada ainda.</p>
             ) : (
               <div className="space-y-3">
-                {actions.slice(0, 5).map((action, i) => {
+                {operationalActions.slice(0, 5).map((action, i) => {
                   const progress = action.winnersCount > 0
                     ? (action.paidCount / action.winnersCount) * 100
                     : 0;

@@ -7,6 +7,7 @@ function mapAction(row: any): Action {
     id: row.id,
     name: row.name,
     status: row.status,
+    previousStatus: row.previous_status ?? null,
     quotaCount: row.quota_count ?? 0,
     quotaValue: Number(row.quota_value ?? 0),
     startDate: row.start_date ?? null,
