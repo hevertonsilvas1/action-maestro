@@ -86,6 +86,7 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Ação</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Data/Hora</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                     </tr>
@@ -105,6 +106,9 @@ export default function WinnersPage() {
                         <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
                         {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                        </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{w.pixKey || '—'}</td>
                         <td className="px-4 py-3 text-center">
                           <StatusBadge status={w.status} />
