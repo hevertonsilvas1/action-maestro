@@ -3,24 +3,55 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
-import { mockActions, mockWinners, mockPrizes, mockCosts } from '@/data/mock';
+import { useAction } from '@/hooks/useActions';
+import { useWinners } from '@/hooks/useWinners';
+import { usePrizes } from '@/hooks/usePrizes';
+import { useCosts } from '@/hooks/useCosts';
 import { formatCurrency, formatPercent } from '@/lib/format';
-import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WINNER_STATUS_LABELS, WinnerStatus } from '@/types';
+import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
-  PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2, Clock,
-  Target,
+  PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
+  Target, Loader2,
 } from 'lucide-react';
 
 export default function ActionDetailPage() {
   const { id } = useParams();
-  const action = mockActions.find((a) => a.id === id) ?? mockActions[0];
-  const winners = mockWinners.filter((w) => w.actionId === action.id);
-  const prizes = mockPrizes.filter((p) => p.actionId === action.id);
-  const costs = mockCosts.filter((c) => c.actionId === action.id);
+  const { data: action, isLoading: loadingAction } = useAction(id);
+  const { data: winners = [], isLoading: loadingWinners } = useWinners(id);
+  const { data: prizes = [], isLoading: loadingPrizes } = usePrizes(id ?? '');
+  const { data: costs = [], isLoading: loadingCosts } = useCosts(id ?? '');
+
+  const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!action) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <p className="text-muted-foreground">Ação não encontrada.</p>
+          <Link to="/actions">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+              Voltar
+            </Button>
+          </Link>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const totalPlannedPrizes = prizes.reduce((s, p) => s + p.totalValue, 0);
   const totalPaidPrizes = winners
@@ -105,27 +136,33 @@ export default function ActionDetailPage() {
               <Receipt className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Pipeline de Pagamento</h3>
             </div>
-            <div className="space-y-2">
-              {Object.entries(statusCounts).map(([status, count]) => {
-                const pctOfTotal = (count / winners.length) * 100;
-                return (
-                  <div key={status} className="flex items-center gap-3">
-                    <StatusBadge status={status as WinnerStatus} className="w-36 justify-center" />
-                    <div className="flex-1">
-                      <Progress value={pctOfTotal} className="h-1.5" />
-                    </div>
-                    <span className="text-xs font-semibold w-6 text-right">{count}</span>
+            {winners.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Nenhum ganhador ainda.</p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {Object.entries(statusCounts).map(([status, count]) => {
+                    const pctOfTotal = (count / winners.length) * 100;
+                    return (
+                      <div key={status} className="flex items-center gap-3">
+                        <StatusBadge status={status as WinnerStatus} className="w-36 justify-center" />
+                        <div className="flex-1">
+                          <Progress value={pctOfTotal} className="h-1.5" />
+                        </div>
+                        <span className="text-xs font-semibold w-6 text-right">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 pt-3 border-t flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Progresso total</span>
+                  <div className="flex items-center gap-2">
+                    <Progress value={paidProgress} className="h-2 w-20" />
+                    <span className="text-xs font-semibold">{paidProgress.toFixed(0)}%</span>
                   </div>
-                );
-              })}
-            </div>
-            <div className="mt-4 pt-3 border-t flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Progresso total</span>
-              <div className="flex items-center gap-2">
-                <Progress value={paidProgress} className="h-2 w-20" />
-                <span className="text-xs font-semibold">{paidProgress.toFixed(0)}%</span>
-              </div>
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -166,7 +203,6 @@ export default function ActionDetailPage() {
               </Button>
             </div>
 
-            {/* Winners table */}
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -180,26 +216,30 @@ export default function ActionDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {winners.map((w, i) => (
-                      <tr
-                        key={w.id}
-                        className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
-                        style={{ animationDelay: `${i * 30}ms` }}
-                      >
-                        <td className="px-4 py-3">
-                          <p className="text-sm font-medium">{w.name}</p>
-                          {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
-                        <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
-                          {w.pixKey || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <StatusBadge status={w.status} />
-                        </td>
-                      </tr>
-                    ))}
+                    {winners.length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
+                    ) : (
+                      winners.map((w, i) => (
+                        <tr
+                          key={w.id}
+                          className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
+                          style={{ animationDelay: `${i * 30}ms` }}
+                        >
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-medium">{w.name}</p>
+                            {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
+                          <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
+                            {w.pixKey || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <StatusBadge status={w.status} />
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -216,27 +256,31 @@ export default function ActionDetailPage() {
                 Adicionar Prêmio
               </Button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {prizes.map((p, i) => (
-                <div
-                  key={p.id}
-                  className="rounded-xl border bg-card p-4 transition-all duration-200 hover:shadow-card-hover animate-fade-in"
-                  style={{ animationDelay: `${i * 50}ms` }}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm font-semibold">{p.title}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{p.type.replace('_', ' ')}</p>
+            {prizes.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Nenhum prêmio cadastrado.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {prizes.map((p, i) => (
+                  <div
+                    key={p.id}
+                    className="rounded-xl border bg-card p-4 transition-all duration-200 hover:shadow-card-hover animate-fade-in"
+                    style={{ animationDelay: `${i * 50}ms` }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-sm font-semibold">{p.title}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{p.type.replace('_', ' ')}</p>
+                      </div>
+                      <p className="text-sm font-bold">{formatCurrency(p.totalValue)}</p>
                     </div>
-                    <p className="text-sm font-bold">{formatCurrency(p.totalValue)}</p>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span>{p.quantity}x</span>
+                      <span>{formatCurrency(p.unitValue)}/un</span>
+                    </div>
                   </div>
-                  <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span>{p.quantity}x</span>
-                    <span>{formatCurrency(p.unitValue)}/un</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="costs" className="space-y-3">
@@ -259,21 +303,25 @@ export default function ActionDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {costs.map((c, i) => (
-                    <tr
-                      key={c.id}
-                      className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
-                      style={{ animationDelay: `${i * 30}ms` }}
-                    >
-                      <td className="px-4 py-3 text-sm">{c.description}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs capitalize bg-muted px-2 py-0.5 rounded-full">
-                          {c.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(c.value)}</td>
-                    </tr>
-                  ))}
+                  {costs.length === 0 ? (
+                    <tr><td colSpan={3} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum custo registrado.</td></tr>
+                  ) : (
+                    costs.map((c, i) => (
+                      <tr
+                        key={c.id}
+                        className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
+                        style={{ animationDelay: `${i * 30}ms` }}
+                      >
+                        <td className="px-4 py-3 text-sm">{c.description}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs capitalize bg-muted px-2 py-0.5 rounded-full">
+                            {c.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(c.value)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

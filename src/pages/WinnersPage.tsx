@@ -1,19 +1,30 @@
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
-import { mockWinners, mockActions } from '@/data/mock';
+import { useWinners } from '@/hooks/useWinners';
+import { useActions } from '@/hooks/useActions';
 import { formatCurrency } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, Download } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Filter, Download, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 
 export default function WinnersPage() {
   const [search, setSearch] = useState('');
+  const { data: winners = [], isLoading: loadingWinners } = useWinners();
+  const { data: actions = [], isLoading: loadingActions } = useActions();
 
-  const allWinners = mockWinners.map((w) => ({
+  const isLoading = loadingWinners || loadingActions;
+
+  const actionsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    actions.forEach((a) => { map[a.id] = a.name; });
+    return map;
+  }, [actions]);
+
+  const allWinners = winners.map((w) => ({
     ...w,
-    actionName: mockActions.find((a) => a.id === w.actionId)?.name ?? '',
+    actionName: actionsMap[w.actionId] ?? '',
   }));
 
   const filtered = allWinners.filter(
@@ -26,7 +37,7 @@ export default function WinnersPage() {
     <AppLayout>
       <AppHeader
         title="Ganhadores"
-        subtitle={`${allWinners.length} ganhadores registrados`}
+        subtitle={`${winners.length} ganhadores registrados`}
         actions={
           <Button size="sm" variant="outline" className="h-8 text-xs">
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -52,67 +63,79 @@ export default function WinnersPage() {
           </Button>
         </div>
 
-        {/* Desktop */}
-        <div className="hidden md:block rounded-xl border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/40">
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nome</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Ação</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((w, i) => (
-                  <tr
-                    key={w.id}
-                    className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
-                    style={{ animationDelay: `${i * 30}ms` }}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-medium">{w.name}</p>
-                      {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
-                    <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{w.pixKey || '—'}</td>
-                    <td className="px-4 py-3 text-center">
-                      <StatusBadge status={w.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        </div>
-
-        {/* Mobile */}
-        <div className="md:hidden space-y-3">
-          {filtered.map((w, i) => (
-            <div
-              key={w.id}
-              className="rounded-xl border bg-card p-4 animate-fade-in"
-              style={{ animationDelay: `${i * 50}ms` }}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="text-sm font-semibold">{w.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{w.actionName}</p>
-                </div>
-                <StatusBadge status={w.status} />
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">{w.prizeTitle}</span>
-                <span className="font-medium">{formatCurrency(w.value)}</span>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-sm text-muted-foreground">
+            {search ? 'Nenhum ganhador encontrado.' : 'Nenhum ganhador registrado ainda.'}
+          </div>
+        ) : (
+          <>
+            {/* Desktop */}
+            <div className="hidden md:block rounded-xl border bg-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/40">
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nome</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Ação</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
+                      <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((w, i) => (
+                      <tr
+                        key={w.id}
+                        className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
+                        style={{ animationDelay: `${i * 30}ms` }}
+                      >
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium">{w.name}</p>
+                          {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
+                        <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{w.pixKey || '—'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <StatusBadge status={w.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* Mobile */}
+            <div className="md:hidden space-y-3">
+              {filtered.map((w, i) => (
+                <div
+                  key={w.id}
+                  className="rounded-xl border bg-card p-4 animate-fade-in"
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-sm font-semibold">{w.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{w.actionName}</p>
+                    </div>
+                    <StatusBadge status={w.status} />
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">{w.prizeTitle}</span>
+                    <span className="font-medium">{formatCurrency(w.value)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </AppLayout>
   );

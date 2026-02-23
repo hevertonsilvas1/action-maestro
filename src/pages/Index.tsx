@@ -2,7 +2,8 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
-import { mockActions, mockWinners } from '@/data/mock';
+import { useActions } from '@/hooks/useActions';
+import { useWinners } from '@/hooks/useWinners';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
 import {
   DollarSign,
@@ -13,24 +14,39 @@ import {
   AlertCircle,
   Megaphone,
   ArrowRight,
+  Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WINNER_STATUS_LABELS, WinnerStatus } from '@/types';
+import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
 const Index = () => {
-  const totalRevenue = mockActions.reduce((s, a) => s + a.expectedRevenue, 0);
-  const totalProfit = mockActions.reduce((s, a) => s + a.grossProfit, 0);
-  const totalWinners = mockActions.reduce((s, a) => s + a.winnersCount, 0);
-  const totalPaid = mockActions.reduce((s, a) => s + a.paidCount, 0);
-  const activeActions = mockActions.filter((a) => a.status === 'active').length;
+  const { data: actions = [], isLoading: loadingActions } = useActions();
+  const { data: winners = [], isLoading: loadingWinners } = useWinners();
 
-  // Status distribution for active action winners
+  const isLoading = loadingActions || loadingWinners;
+
+  const totalRevenue = actions.reduce((s, a) => s + a.expectedRevenue, 0);
+  const totalProfit = actions.reduce((s, a) => s + a.grossProfit, 0);
+  const totalWinners = actions.reduce((s, a) => s + a.winnersCount, 0);
+  const totalPaid = actions.reduce((s, a) => s + a.paidCount, 0);
+  const activeActions = actions.filter((a) => a.status === 'active').length;
+
   const statusCounts: Record<string, number> = {};
-  mockWinners.forEach((w) => {
+  winners.forEach((w) => {
     statusCounts[w.status] = (statusCounts[w.status] || 0) + 1;
   });
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -55,14 +71,13 @@ const Index = () => {
             value={formatCurrency(totalRevenue)}
             icon={DollarSign}
             variant="primary"
-            trend={{ value: '+12.5% vs mês anterior', positive: true }}
           />
           <StatsCard
             title="Lucro Bruto"
             value={formatCurrency(totalProfit)}
             icon={TrendingUp}
             variant="success"
-            trend={{ value: formatPercent((totalProfit / totalRevenue) * 100) + ' margem', positive: true }}
+            trend={totalRevenue > 0 ? { value: formatPercent((totalProfit / totalRevenue) * 100) + ' margem', positive: true } : undefined}
           />
           <StatsCard
             title="Ganhadores"
@@ -76,7 +91,7 @@ const Index = () => {
             value={String(activeActions)}
             icon={Megaphone}
             variant="warning"
-            subtitle={`${mockActions.length} total`}
+            subtitle={`${actions.length} total`}
           />
         </div>
 
@@ -89,107 +104,117 @@ const Index = () => {
                 Ver todas <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
-            <div className="space-y-3">
-              {mockActions.map((action, i) => {
-                const progress = action.winnersCount > 0
-                  ? (action.paidCount / action.winnersCount) * 100
-                  : 0;
-                return (
-                  <Link
-                    key={action.id}
-                    to={`/actions/${action.id}`}
-                    className="flex items-center gap-4 rounded-lg border border-transparent p-3 transition-all duration-200 hover:bg-muted/50 hover:border-border animate-fade-in"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">{action.name}</p>
-                        <StatusBadge
-                          status={action.status}
-                          labels={ACTION_STATUS_LABELS}
-                          colors={ACTION_STATUS_COLORS}
-                        />
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{formatCurrency(action.expectedRevenue)}</span>
-                        <span>·</span>
-                        <span>{action.winnersCount} ganhadores</span>
-                        <span>·</span>
-                        <span>{formatDate(action.updatedAt)}</span>
-                      </div>
-                      {action.winnersCount > 0 && (
+            {actions.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma ação cadastrada ainda.</p>
+            ) : (
+              <div className="space-y-3">
+                {actions.slice(0, 5).map((action, i) => {
+                  const progress = action.winnersCount > 0
+                    ? (action.paidCount / action.winnersCount) * 100
+                    : 0;
+                  return (
+                    <Link
+                      key={action.id}
+                      to={`/actions/${action.id}`}
+                      className="flex items-center gap-4 rounded-lg border border-transparent p-3 transition-all duration-200 hover:bg-muted/50 hover:border-border animate-fade-in"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
+                      <div className="flex-1 min-w-0 space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <Progress value={progress} className="h-1.5 flex-1" />
-                          <span className="text-[10px] font-medium text-muted-foreground">
-                            {progress.toFixed(0)}%
-                          </span>
+                          <p className="text-sm font-medium truncate">{action.name}</p>
+                          <StatusBadge
+                            status={action.status}
+                            labels={ACTION_STATUS_LABELS}
+                            colors={ACTION_STATUS_COLORS}
+                          />
                         </div>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-success">
-                        {formatCurrency(action.grossProfit)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatPercent(action.marginPercent)} margem
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{formatCurrency(action.expectedRevenue)}</span>
+                          <span>·</span>
+                          <span>{action.winnersCount} ganhadores</span>
+                          <span>·</span>
+                          <span>{formatDate(action.updatedAt)}</span>
+                        </div>
+                        {action.winnersCount > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Progress value={progress} className="h-1.5 flex-1" />
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              {progress.toFixed(0)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-success">
+                          {formatCurrency(action.grossProfit)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatPercent(action.marginPercent)} margem
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Status Pipeline */}
           <div className="rounded-xl border bg-card p-4 lg:p-5">
             <h2 className="text-sm font-semibold mb-4">Pipeline de Pagamento</h2>
-            <div className="space-y-2.5">
-              {Object.entries(statusCounts).map(([status, count]) => (
-                <div key={status} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2.5">
-                  <StatusBadge status={status as WinnerStatus} />
-                  <span className="text-sm font-semibold">{count}</span>
+            {winners.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Nenhum ganhador registrado.</p>
+            ) : (
+              <>
+                <div className="space-y-2.5">
+                  {Object.entries(statusCounts).map(([status, count]) => (
+                    <div key={status} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2.5">
+                      <StatusBadge status={status as WinnerStatus} />
+                      <span className="text-sm font-semibold">{count}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-5 pt-4 border-t">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground">Pagos</span>
-                <span className="text-xs font-semibold text-success">
-                  {mockWinners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length}/{mockWinners.length}
-                </span>
-              </div>
-              <Progress
-                value={
-                  (mockWinners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length / mockWinners.length) * 100
-                }
-                className="h-2"
-              />
-            </div>
+                <div className="mt-5 pt-4 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground">Pagos</span>
+                    <span className="text-xs font-semibold text-success">
+                      {winners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length}/{winners.length}
+                    </span>
+                  </div>
+                  <Progress
+                    value={
+                      (winners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length / winners.length) * 100
+                    }
+                    className="h-2"
+                  />
+                </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="text-center p-2 rounded-lg bg-warning/5">
-                <Clock className="h-4 w-4 text-warning mx-auto mb-1" />
-                <p className="text-xs font-semibold">
-                  {mockWinners.filter(w => ['imported', 'pix_requested', 'awaiting_pix'].includes(w.status)).length}
-                </p>
-                <p className="text-[9px] text-muted-foreground">Pendente</p>
-              </div>
-              <div className="text-center p-2 rounded-lg bg-info/5">
-                <AlertCircle className="h-4 w-4 text-info mx-auto mb-1" />
-                <p className="text-xs font-semibold">
-                  {mockWinners.filter(w => ['pix_received', 'ready_to_pay', 'sent_to_batch'].includes(w.status)).length}
-                </p>
-                <p className="text-[9px] text-muted-foreground">Em processo</p>
-              </div>
-              <div className="text-center p-2 rounded-lg bg-success/5">
-                <CheckCircle2 className="h-4 w-4 text-success mx-auto mb-1" />
-                <p className="text-xs font-semibold">
-                  {mockWinners.filter(w => ['paid', 'receipt_sent'].includes(w.status)).length}
-                </p>
-                <p className="text-[9px] text-muted-foreground">Concluído</p>
-              </div>
-            </div>
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="text-center p-2 rounded-lg bg-warning/5">
+                    <Clock className="h-4 w-4 text-warning mx-auto mb-1" />
+                    <p className="text-xs font-semibold">
+                      {winners.filter(w => ['imported', 'pix_requested', 'awaiting_pix'].includes(w.status)).length}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">Pendente</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-info/5">
+                    <AlertCircle className="h-4 w-4 text-info mx-auto mb-1" />
+                    <p className="text-xs font-semibold">
+                      {winners.filter(w => ['pix_received', 'ready_to_pay', 'sent_to_batch'].includes(w.status)).length}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">Em processo</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-success/5">
+                    <CheckCircle2 className="h-4 w-4 text-success mx-auto mb-1" />
+                    <p className="text-xs font-semibold">
+                      {winners.filter(w => ['paid', 'receipt_sent'].includes(w.status)).length}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">Concluído</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
