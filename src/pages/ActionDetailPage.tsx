@@ -8,7 +8,7 @@ import { useWinners } from '@/hooks/useWinners';
 import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
 import { useAuditLog } from '@/hooks/useAuditLog';
-import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
+import { formatCurrency, formatPercent, formatDate, formatPhone } from '@/lib/format';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -408,7 +408,7 @@ export default function ActionDetailPage() {
                             {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
-                            {w.phone || '—'}
+                            {formatPhone(w.phone)}
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
                           {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
