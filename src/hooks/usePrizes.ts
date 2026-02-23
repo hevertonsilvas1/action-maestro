@@ -6,8 +6,10 @@ function mapPrize(row: any): Prize {
   return {
     id: row.id,
     actionId: row.action_id,
+    prizeTypeConfigId: row.prize_type_config_id ?? null,
     type: row.type,
     title: row.title,
+    description: row.description ?? null,
     quantity: row.quantity,
     unitValue: Number(row.unit_value),
     totalValue: Number(row.total_value),

@@ -6,8 +6,11 @@ function mapCost(row: any): Cost {
   return {
     id: row.id,
     actionId: row.action_id,
+    costTypeConfigId: row.cost_type_config_id ?? null,
     category: row.category,
     description: row.description,
+    quantity: row.quantity ?? 1,
+    unitValue: Number(row.unit_value ?? 0),
     value: Number(row.value),
   };
 }

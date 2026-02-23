@@ -4,6 +4,9 @@ export interface Action {
   status: 'planning' | 'active' | 'completed' | 'cancelled';
   quotaCount: number;
   quotaValue: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  taxPercent: number;
   expectedRevenue: number;
   totalPrizes: number;
   totalOperational: number;
@@ -48,8 +51,10 @@ export type WinnerStatus =
 export interface Prize {
   id: string;
   actionId: string;
+  prizeTypeConfigId?: string | null;
   type: 'main' | 'instant' | 'spin' | 'quota' | 'blessed_hour' | 'bonus';
   title: string;
+  description?: string | null;
   quantity: number;
   unitValue: number;
   totalValue: number;
@@ -58,8 +63,11 @@ export interface Prize {
 export interface Cost {
   id: string;
   actionId: string;
+  costTypeConfigId?: string | null;
   category: 'marketing' | 'delivery' | 'taxes' | 'legalization' | 'other';
   description: string;
+  quantity: number;
+  unitValue: number;
   value: number;
 }
 

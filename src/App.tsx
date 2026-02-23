@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import ActionsPage from "./pages/ActionsPage";
 import NewActionPage from "./pages/NewActionPage";
 import ActionDetailPage from "./pages/ActionDetailPage";
+import EditActionPage from "./pages/EditActionPage";
 import WinnersPage from "./pages/WinnersPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
@@ -52,6 +53,7 @@ const AppRoutes = () => (
     <Route path="/actions" element={<ProtectedRoute><ActionsPage /></ProtectedRoute>} />
     <Route path="/actions/new" element={<ProtectedRoute><NewActionPage /></ProtectedRoute>} />
     <Route path="/actions/:id" element={<ProtectedRoute><ActionDetailPage /></ProtectedRoute>} />
+    <Route path="/actions/:id/edit" element={<ProtectedRoute><EditActionPage /></ProtectedRoute>} />
     <Route path="/winners" element={<ProtectedRoute><WinnersPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
