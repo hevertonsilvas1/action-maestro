@@ -25,6 +25,7 @@ import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction
 import { useArchiveAction, useRestoreAction } from '@/hooks/useArchiveAction';
 import { DeleteActionDialog } from '@/components/DeleteActionDialog';
 import { useState, useMemo } from 'react';
+import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -47,6 +48,7 @@ export default function ActionDetailPage() {
   const { restore, isPending: isRestoring } = useRestoreAction();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
@@ -359,7 +361,7 @@ export default function ActionDetailPage() {
 
           <TabsContent value="winners" className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" className="h-8 text-xs">
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportModalOpen(true)}>
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Importar Ganhadores
               </Button>
@@ -918,6 +920,15 @@ export default function ActionDetailPage() {
             await deleteAction(id!);
             navigate('/actions');
           }}
+        />
+      )}
+
+      {action && (
+        <ImportWinnersModal
+          open={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          actionId={action.id}
+          actionName={action.name}
         />
       )}
     </AppLayout>

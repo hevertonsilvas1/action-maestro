@@ -15,6 +15,9 @@ function mapWinner(row: any): Winner {
     pixType: row.pix_type ?? undefined,
     fullName: row.full_name ?? undefined,
     receiptUrl: row.receipt_url ?? undefined,
+    cpf: row.cpf ?? undefined,
+    phone: row.phone ?? undefined,
+    prizeDatetime: row.prize_datetime ?? undefined,
     createdAt: row.created_at,
   };
 }
