@@ -53,11 +53,13 @@ export default function ActionDetailPage() {
   const [auditPage, setAuditPage] = useState(1);
   const [auditPageSize, setAuditPageSize] = useState(10);
   const [auditSearch, setAuditSearch] = useState('');
+  const [auditUserFilter, setAuditUserFilter] = useState<string>('all');
 
   const filteredAuditLog = useMemo(() => {
     const searchLower = auditSearch.toLowerCase().trim();
     return auditLog.filter((entry) => {
       if (auditOpFilter !== 'all' && entry.operation !== auditOpFilter) return false;
+      if (auditUserFilter !== 'all' && (entry.userName || 'Sistema') !== auditUserFilter) return false;
       const entryDate = new Date(entry.createdAt);
       if (auditDateFrom && entryDate < auditDateFrom) return false;
       if (auditDateTo) {
@@ -76,7 +78,12 @@ export default function ActionDetailPage() {
       }
       return true;
     });
-  }, [auditLog, auditOpFilter, auditDateFrom, auditDateTo, auditSearch]);
+  }, [auditLog, auditOpFilter, auditUserFilter, auditDateFrom, auditDateTo, auditSearch]);
+
+  const auditUsers = useMemo(() => {
+    const names = new Set(auditLog.map((e) => e.userName || 'Sistema'));
+    return Array.from(names).sort();
+  }, [auditLog]);
 
   // Reset page when filters change
   const auditTotalPages = Math.max(1, Math.ceil(filteredAuditLog.length / auditPageSize));
@@ -654,6 +661,19 @@ export default function ActionDetailPage() {
                       </SelectContent>
                     </Select>
 
+                    <Select value={auditUserFilter} onValueChange={setAuditUserFilter}>
+                      <SelectTrigger className="h-7 w-[160px] text-xs">
+                        <User className="h-3 w-3 mr-1" />
+                        <SelectValue placeholder="Usuário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos usuários</SelectItem>
+                        {auditUsers.map((name) => (
+                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className={cn("h-7 text-xs w-[140px] justify-start", !auditDateFrom && "text-muted-foreground")}>
@@ -688,12 +708,12 @@ export default function ActionDetailPage() {
                       />
                     </div>
 
-                    {(auditOpFilter !== 'all' || auditDateFrom || auditDateTo || auditSearch) && (
+                    {(auditOpFilter !== 'all' || auditUserFilter !== 'all' || auditDateFrom || auditDateTo || auditSearch) && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs text-muted-foreground"
-                        onClick={() => { setAuditOpFilter('all'); setAuditDateFrom(undefined); setAuditDateTo(undefined); setAuditSearch(''); setAuditPage(1); }}
+                        onClick={() => { setAuditOpFilter('all'); setAuditUserFilter('all'); setAuditDateFrom(undefined); setAuditDateTo(undefined); setAuditSearch(''); setAuditPage(1); }}
                       >
                         <X className="h-3 w-3 mr-1" />
                         Limpar
