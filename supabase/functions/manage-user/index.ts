@@ -52,8 +52,35 @@ Deno.serve(async (req) => {
 
     const { action, userId, role } = await req.json();
 
-    if (!userId || !action) {
-      return new Response(JSON.stringify({ error: "userId e action são obrigatórios" }), {
+    if (!action) {
+      return new Response(JSON.stringify({ error: "action é obrigatório" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // List banned users action
+    if (action === "list_banned") {
+      const { data: { users }, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const bannedIds = users
+        .filter((u) => u.banned_until && new Date(u.banned_until) > new Date())
+        .map((u) => u.id);
+
+      return new Response(JSON.stringify({ bannedIds }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "userId é obrigatório" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -94,9 +121,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "deactivate") {
-      // Ban user using admin API
       const { error } = await adminClient.auth.admin.updateUserById(userId, {
-        ban_duration: "876600h", // ~100 years
+        ban_duration: "876600h",
       });
 
       if (error) {
