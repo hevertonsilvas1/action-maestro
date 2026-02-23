@@ -65,6 +65,20 @@ function useTeamMembers() {
   });
 }
 
+function useBannedUsers() {
+  return useQuery({
+    queryKey: ['banned-users'],
+    queryFn: async () => {
+      const res = await supabase.functions.invoke('manage-user', {
+        body: { action: 'list_banned' },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      return (res.data?.bannedIds ?? []) as string[];
+    },
+  });
+}
+
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   support: 'Suporte',
@@ -75,8 +89,131 @@ const ROLE_COLORS: Record<string, string> = {
   support: 'bg-accent/10 text-accent-foreground border-accent/20',
 };
 
+function TeamMemberCard({
+  member,
+  isSelf,
+  isBanned,
+  onAction,
+}: {
+  member: TeamMember;
+  isSelf: boolean;
+  isBanned: boolean;
+  onAction: (title: string, description: string, action: () => Promise<void>) => void;
+}) {
+  const newRole = member.role === 'admin' ? 'support' : 'admin';
+
+  return (
+    <Card className={`animate-fade-in ${isBanned ? 'opacity-60' : ''}`}>
+      <CardContent className="p-4 flex items-center gap-4">
+        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+          {member.role === 'admin' ? (
+            <Shield className="h-5 w-5 text-primary" />
+          ) : (
+            <Headset className="h-5 w-5 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate">{member.displayName}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${ROLE_COLORS[member.role] || ''}`}>
+              {ROLE_LABELS[member.role] || member.role}
+            </span>
+            {isBanned && (
+              <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border bg-destructive/10 text-destructive border-destructive/20">
+                Inativo
+              </span>
+            )}
+          </div>
+        </div>
+
+        {!isSelf && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {!isBanned && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      onAction(
+                        'Alterar Função',
+                        `Deseja alterar ${member.displayName} de ${ROLE_LABELS[member.role]} para ${ROLE_LABELS[newRole]}?`,
+                        async () => {
+                          const res = await supabase.functions.invoke('manage-user', {
+                            body: { action: 'change_role', userId: member.userId, role: newRole },
+                          });
+                          if (res.error) throw new Error(res.error.message);
+                          if (res.data?.error) throw new Error(res.data.error);
+                          toast.success(res.data?.message || 'Role atualizada');
+                        }
+                      )
+                    }
+                  >
+                    {newRole === 'admin' ? (
+                      <ShieldCheck className="h-4 w-4 mr-2" />
+                    ) : (
+                      <ShieldAlert className="h-4 w-4 mr-2" />
+                    )}
+                    Tornar {ROLE_LABELS[newRole]}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() =>
+                      onAction(
+                        'Desativar Usuário',
+                        `Deseja desativar ${member.displayName}? O usuário não conseguirá mais acessar o sistema.`,
+                        async () => {
+                          const res = await supabase.functions.invoke('manage-user', {
+                            body: { action: 'deactivate', userId: member.userId },
+                          });
+                          if (res.error) throw new Error(res.error.message);
+                          if (res.data?.error) throw new Error(res.data.error);
+                          toast.success(res.data?.message || 'Usuário desativado');
+                        }
+                      )
+                    }
+                  >
+                    <UserX className="h-4 w-4 mr-2" />
+                    Desativar
+                  </DropdownMenuItem>
+                </>
+              )}
+              {isBanned && (
+                <DropdownMenuItem
+                  onClick={() =>
+                    onAction(
+                      'Reativar Usuário',
+                      `Deseja reativar ${member.displayName}? O usuário poderá acessar o sistema novamente.`,
+                      async () => {
+                        const res = await supabase.functions.invoke('manage-user', {
+                          body: { action: 'reactivate', userId: member.userId },
+                        });
+                        if (res.error) throw new Error(res.error.message);
+                        if (res.data?.error) throw new Error(res.data.error);
+                        toast.success(res.data?.message || 'Usuário reativado');
+                      }
+                    )
+                  }
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Reativar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TeamPage() {
   const { data: members = [], isLoading } = useTeamMembers();
+  const { data: bannedIds = [], isLoading: bannedLoading } = useBannedUsers();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -89,7 +226,6 @@ export default function TeamPage() {
     role: 'support' as 'admin' | 'support',
   });
 
-  // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -98,6 +234,10 @@ export default function TeamPage() {
   }>({ open: false, title: '', description: '', action: async () => {} });
 
   const [actionLoading, setActionLoading] = useState(false);
+
+  const bannedSet = new Set(bannedIds);
+  const activeMembers = members.filter((m) => !bannedSet.has(m.userId));
+  const inactiveMembers = members.filter((m) => bannedSet.has(m.userId));
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,18 +275,16 @@ export default function TeamPage() {
     }
   };
 
-  const manageUser = async (action: string, userId: string, role?: string) => {
+  const confirmAction = (title: string, description: string, action: () => Promise<void>) => {
+    setConfirmDialog({ open: true, title, description, action });
+  };
+
+  const executeAction = async () => {
     setActionLoading(true);
     try {
-      const res = await supabase.functions.invoke('manage-user', {
-        body: { action, userId, role },
-      });
-
-      if (res.error) throw new Error(res.error.message || 'Erro');
-      if (res.data?.error) throw new Error(res.data.error);
-
-      toast.success(res.data?.message || 'Operação realizada');
+      await confirmDialog.action();
       qc.invalidateQueries({ queryKey: ['team-members'] });
+      qc.invalidateQueries({ queryKey: ['banned-users'] });
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gerenciar usuário');
     } finally {
@@ -155,15 +293,13 @@ export default function TeamPage() {
     }
   };
 
-  const confirmAction = (title: string, description: string, action: () => Promise<void>) => {
-    setConfirmDialog({ open: true, title, description, action });
-  };
+  const loading = isLoading || bannedLoading;
 
   return (
     <AppLayout>
       <AppHeader
         title="Equipe"
-        subtitle={`${members.length} membros`}
+        subtitle={`${activeMembers.length} ativos${inactiveMembers.length > 0 ? ` · ${inactiveMembers.length} inativos` : ''}`}
         actions={
           <Button
             size="sm"
@@ -245,83 +381,52 @@ export default function TeamPage() {
         )}
 
         {/* Members List */}
-        {isLoading ? (
+        {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : members.length === 0 ? (
+        ) : activeMembers.length === 0 && inactiveMembers.length === 0 ? (
           <div className="text-center py-16 text-sm text-muted-foreground">
             Nenhum membro cadastrado.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {members.map((m) => {
-              const isSelf = m.userId === user?.id;
-              const newRole = m.role === 'admin' ? 'support' : 'admin';
+          <>
+            {/* Active Members */}
+            {activeMembers.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeMembers.map((m) => (
+                  <TeamMemberCard
+                    key={m.userId}
+                    member={m}
+                    isSelf={m.userId === user?.id}
+                    isBanned={false}
+                    onAction={confirmAction}
+                  />
+                ))}
+              </div>
+            )}
 
-              return (
-                <Card key={m.userId} className="animate-fade-in">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                      {m.role === 'admin' ? (
-                        <Shield className="h-5 w-5 text-primary" />
-                      ) : (
-                        <Headset className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{m.displayName}</p>
-                      <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border mt-1 ${ROLE_COLORS[m.role] || ''}`}>
-                        {ROLE_LABELS[m.role] || m.role}
-                      </span>
-                    </div>
-
-                    {!isSelf && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              confirmAction(
-                                'Alterar Função',
-                                `Deseja alterar ${m.displayName} de ${ROLE_LABELS[m.role]} para ${ROLE_LABELS[newRole]}?`,
-                                () => manageUser('change_role', m.userId, newRole)
-                              )
-                            }
-                          >
-                            {newRole === 'admin' ? (
-                              <ShieldCheck className="h-4 w-4 mr-2" />
-                            ) : (
-                              <ShieldAlert className="h-4 w-4 mr-2" />
-                            )}
-                            Tornar {ROLE_LABELS[newRole]}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() =>
-                              confirmAction(
-                                'Desativar Usuário',
-                                `Deseja desativar ${m.displayName}? O usuário não conseguirá mais acessar o sistema.`,
-                                () => manageUser('deactivate', m.userId)
-                              )
-                            }
-                          >
-                            <UserX className="h-4 w-4 mr-2" />
-                            Desativar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+            {/* Inactive Members */}
+            {inactiveMembers.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <UserX className="h-4 w-4" />
+                  Usuários Inativos ({inactiveMembers.length})
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {inactiveMembers.map((m) => (
+                    <TeamMemberCard
+                      key={m.userId}
+                      member={m}
+                      isSelf={m.userId === user?.id}
+                      isBanned={true}
+                      onAction={confirmAction}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -334,7 +439,7 @@ export default function TeamPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmDialog.action()} disabled={actionLoading}>
+            <AlertDialogAction onClick={executeAction} disabled={actionLoading}>
               {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirmar
             </AlertDialogAction>
