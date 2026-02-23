@@ -6,11 +6,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatusBadge } from '@/components/StatusBadge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Users, Shield, Headset } from 'lucide-react';
+import { Loader2, UserPlus, Shield, Headset, MoreVertical, ShieldAlert, ShieldCheck, UserX, UserCheck } from 'lucide-react';
 
 interface TeamMember {
   userId: string;
@@ -23,7 +40,6 @@ function useTeamMembers() {
   return useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
-      // Fetch profiles + roles
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
@@ -42,7 +58,7 @@ function useTeamMembers() {
       return roles.map((r): TeamMember => ({
         userId: r.user_id,
         displayName: profileMap[r.user_id] || 'Sem nome',
-        email: '', // not available from profiles
+        email: '',
         role: r.role,
       }));
     },
@@ -61,6 +77,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function TeamPage() {
   const { data: members = [], isLoading } = useTeamMembers();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const [showForm, setShowForm] = useState(false);
@@ -71,6 +88,16 @@ export default function TeamPage() {
     displayName: '',
     role: 'support' as 'admin' | 'support',
   });
+
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => Promise<void>;
+  }>({ open: false, title: '', description: '', action: async () => {} });
+
+  const [actionLoading, setActionLoading] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +112,6 @@ export default function TeamPage() {
 
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('invite-user', {
         body: {
           email: form.email,
@@ -95,13 +121,8 @@ export default function TeamPage() {
         },
       });
 
-      if (res.error) {
-        throw new Error(res.error.message || 'Erro ao criar usuário');
-      }
-
-      if (res.data?.error) {
-        throw new Error(res.data.error);
-      }
+      if (res.error) throw new Error(res.error.message || 'Erro ao criar usuário');
+      if (res.data?.error) throw new Error(res.data.error);
 
       toast.success(`Usuário ${form.displayName} criado com sucesso!`);
       setForm({ email: '', password: '', displayName: '', role: 'support' });
@@ -112,6 +133,30 @@ export default function TeamPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const manageUser = async (action: string, userId: string, role?: string) => {
+    setActionLoading(true);
+    try {
+      const res = await supabase.functions.invoke('manage-user', {
+        body: { action, userId, role },
+      });
+
+      if (res.error) throw new Error(res.error.message || 'Erro');
+      if (res.data?.error) throw new Error(res.data.error);
+
+      toast.success(res.data?.message || 'Operação realizada');
+      qc.invalidateQueries({ queryKey: ['team-members'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao gerenciar usuário');
+    } finally {
+      setActionLoading(false);
+      setConfirmDialog((prev) => ({ ...prev, open: false }));
+    }
+  };
+
+  const confirmAction = (title: string, description: string, action: () => Promise<void>) => {
+    setConfirmDialog({ open: true, title, description, action });
   };
 
   return (
@@ -210,28 +255,92 @@ export default function TeamPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {members.map((m) => (
-              <Card key={m.userId} className="animate-fade-in">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    {m.role === 'admin' ? (
-                      <Shield className="h-5 w-5 text-primary" />
-                    ) : (
-                      <Headset className="h-5 w-5 text-muted-foreground" />
+            {members.map((m) => {
+              const isSelf = m.userId === user?.id;
+              const newRole = m.role === 'admin' ? 'support' : 'admin';
+
+              return (
+                <Card key={m.userId} className="animate-fade-in">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      {m.role === 'admin' ? (
+                        <Shield className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Headset className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{m.displayName}</p>
+                      <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border mt-1 ${ROLE_COLORS[m.role] || ''}`}>
+                        {ROLE_LABELS[m.role] || m.role}
+                      </span>
+                    </div>
+
+                    {!isSelf && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              confirmAction(
+                                'Alterar Função',
+                                `Deseja alterar ${m.displayName} de ${ROLE_LABELS[m.role]} para ${ROLE_LABELS[newRole]}?`,
+                                () => manageUser('change_role', m.userId, newRole)
+                              )
+                            }
+                          >
+                            {newRole === 'admin' ? (
+                              <ShieldCheck className="h-4 w-4 mr-2" />
+                            ) : (
+                              <ShieldAlert className="h-4 w-4 mr-2" />
+                            )}
+                            Tornar {ROLE_LABELS[newRole]}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() =>
+                              confirmAction(
+                                'Desativar Usuário',
+                                `Deseja desativar ${m.displayName}? O usuário não conseguirá mais acessar o sistema.`,
+                                () => manageUser('deactivate', m.userId)
+                              )
+                            }
+                          >
+                            <UserX className="h-4 w-4 mr-2" />
+                            Desativar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{m.displayName}</p>
-                    <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border mt-1 ${ROLE_COLORS[m.role] || ''}`}>
-                      {ROLE_LABELS[m.role] || m.role}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDialog.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmDialog.action()} disabled={actionLoading}>
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
