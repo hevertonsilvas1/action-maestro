@@ -17,7 +17,7 @@ import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
-  History, User, CalendarIcon, X, Search,
+  History, User, CalendarIcon, X, Search, FileText,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
@@ -503,53 +503,126 @@ export default function ActionDetailPage() {
                     <h3 className="text-sm font-semibold">Histórico de Auditoria</h3>
                   </div>
                   {auditLog.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        const opLabels: Record<string, string> = {
-                          create: 'Criação', update: 'Atualização', delete: 'Exclusão',
-                          archive: 'Arquivamento', restore: 'Restauração', duplicate: 'Duplicação',
-                        };
-                        const tableLabels: Record<string, string> = {
-                          actions: 'Ação', prizes: 'Premiações', costs: 'Custos',
-                        };
-                        const roleLabels: Record<string, string> = { admin: 'Admin', support: 'Suporte' };
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const opLabels: Record<string, string> = {
+                            create: 'Criação', update: 'Atualização', delete: 'Exclusão',
+                            archive: 'Arquivamento', restore: 'Restauração', duplicate: 'Duplicação',
+                          };
+                          const tableLabels: Record<string, string> = {
+                            actions: 'Ação', prizes: 'Premiações', costs: 'Custos',
+                          };
+                          const roleLabels: Record<string, string> = { admin: 'Admin', support: 'Suporte' };
 
-                        const header = 'Data/Hora;Usuário;Role;Operação;Tabela;Alterações';
-                        const rows = filteredAuditLog.map((entry) => {
-                          const date = new Date(entry.createdAt).toLocaleString('pt-BR');
-                          const user = entry.userName || 'Sistema';
-                          const role = entry.userRole ? (roleLabels[entry.userRole] || entry.userRole) : '';
-                          const op = opLabels[entry.operation] || entry.operation;
-                          const table = tableLabels[entry.tableName] || entry.tableName;
-                          let changesStr = '';
-                          if (entry.changes) {
-                            changesStr = Object.entries(entry.changes).map(([key, val]) => {
-                              if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
-                                return `${key}: ${val.before} → ${val.after}`;
-                              }
-                              if (Array.isArray(val)) return `${key}: ${val.join(', ')}`;
-                              return `${key}: ${val}`;
-                            }).join(' | ');
-                          }
-                          return `${date};${user};${role};${op};${table};"${changesStr}"`;
-                        });
+                          const header = 'Data/Hora;Usuário;Role;Operação;Tabela;Alterações';
+                          const rows = filteredAuditLog.map((entry) => {
+                            const date = new Date(entry.createdAt).toLocaleString('pt-BR');
+                            const user = entry.userName || 'Sistema';
+                            const role = entry.userRole ? (roleLabels[entry.userRole] || entry.userRole) : '';
+                            const op = opLabels[entry.operation] || entry.operation;
+                            const table = tableLabels[entry.tableName] || entry.tableName;
+                            let changesStr = '';
+                            if (entry.changes) {
+                              changesStr = Object.entries(entry.changes).map(([key, val]) => {
+                                if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+                                  return `${key}: ${val.before} → ${val.after}`;
+                                }
+                                if (Array.isArray(val)) return `${key}: ${val.join(', ')}`;
+                                return `${key}: ${val}`;
+                              }).join(' | ');
+                            }
+                            return `${date};${user};${role};${op};${table};"${changesStr}"`;
+                          });
 
-                        const csv = '\uFEFF' + [header, ...rows].join('\n');
-                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `auditoria-${action.name.replace(/\s+/g, '_')}.csv`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }}
-                    >
-                      <Download className="h-3.5 w-3.5 mr-1" />
-                      Exportar CSV
-                    </Button>
+                          const csv = '\uFEFF' + [header, ...rows].join('\n');
+                          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `auditoria-${action.name.replace(/\s+/g, '_')}.csv`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1" />
+                        CSV
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={async () => {
+                          const { default: jsPDF } = await import('jspdf');
+                          await import('jspdf-autotable');
+
+                          const opLabels: Record<string, string> = {
+                            create: 'Criação', update: 'Atualização', delete: 'Exclusão',
+                            archive: 'Arquivamento', restore: 'Restauração', duplicate: 'Duplicação',
+                          };
+                          const tableLabels: Record<string, string> = {
+                            actions: 'Ação', prizes: 'Premiações', costs: 'Custos',
+                          };
+                          const roleLabels: Record<string, string> = { admin: 'Admin', support: 'Suporte' };
+
+                          const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+                          // Title
+                          doc.setFontSize(16);
+                          doc.text(`Histórico de Auditoria`, 14, 15);
+                          doc.setFontSize(10);
+                          doc.setTextColor(100);
+                          doc.text(`Ação: ${action.name}`, 14, 22);
+                          doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 27);
+                          doc.text(`${filteredAuditLog.length} registro(s)`, 14, 32);
+                          doc.setTextColor(0);
+
+                          const tableRows = filteredAuditLog.map((entry) => {
+                            const date = new Date(entry.createdAt).toLocaleString('pt-BR');
+                            const user = entry.userName || 'Sistema';
+                            const role = entry.userRole ? (roleLabels[entry.userRole] || entry.userRole) : '';
+                            const op = opLabels[entry.operation] || entry.operation;
+                            const table = tableLabels[entry.tableName] || entry.tableName;
+                            let changesStr = '';
+                            if (entry.changes) {
+                              changesStr = Object.entries(entry.changes).map(([key, val]) => {
+                                if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+                                  return `${key}: ${val.before} → ${val.after}`;
+                                }
+                                if (Array.isArray(val)) return `${key}: ${val.join(', ')}`;
+                                return `${key}: ${val}`;
+                              }).join('\n');
+                            }
+                            return [date, `${user}\n${role}`, op, table, changesStr];
+                          });
+
+                          (doc as any).autoTable({
+                            startY: 36,
+                            head: [['Data/Hora', 'Usuário', 'Operação', 'Tabela', 'Alterações']],
+                            body: tableRows,
+                            styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                            headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+                            alternateRowStyles: { fillColor: [245, 247, 250] },
+                            columnStyles: {
+                              0: { cellWidth: 35 },
+                              1: { cellWidth: 35 },
+                              2: { cellWidth: 25 },
+                              3: { cellWidth: 22 },
+                              4: { cellWidth: 'auto' },
+                            },
+                            margin: { left: 14, right: 14 },
+                          });
+
+                          doc.save(`auditoria-${action.name.replace(/\s+/g, '_')}.pdf`);
+                        }}
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1" />
+                        PDF
+                      </Button>
+                    </div>
                   )}
                 </div>
 
