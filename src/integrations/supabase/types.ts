@@ -14,16 +14,294 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      actions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expected_revenue: number
+          gross_profit: number
+          id: string
+          margin_percent: number
+          name: string
+          paid_count: number
+          pending_count: number
+          real_paid: number
+          status: Database["public"]["Enums"]["action_status"]
+          total_cost: number
+          total_operational: number
+          total_prizes: number
+          total_taxes: number
+          updated_at: string
+          winners_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expected_revenue?: number
+          gross_profit?: number
+          id?: string
+          margin_percent?: number
+          name: string
+          paid_count?: number
+          pending_count?: number
+          real_paid?: number
+          status?: Database["public"]["Enums"]["action_status"]
+          total_cost?: number
+          total_operational?: number
+          total_prizes?: number
+          total_taxes?: number
+          updated_at?: string
+          winners_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expected_revenue?: number
+          gross_profit?: number
+          id?: string
+          margin_percent?: number
+          name?: string
+          paid_count?: number
+          pending_count?: number
+          real_paid?: number
+          status?: Database["public"]["Enums"]["action_status"]
+          total_cost?: number
+          total_operational?: number
+          total_prizes?: number
+          total_taxes?: number
+          updated_at?: string
+          winners_count?: number
+        }
+        Relationships: []
+      }
+      costs: {
+        Row: {
+          action_id: string
+          category: Database["public"]["Enums"]["cost_category"]
+          created_at: string
+          description: string
+          id: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          action_id: string
+          category: Database["public"]["Enums"]["cost_category"]
+          created_at?: string
+          description: string
+          id?: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          action_id?: string
+          category?: Database["public"]["Enums"]["cost_category"]
+          created_at?: string
+          description?: string
+          id?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "costs_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prizes: {
+        Row: {
+          action_id: string
+          created_at: string
+          id: string
+          quantity: number
+          title: string
+          total_value: number
+          type: Database["public"]["Enums"]["prize_type"]
+          unit_value: number
+          updated_at: string
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          title: string
+          total_value?: number
+          type: Database["public"]["Enums"]["prize_type"]
+          unit_value?: number
+          updated_at?: string
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          title?: string
+          total_value?: number
+          type?: Database["public"]["Enums"]["prize_type"]
+          unit_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prizes_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      winners: {
+        Row: {
+          action_id: string
+          created_at: string
+          full_name: string | null
+          id: string
+          name: string
+          pix_key: string | null
+          pix_type: Database["public"]["Enums"]["pix_type"] | null
+          prize_title: string
+          prize_type: Database["public"]["Enums"]["prize_type"]
+          receipt_url: string | null
+          status: Database["public"]["Enums"]["winner_status"]
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          name: string
+          pix_key?: string | null
+          pix_type?: Database["public"]["Enums"]["pix_type"] | null
+          prize_title: string
+          prize_type: Database["public"]["Enums"]["prize_type"]
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["winner_status"]
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          name?: string
+          pix_key?: string | null
+          pix_type?: Database["public"]["Enums"]["pix_type"] | null
+          prize_title?: string
+          prize_type?: Database["public"]["Enums"]["prize_type"]
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["winner_status"]
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "winners_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_authenticated_user: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      action_status: "planning" | "active" | "completed" | "cancelled"
+      app_role: "admin" | "support"
+      cost_category:
+        | "marketing"
+        | "delivery"
+        | "taxes"
+        | "legalization"
+        | "other"
+      pix_type: "cpf" | "cnpj" | "email" | "phone" | "random"
+      prize_type:
+        | "main"
+        | "instant"
+        | "spin"
+        | "quota"
+        | "blessed_hour"
+        | "bonus"
+      winner_status:
+        | "imported"
+        | "pix_requested"
+        | "awaiting_pix"
+        | "pix_received"
+        | "ready_to_pay"
+        | "sent_to_batch"
+        | "awaiting_receipt"
+        | "paid"
+        | "receipt_sent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +428,29 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      action_status: ["planning", "active", "completed", "cancelled"],
+      app_role: ["admin", "support"],
+      cost_category: [
+        "marketing",
+        "delivery",
+        "taxes",
+        "legalization",
+        "other",
+      ],
+      pix_type: ["cpf", "cnpj", "email", "phone", "random"],
+      prize_type: ["main", "instant", "spin", "quota", "blessed_hour", "bonus"],
+      winner_status: [
+        "imported",
+        "pix_requested",
+        "awaiting_pix",
+        "pix_received",
+        "ready_to_pay",
+        "sent_to_batch",
+        "awaiting_receipt",
+        "paid",
+        "receipt_sent",
+      ],
+    },
   },
 } as const
