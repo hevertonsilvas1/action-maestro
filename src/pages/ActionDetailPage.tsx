@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
-  Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw,
+  Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
@@ -84,6 +84,9 @@ export default function ActionDetailPage() {
 
   const isArchived = action.status === 'archived';
 
+  // Support users should not see action details page at all for financial data
+  // but they can see winners pipeline. We hide financial KPIs and restrict actions.
+
   return (
     <AppLayout>
       <AppHeader
@@ -91,13 +94,13 @@ export default function ActionDetailPage() {
         subtitle={isArchived ? 'Ação arquivada (somente leitura)' : 'Detalhes da ação'}
         actions={
           <div className="flex gap-2 flex-wrap">
-            <Link to="/actions">
+            <Link to={isAdmin ? "/actions" : "/"}>
               <Button variant="ghost" size="sm" className="h-8 text-xs">
                 <ArrowLeft className="h-3.5 w-3.5 mr-1" />
                 Voltar
               </Button>
             </Link>
-            {!isArchived && (
+            {isAdmin && !isArchived && (
               <Link to={`/actions/${id}/edit`}>
                 <Button variant="outline" size="sm" className="h-8 text-xs">
                   <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -157,80 +160,124 @@ export default function ActionDetailPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6">
-        {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          <StatsCard title="Receita Esperada" value={formatCurrency(action.expectedRevenue)} icon={DollarSign} variant="primary" />
-          <StatsCard title="Lucro Bruto" value={formatCurrency(action.grossProfit)} icon={TrendingUp} variant="success" subtitle={`${formatPercent(action.marginPercent)} margem`} />
-          <StatsCard title="Total Pago" value={formatCurrency(action.realPaid)} icon={CheckCircle2} variant="accent" />
-          <StatsCard title="Ganhadores" value={String(action.winnersCount)} icon={Users} subtitle={`${action.paidCount} pagos`} />
-        </div>
+        {/* KPIs - Admin only */}
+        {isAdmin && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+            <StatsCard title="Receita Esperada" value={formatCurrency(action.expectedRevenue)} icon={DollarSign} variant="primary" />
+            <StatsCard title="Lucro Bruto" value={formatCurrency(action.grossProfit)} icon={TrendingUp} variant="success" subtitle={`${formatPercent(action.marginPercent)} margem`} />
+            <StatsCard title="Total Pago" value={formatCurrency(action.realPaid)} icon={CheckCircle2} variant="accent" />
+            <StatsCard title="Ganhadores" value={String(action.winnersCount)} icon={Users} subtitle={`${action.paidCount} pagos`} />
+          </div>
+        )}
 
-        {/* Planned vs Real */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-xl border bg-card p-4 lg:p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Planejado vs Real</h3>
+        {/* Support sees only winner count KPI */}
+        {!isAdmin && (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
+            <StatsCard title="Ganhadores" value={String(action.winnersCount)} icon={Users} subtitle={`${action.paidCount} pagos`} />
+            <StatsCard title="Pendentes" value={String(action.winnersCount - action.paidCount)} icon={Clock} variant="warning" />
+            <StatsCard title="Progresso" value={`${paidProgress.toFixed(0)}%`} icon={CheckCircle2} variant="success" />
+          </div>
+        )}
+
+        {/* Planned vs Real - Admin only */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-xl border bg-card p-4 lg:p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Target className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Planejado vs Real</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-muted-foreground">Prêmios pagos</span>
+                    <span className="font-medium">{formatCurrency(totalPaidPrizes)} / {formatCurrency(totalPlannedPrizes)}</span>
+                  </div>
+                  <Progress value={totalPlannedPrizes > 0 ? (totalPaidPrizes / totalPlannedPrizes) * 100 : 0} className="h-2" />
+                </div>
+                <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                  <div className="text-center">
+                    <p className="text-lg font-bold">{formatCurrency(action.totalCost)}</p>
+                    <p className="text-[10px] text-muted-foreground">Custo Total</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-success">{formatCurrency(action.grossProfit)}</p>
+                    <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold">{formatCurrency(totalPlannedPrizes - totalPaidPrizes)}</p>
+                    <p className="text-[10px] text-muted-foreground">Falta Pagar</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">Prêmios pagos</span>
-                  <span className="font-medium">{formatCurrency(totalPaidPrizes)} / {formatCurrency(totalPlannedPrizes)}</span>
-                </div>
-                <Progress value={totalPlannedPrizes > 0 ? (totalPaidPrizes / totalPlannedPrizes) * 100 : 0} className="h-2" />
+
+            <div className="rounded-xl border bg-card p-4 lg:p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Receipt className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Pipeline de Pagamento</h3>
               </div>
-              <div className="grid grid-cols-3 gap-3 pt-2 border-t">
-                <div className="text-center">
-                  <p className="text-lg font-bold">{formatCurrency(action.totalCost)}</p>
-                  <p className="text-[10px] text-muted-foreground">Custo Total</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-success">{formatCurrency(action.grossProfit)}</p>
-                  <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold">{formatCurrency(totalPlannedPrizes - totalPaidPrizes)}</p>
-                  <p className="text-[10px] text-muted-foreground">Falta Pagar</p>
-                </div>
-              </div>
+              {winners.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Nenhum ganhador ainda.</p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {Object.entries(statusCounts).map(([status, count]) => {
+                      const pctOfTotal = (count / winners.length) * 100;
+                      return (
+                        <div key={status} className="flex items-center gap-3">
+                          <StatusBadge status={status as WinnerStatus} className="w-36 justify-center" />
+                          <div className="flex-1">
+                            <Progress value={pctOfTotal} className="h-1.5" />
+                          </div>
+                          <span className="text-xs font-semibold w-6 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-4 pt-3 border-t flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Progresso total</span>
+                    <div className="flex items-center gap-2">
+                      <Progress value={paidProgress} className="h-2 w-20" />
+                      <span className="text-xs font-semibold">{paidProgress.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
+        )}
 
+        {/* Support sees only pipeline */}
+        {!isAdmin && winners.length > 0 && (
           <div className="rounded-xl border bg-card p-4 lg:p-5">
             <div className="flex items-center gap-2 mb-4">
               <Receipt className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Pipeline de Pagamento</h3>
             </div>
-            {winners.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhum ganhador ainda.</p>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  {Object.entries(statusCounts).map(([status, count]) => {
-                    const pctOfTotal = (count / winners.length) * 100;
-                    return (
-                      <div key={status} className="flex items-center gap-3">
-                        <StatusBadge status={status as WinnerStatus} className="w-36 justify-center" />
-                        <div className="flex-1">
-                          <Progress value={pctOfTotal} className="h-1.5" />
-                        </div>
-                        <span className="text-xs font-semibold w-6 text-right">{count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 pt-3 border-t flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Progresso total</span>
-                  <div className="flex items-center gap-2">
-                    <Progress value={paidProgress} className="h-2 w-20" />
-                    <span className="text-xs font-semibold">{paidProgress.toFixed(0)}%</span>
+            <div className="space-y-2">
+              {Object.entries(statusCounts).map(([status, count]) => {
+                const pctOfTotal = (count / winners.length) * 100;
+                return (
+                  <div key={status} className="flex items-center gap-3">
+                    <StatusBadge status={status as WinnerStatus} className="w-36 justify-center" />
+                    <div className="flex-1">
+                      <Progress value={pctOfTotal} className="h-1.5" />
+                    </div>
+                    <span className="text-xs font-semibold w-6 text-right">{count}</span>
                   </div>
-                </div>
-              </>
-            )}
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-3 border-t flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Progresso total</span>
+              <div className="flex items-center gap-2">
+                <Progress value={paidProgress} className="h-2 w-20" />
+                <span className="text-xs font-semibold">{paidProgress.toFixed(0)}%</span>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tabs */}
         <Tabs defaultValue="winners" className="space-y-4">
@@ -239,14 +286,18 @@ export default function ActionDetailPage() {
               <Trophy className="h-3.5 w-3.5 mr-1.5" />
               Ganhadores ({winners.length})
             </TabsTrigger>
-            <TabsTrigger value="prizes" className="text-xs">
-              <DollarSign className="h-3.5 w-3.5 mr-1.5" />
-              Prêmios ({prizes.length})
-            </TabsTrigger>
-            <TabsTrigger value="costs" className="text-xs">
-              <Receipt className="h-3.5 w-3.5 mr-1.5" />
-              Custos ({costs.length})
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="prizes" className="text-xs">
+                <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+                Prêmios ({prizes.length})
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger value="costs" className="text-xs">
+                <Receipt className="h-3.5 w-3.5 mr-1.5" />
+                Custos ({costs.length})
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="winners" className="space-y-3">
@@ -276,14 +327,14 @@ export default function ActionDetailPage() {
                     <tr className="border-b bg-muted/40">
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nome</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
-                      <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
+                      {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {winners.length === 0 ? (
-                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 5 : 4} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
                     ) : (
                       winners.map((w, i) => (
                         <tr
@@ -296,7 +347,7 @@ export default function ActionDetailPage() {
                             {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
-                          <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>
+                          {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
                           <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
                             {w.pixKey || '—'}
                           </td>

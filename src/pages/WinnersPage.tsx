@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Filter, Download, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export default function WinnersPage() {
   const [search, setSearch] = useState('');
+  const { isAdmin } = useUserRole();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { data: actions = [], isLoading: loadingActions } = useActions();
 
@@ -82,7 +84,7 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nome</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Ação</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
-                      <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
+                      {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                     </tr>
@@ -100,7 +102,7 @@ export default function WinnersPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
-                        <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>
+                        {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
                         <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{w.pixKey || '—'}</td>
                         <td className="px-4 py-3 text-center">
                           <StatusBadge status={w.status} />
@@ -129,7 +131,7 @@ export default function WinnersPage() {
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">{w.prizeTitle}</span>
-                    <span className="font-medium">{formatCurrency(w.value)}</span>
+                    {isAdmin && <span className="font-medium">{formatCurrency(w.value)}</span>}
                   </div>
                 </div>
               ))}
