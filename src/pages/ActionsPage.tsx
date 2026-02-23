@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { useActions } from '@/hooks/useActions';
-import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
+import { formatCurrency, formatPercent, formatDate, formatNumber } from '@/lib/format';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -25,10 +25,12 @@ export default function ActionsPage() {
         title="Ações"
         subtitle={`${actions.length} ações cadastradas`}
         actions={
-          <Button size="sm" className="gradient-primary text-primary-foreground hover:opacity-90 h-8 text-xs">
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Nova Ação
-          </Button>
+          <Link to="/actions/new">
+            <Button size="sm" className="gradient-primary text-primary-foreground hover:opacity-90 h-8 text-xs">
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Nova Ação
+            </Button>
+          </Link>
         }
       />
 
@@ -73,11 +75,13 @@ export default function ActionsPage() {
                   <tr className="border-b bg-muted/40">
                     <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Ação</th>
                     <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                    <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Cotas</th>
+                    <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Vlr Cota</th>
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Receita</th>
+                    <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Custo Plan.</th>
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Lucro</th>
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Margem</th>
                     <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Progresso</th>
-                    <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Atualizado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -99,7 +103,10 @@ export default function ActionsPage() {
                         <td className="px-4 py-3">
                           <StatusBadge status={action.status} labels={ACTION_STATUS_LABELS} colors={ACTION_STATUS_COLORS} />
                         </td>
+                        <td className="px-4 py-3 text-right text-sm">{formatNumber(action.quotaCount)}</td>
+                        <td className="px-4 py-3 text-right text-sm">{formatCurrency(action.quotaValue)}</td>
                         <td className="px-4 py-3 text-right text-sm">{formatCurrency(action.expectedRevenue)}</td>
+                        <td className="px-4 py-3 text-right text-sm">{formatCurrency(action.totalCost)}</td>
                         <td className="px-4 py-3 text-right text-sm font-semibold text-success">
                           {formatCurrency(action.grossProfit)}
                         </td>
@@ -110,7 +117,6 @@ export default function ActionsPage() {
                             <span className="text-[10px] text-muted-foreground w-8 text-right">{progress.toFixed(0)}%</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(action.updatedAt)}</td>
                       </tr>
                     );
                   })}
