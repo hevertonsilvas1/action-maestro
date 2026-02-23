@@ -52,6 +52,21 @@ function normalizeCpf(cpf: string | null): string | null {
   return cpf.replace(/\D/g, '') || null;
 }
 
+function excelSerialToISO(serial: any): string | null {
+  if (serial == null || serial === '') return null;
+  const num = typeof serial === 'number' ? serial : parseFloat(String(serial));
+  if (isNaN(num) || num < 1) {
+    // Already a string date, return as-is
+    return typeof serial === 'string' ? serial : null;
+  }
+  // Excel serial: days since 1899-12-30
+  const epoch = new Date(Date.UTC(1899, 11, 30));
+  const ms = epoch.getTime() + num * 86400000;
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 function normalizePhone(phone: string | null): string | null {
   if (!phone) return null;
   return phone.replace(/\D/g, '') || null;
@@ -130,7 +145,7 @@ export function useImportWinners(actionId: string, actionName: string) {
         cpf: normalizeCpf(String(row.CPF || row.cpf || row.Cpf || '')),
         phone: normalizePhone(String(row.Telefone || row.telefone || row.Phone || row.phone || row.TELEFONE || '')),
         value: normalizeValue(row['Prêmio'] || row.Premio || row.Valor || row.valor || row.Value || row.value || row.VALOR || 0),
-        prize_datetime: row['Associado em'] || row.Data || row.data || row['Data/Hora'] || row.date || null,
+        prize_datetime: excelSerialToISO(row['Associado em'] || row.Data || row.data || row['Data/Hora'] || row.date || null),
         prize_type: String(row['Tipo de Premiação'] || row['Tipo'] || row.tipo || row.Status || row.status || row['Premio'] || row.prize_type || '').trim(),
         title: String(row['Título'] || row.Titulo || row.titulo || row.title || '').trim() || undefined,
       }));
