@@ -385,6 +385,7 @@ export default function ActionDetailPage() {
                   <thead>
                     <tr className="border-b bg-muted/40">
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nome</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Telefone</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
@@ -393,7 +394,7 @@ export default function ActionDetailPage() {
                   </thead>
                   <tbody>
                     {winners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 5 : 4} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 6 : 5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
                     ) : (
                       winners.map((w, i) => (
                         <tr
@@ -404,6 +405,9 @@ export default function ActionDetailPage() {
                           <td className="px-4 py-3">
                             <p className="text-sm font-medium">{w.name}</p>
                             {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
+                            {w.phone || '—'}
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
                           {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
