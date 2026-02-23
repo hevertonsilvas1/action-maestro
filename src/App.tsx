@@ -13,6 +13,7 @@ import ActionDetailPage from "./pages/ActionDetailPage";
 import EditActionPage from "./pages/EditActionPage";
 import WinnersPage from "./pages/WinnersPage";
 import TeamPage from "./pages/TeamPage";
+import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -88,6 +89,7 @@ const AppRoutes = () => (
     <Route path="/actions/:id/edit" element={<AdminRoute><EditActionPage /></AdminRoute>} />
     <Route path="/winners" element={<ProtectedRoute><WinnersPage /></ProtectedRoute>} />
     <Route path="/team" element={<AdminRoute><TeamPage /></AdminRoute>} />
+    <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
