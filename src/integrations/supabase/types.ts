@@ -223,6 +223,56 @@ export type Database = {
           },
         ]
       }
+      import_logs: {
+        Row: {
+          action_id: string
+          created_at: string
+          file_name: string | null
+          file_type: string
+          id: string
+          total_duplicates: number
+          total_found: number
+          total_imported: number
+          total_invalid: number
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          file_name?: string | null
+          file_type: string
+          id?: string
+          total_duplicates?: number
+          total_found?: number
+          total_imported?: number
+          total_invalid?: number
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          file_name?: string | null
+          file_type?: string
+          id?: string
+          total_duplicates?: number
+          total_found?: number
+          total_imported?: number
+          total_invalid?: number
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_logs_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prize_type_configs: {
         Row: {
           active: boolean
@@ -367,12 +417,15 @@ export type Database = {
       winners: {
         Row: {
           action_id: string
+          cpf: string | null
           created_at: string
           full_name: string | null
           id: string
           name: string
+          phone: string | null
           pix_key: string | null
           pix_type: Database["public"]["Enums"]["pix_type"] | null
+          prize_datetime: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
           receipt_url: string | null
@@ -382,12 +435,15 @@ export type Database = {
         }
         Insert: {
           action_id: string
+          cpf?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           name: string
+          phone?: string | null
           pix_key?: string | null
           pix_type?: Database["public"]["Enums"]["pix_type"] | null
+          prize_datetime?: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
           receipt_url?: string | null
@@ -397,12 +453,15 @@ export type Database = {
         }
         Update: {
           action_id?: string
+          cpf?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           name?: string
+          phone?: string | null
           pix_key?: string | null
           pix_type?: Database["public"]["Enums"]["pix_type"] | null
+          prize_datetime?: string | null
           prize_title?: string
           prize_type?: Database["public"]["Enums"]["prize_type"]
           receipt_url?: string | null
