@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatPhone } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,7 +102,7 @@ export default function WinnersPage() {
                           <p className="text-sm font-medium">{w.name}</p>
                           {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{w.phone || '—'}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{formatPhone(w.phone)}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
                         {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
