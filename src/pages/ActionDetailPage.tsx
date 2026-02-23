@@ -7,7 +7,8 @@ import { useAction } from '@/hooks/useActions';
 import { useWinners } from '@/hooks/useWinners';
 import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
-import { formatCurrency, formatPercent } from '@/lib/format';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -16,6 +17,7 @@ import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
+  History, User,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
@@ -31,6 +33,7 @@ export default function ActionDetailPage() {
   const { data: winners = [], isLoading: loadingWinners } = useWinners(id);
   const { data: prizes = [], isLoading: loadingPrizes } = usePrizes(id ?? '');
   const { data: costs = [], isLoading: loadingCosts } = useCosts(id ?? '');
+  const { data: auditLog = [] } = useAuditLog(id);
   const { isAdmin } = useUserRole();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();
@@ -298,6 +301,12 @@ export default function ActionDetailPage() {
                 Custos ({costs.length})
               </TabsTrigger>
             )}
+            {isAdmin && (
+              <TabsTrigger value="audit" className="text-xs">
+                <History className="h-3.5 w-3.5 mr-1.5" />
+                Histórico ({auditLog.length})
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="winners" className="space-y-3">
@@ -443,6 +452,98 @@ export default function ActionDetailPage() {
               </table>
             </div>
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="audit" className="space-y-3">
+              <div className="rounded-xl border bg-card p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <History className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Histórico de Auditoria</h3>
+                </div>
+                {auditLog.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhum registro de auditoria.</p>
+                ) : (
+                  <div className="space-y-3 max-h-[600px] overflow-auto">
+                    {auditLog.map((entry) => {
+                      const opLabels: Record<string, string> = {
+                        create: 'Criação',
+                        update: 'Atualização',
+                        delete: 'Exclusão',
+                        archive: 'Arquivamento',
+                        restore: 'Restauração',
+                        duplicate: 'Duplicação',
+                      };
+                      const tableLabels: Record<string, string> = {
+                        actions: 'Ação',
+                        prizes: 'Premiações',
+                        costs: 'Custos',
+                      };
+                      const roleLabels: Record<string, string> = { admin: 'Admin', support: 'Suporte' };
+
+                      return (
+                        <div key={entry.id} className="p-3 rounded-lg border bg-muted/30 text-xs space-y-2">
+                          <div className="flex flex-wrap justify-between items-start gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold text-[10px]">
+                                {opLabels[entry.operation] || entry.operation}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {tableLabels[entry.tableName] || entry.tableName}
+                              </span>
+                            </div>
+                            <span className="text-muted-foreground text-[10px]">
+                              {new Date(entry.createdAt).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            <span className="font-medium text-foreground">{entry.userName || 'Sistema'}</span>
+                            {entry.userRole && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px]">
+                                {roleLabels[entry.userRole] || entry.userRole}
+                              </span>
+                            )}
+                          </div>
+                          {entry.changes && Object.keys(entry.changes).length > 0 && (
+                            <div className="space-y-1 pt-1 border-t border-border/50">
+                              {Object.entries(entry.changes).map(([key, val]) => {
+                                if (val && typeof val === 'object' && 'before' in val && 'after' in val) {
+                                  return (
+                                    <div key={key} className="flex flex-wrap gap-1.5 items-baseline">
+                                      <span className="text-muted-foreground font-medium min-w-[120px]">{key}:</span>
+                                      <span className="text-destructive line-through">{String(val.before ?? '—')}</span>
+                                      <span className="text-muted-foreground">→</span>
+                                      <span className="text-success font-medium">{String(val.after ?? '—')}</span>
+                                    </div>
+                                  );
+                                }
+                                if (Array.isArray(val)) {
+                                  return (
+                                    <div key={key}>
+                                      <span className="text-muted-foreground font-medium">{key}:</span>
+                                      <ul className="ml-4 list-disc">
+                                        {val.map((item, idx) => <li key={idx}>{String(item)}</li>)}
+                                      </ul>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div key={key} className="flex gap-1.5">
+                                    <span className="text-muted-foreground font-medium">{key}:</span>
+                                    <span>{String(val)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

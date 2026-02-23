@@ -17,6 +17,7 @@ export type Database = {
       action_audit_log: {
         Row: {
           action_id: string
+          action_name: string | null
           changes: Json | null
           created_at: string
           id: string
@@ -24,9 +25,12 @@ export type Database = {
           record_id: string | null
           table_name: string
           user_id: string | null
+          user_name: string | null
+          user_role: string | null
         }
         Insert: {
           action_id: string
+          action_name?: string | null
           changes?: Json | null
           created_at?: string
           id?: string
@@ -34,9 +38,12 @@ export type Database = {
           record_id?: string | null
           table_name: string
           user_id?: string | null
+          user_name?: string | null
+          user_role?: string | null
         }
         Update: {
           action_id?: string
+          action_name?: string | null
           changes?: Json | null
           created_at?: string
           id?: string
@@ -44,6 +51,8 @@ export type Database = {
           record_id?: string | null
           table_name?: string
           user_id?: string | null
+          user_name?: string | null
+          user_role?: string | null
         }
         Relationships: [
           {
