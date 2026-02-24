@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Save, Webhook, Plus, Trash2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Loader2, Save, Webhook, Plus, Trash2, Eye, EyeOff, ArrowLeft, Zap, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 
@@ -32,6 +32,8 @@ export default function IntegrationsPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [newConfig, setNewConfig] = useState({ key: '', value: '', label: '', description: '' });
   const [addingNew, setAddingNew] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string } | null>>({});
 
   const fetchConfigs = async () => {
     const { data, error } = await supabase
@@ -123,11 +125,47 @@ export default function IntegrationsPage() {
     });
   };
 
-  const maskValue = (value: string) => {
-    if (!value) return '';
-    if (value.length <= 8) return '••••••••';
-    return value.slice(0, 4) + '••••••••' + value.slice(-4);
+  const handleTestWebhook = async (config: IntegrationConfig) => {
+    const url = editValues[config.id] ?? config.value;
+    if (!url || !url.startsWith('http')) {
+      toast({ title: 'URL inválida', description: 'Insira uma URL válida antes de testar.', variant: 'destructive' });
+      return;
+    }
+    setTesting(config.id);
+    setTestResults((prev) => ({ ...prev, [config.id]: null }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-webhook', {
+        body: { url },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        setTestResults((prev) => ({
+          ...prev,
+          [config.id]: { success: true, message: `Conectado! Status: ${data.status} ${data.statusText}` },
+        }));
+        toast({ title: 'Conexão OK!', description: `Webhook respondeu com status ${data.status}.` });
+      } else {
+        setTestResults((prev) => ({
+          ...prev,
+          [config.id]: { success: false, message: data?.error || 'Falha na conexão' },
+        }));
+        toast({ title: 'Falha na conexão', description: data?.error || 'Webhook não respondeu.', variant: 'destructive' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      setTestResults((prev) => ({
+        ...prev,
+        [config.id]: { success: false, message },
+      }));
+      toast({ title: 'Erro ao testar', description: message, variant: 'destructive' });
+    }
+    setTesting(null);
   };
+
+  const isWebhookKey = (key: string) => key.toLowerCase().includes('webhook') || key.toLowerCase().includes('url');
 
   if (loading) {
     return (
@@ -199,6 +237,22 @@ export default function IntegrationsPage() {
                 </div>
               </div>
 
+              {/* Test result banner */}
+              {testResults[config.id] && (
+                <div className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs ${
+                  testResults[config.id]!.success
+                    ? 'bg-success/10 text-success'
+                    : 'bg-destructive/10 text-destructive'
+                }`}>
+                  {testResults[config.id]!.success ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <span>{testResults[config.id]!.message}</span>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-1">
                 <Button
                   variant="ghost"
@@ -209,19 +263,37 @@ export default function IntegrationsPage() {
                   <Trash2 className="h-3.5 w-3.5 mr-1" />
                   Remover
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleSave(config)}
-                  disabled={saving === config.id}
-                  className="gap-1.5"
-                >
-                  {saving === config.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5" />
+                <div className="flex gap-2">
+                  {isWebhookKey(config.key) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTestWebhook(config)}
+                      disabled={testing === config.id || !(editValues[config.id] ?? config.value)}
+                      className="gap-1.5"
+                    >
+                      {testing === config.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Zap className="h-3.5 w-3.5" />
+                      )}
+                      Testar
+                    </Button>
                   )}
-                  Salvar
-                </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleSave(config)}
+                    disabled={saving === config.id}
+                    className="gap-1.5"
+                  >
+                    {saving === config.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
+                    Salvar
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
