@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
 import { useRequestPixBatch } from '@/hooks/useRequestPixBatch';
 import { WinnersFilters, useWinnersFilters, applyWinnersFilters } from '@/components/WinnersFilters';
+import { TablePagination, paginateArray } from '@/components/TablePagination';
 import { Download, Loader2, Send } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -16,6 +17,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 export default function WinnersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
   const { isAdmin } = useUserRole();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
@@ -41,6 +44,17 @@ export default function WinnersPage() {
     [allWinners, filters]
   );
 
+  const paginated = useMemo(
+    () => paginateArray(filtered, page, pageSize),
+    [filtered, page, pageSize]
+  );
+
+  // Reset page when filters change
+  const handleFiltersChange = useCallback((f: typeof filters) => {
+    setFilters(f);
+    setPage(1);
+  }, [setFilters]);
+
   const toggleWinner = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -52,11 +66,11 @@ export default function WinnersPage() {
 
   const toggleAll = useCallback(() => {
     setSelected((prev) =>
-      prev.size === filtered.length
+      prev.size === paginated.length
         ? new Set()
-        : new Set(filtered.map((w) => w.id))
+        : new Set(paginated.map((w) => w.id))
     );
-  }, [filtered]);
+  }, [paginated]);
 
   const selectedWinners = useMemo(
     () => winners.filter((w) => selected.has(w.id)),
@@ -99,7 +113,7 @@ export default function WinnersPage() {
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
         <WinnersFilters
           filters={filters}
-          onFiltersChange={setFilters}
+          onFiltersChange={handleFiltersChange}
           actionsMap={actionsMap}
           showValueFilter={isAdmin}
         />
@@ -122,7 +136,7 @@ export default function WinnersPage() {
                     <tr className="border-b bg-muted/40">
                       <th className="px-4 py-3 w-10">
                         <Checkbox
-                          checked={selected.size === filtered.length && filtered.length > 0}
+                          checked={selected.size > 0 && paginated.every((w) => selected.has(w.id))}
                           onCheckedChange={toggleAll}
                         />
                       </th>
@@ -137,7 +151,7 @@ export default function WinnersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((w, i) => (
+                    {paginated.map((w, i) => (
                       <tr
                         key={w.id}
                         className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
@@ -173,7 +187,7 @@ export default function WinnersPage() {
 
             {/* Mobile */}
             <div className="md:hidden space-y-3">
-              {filtered.map((w, i) => (
+              {paginated.map((w, i) => (
                 <div
                   key={w.id}
                   className={`rounded-xl border bg-card p-4 animate-fade-in cursor-pointer transition-colors ${selected.has(w.id) ? 'ring-2 ring-primary' : ''}`}
@@ -201,6 +215,15 @@ export default function WinnersPage() {
                 </div>
               ))}
             </div>
+
+            {/* Pagination */}
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={filtered.length}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </>
         )}
       </div>
