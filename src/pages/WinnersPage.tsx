@@ -6,12 +6,17 @@ import { formatCurrency, formatPhone } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, Download, Loader2 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
+import { useRequestPixBatch } from '@/hooks/useRequestPixBatch';
+import { Search, Filter, Download, Loader2, Send } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 
 export default function WinnersPage() {
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pixModalOpen, setPixModalOpen] = useState(false);
   const { isAdmin } = useUserRole();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { data: actions = [], isLoading: loadingActions } = useActions();
@@ -24,16 +29,48 @@ export default function WinnersPage() {
     return map;
   }, [actions]);
 
-  const allWinners = winners.map((w) => ({
+  const { requestPix, isPending } = useRequestPixBatch(actionsMap);
+
+  const allWinners = useMemo(() => winners.map((w) => ({
     ...w,
     actionName: actionsMap[w.actionId] ?? '',
-  }));
+  })), [winners, actionsMap]);
 
-  const filtered = allWinners.filter(
+  const filtered = useMemo(() => allWinners.filter(
     (w) =>
       w.name.toLowerCase().includes(search.toLowerCase()) ||
       w.actionName.toLowerCase().includes(search.toLowerCase())
+  ), [allWinners, search]);
+
+  const toggleWinner = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    setSelected((prev) =>
+      prev.size === filtered.length
+        ? new Set()
+        : new Set(filtered.map((w) => w.id))
+    );
+  }, [filtered]);
+
+  const selectedWinners = useMemo(
+    () => winners.filter((w) => selected.has(w.id)),
+    [winners, selected]
   );
+
+  const handleRequestPix = async () => {
+    const eligible = getEligibleWinners(selectedWinners);
+    if (eligible.length === 0) return;
+    await requestPix(eligible);
+    setPixModalOpen(false);
+    setSelected(new Set());
+  };
 
   return (
     <AppLayout>
@@ -41,10 +78,22 @@ export default function WinnersPage() {
         title="Ganhadores"
         subtitle={`${winners.length} ganhadores registrados`}
         actions={
-          <Button size="sm" variant="outline" className="h-8 text-xs">
-            <Download className="h-3.5 w-3.5 mr-1.5" />
-            Exportar
-          </Button>
+          <div className="flex items-center gap-2">
+            {selected.size > 0 && (
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setPixModalOpen(true)}
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Solicitar Pix ({selected.size})
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="h-8 text-xs">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Exportar
+            </Button>
+          </div>
         }
       />
 
@@ -81,6 +130,12 @@ export default function WinnersPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/40">
+                      <th className="px-4 py-3 w-10">
+                        <Checkbox
+                          checked={selected.size === filtered.length && filtered.length > 0}
+                          onCheckedChange={toggleAll}
+                        />
+                      </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nome</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Telefone</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Ação</th>
@@ -98,6 +153,12 @@ export default function WinnersPage() {
                         className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
                         style={{ animationDelay: `${i * 30}ms` }}
                       >
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selected.has(w.id)}
+                            onCheckedChange={() => toggleWinner(w.id)}
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <p className="text-sm font-medium">{w.name}</p>
                           {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
@@ -125,13 +186,21 @@ export default function WinnersPage() {
               {filtered.map((w, i) => (
                 <div
                   key={w.id}
-                  className="rounded-xl border bg-card p-4 animate-fade-in"
+                  className={`rounded-xl border bg-card p-4 animate-fade-in cursor-pointer transition-colors ${selected.has(w.id) ? 'ring-2 ring-primary' : ''}`}
                   style={{ animationDelay: `${i * 50}ms` }}
+                  onClick={() => toggleWinner(w.id)}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm font-semibold">{w.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{w.actionName}</p>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selected.has(w.id)}
+                        onCheckedChange={() => toggleWinner(w.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div>
+                        <p className="text-sm font-semibold">{w.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{w.actionName}</p>
+                      </div>
                     </div>
                     <StatusBadge status={w.status} />
                   </div>
@@ -145,6 +214,15 @@ export default function WinnersPage() {
           </>
         )}
       </div>
+
+      <RequestPixModal
+        open={pixModalOpen}
+        onOpenChange={setPixModalOpen}
+        winners={selectedWinners}
+        onConfirm={handleRequestPix}
+        isPending={isPending}
+        isAdmin={isAdmin}
+      />
     </AppLayout>
   );
 }
