@@ -8,6 +8,7 @@ import { Search, Filter, X, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { WINNER_STATUS_LABELS, type WinnerStatus } from '@/types';
+import { isWindowOpen } from '@/lib/time';
 
 export interface WinnersFilterValues {
   search: string;
@@ -17,6 +18,7 @@ export interface WinnersFilterValues {
   dateTo: Date | undefined;
   valueMin: string;
   valueMax: string;
+  whatsappWindow: 'all' | 'open' | 'closed';
 }
 
 const INITIAL_FILTERS: WinnersFilterValues = {
@@ -27,6 +29,7 @@ const INITIAL_FILTERS: WinnersFilterValues = {
   dateTo: undefined,
   valueMin: '',
   valueMax: '',
+  whatsappWindow: 'all',
 };
 
 interface WinnersFiltersProps {
@@ -60,7 +63,8 @@ export function WinnersFilters({
     filters.dateFrom !== undefined ||
     filters.dateTo !== undefined ||
     filters.valueMin !== '' ||
-    filters.valueMax !== '';
+    filters.valueMax !== '' ||
+    filters.whatsappWindow !== 'all';
 
   const clearAll = () =>
     onFiltersChange({ ...INITIAL_FILTERS, search: filters.search });
@@ -197,6 +201,21 @@ export function WinnersFilters({
             </Popover>
           </div>
 
+          {/* WhatsApp Window */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-muted-foreground">Janela WhatsApp</label>
+            <Select value={filters.whatsappWindow} onValueChange={(v) => update({ whatsappWindow: v as 'all' | 'open' | 'closed' })}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="open">Aberta</SelectItem>
+                <SelectItem value="closed">Fechada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Value Min/Max (admin only) */}
           {showValueFilter && (
             <>
@@ -229,9 +248,10 @@ export function WinnersFilters({
 }
 
 /** Apply filter values to a list of winners (with optional actionName) */
-export function applyWinnersFilters<T extends { name: string; status: string; actionId: string; value: number; prizeDatetime?: string; fullName?: string; actionName?: string }>(
+export function applyWinnersFilters<T extends { name: string; status: string; actionId: string; value: number; prizeDatetime?: string; fullName?: string; actionName?: string; ultimaInteracaoWhatsapp?: string }>(
   winners: T[],
-  filters: WinnersFilterValues
+  filters: WinnersFilterValues,
+  windowHours = 24
 ): T[] {
   const searchLower = filters.search.toLowerCase().trim();
   const valueMin = filters.valueMin ? parseFloat(filters.valueMin) : undefined;
@@ -261,6 +281,16 @@ export function applyWinnersFilters<T extends { name: string; status: string; ac
     // Value
     if (valueMin !== undefined && w.value < valueMin) return false;
     if (valueMax !== undefined && w.value > valueMax) return false;
+
+    // WhatsApp Window
+    if (filters.whatsappWindow !== 'all') {
+      const hasInteraction = !!w.ultimaInteracaoWhatsapp;
+      if (filters.whatsappWindow === 'open') {
+        if (!hasInteraction || !isWindowOpen(w.ultimaInteracaoWhatsapp, windowHours)) return false;
+      } else {
+        if (!hasInteraction || isWindowOpen(w.ultimaInteracaoWhatsapp, windowHours)) return false;
+      }
+    }
 
     return true;
   });

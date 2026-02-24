@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Trophy,
+  Trash2,
   Users,
   Settings,
   Zap,
@@ -30,6 +31,7 @@ const adminMainNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Ações', url: '/actions', icon: Megaphone },
   { title: 'Ganhadores', url: '/winners', icon: Trophy },
+  { title: 'Excluídos', url: '/winners/deleted', icon: Trash2 },
 ];
 
 const supportMainNav = [

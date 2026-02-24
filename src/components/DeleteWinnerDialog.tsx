@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { insertAuditLog } from '@/hooks/useAuditLogger';
 import type { Winner } from '@/types';
 
-const BLOCKED_STATUSES = ['receipt_attached', 'receipt_sent'];
+const BLOCKED_STATUSES = ['receipt_attached', 'receipt_sent', 'sent_to_batch'];
 
 interface DeleteWinnerDialogProps {
   open: boolean;
@@ -32,7 +32,22 @@ export function DeleteWinnerDialog({ open, onOpenChange, winner, actionName }: D
     if (!winner || isBlocked) return;
     setDeleting(true);
     try {
-      const { error } = await supabase.from('winners').delete().eq('id', winner.id);
+      // Soft delete
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      let userName = authUser?.email || 'Sistema';
+      if (authUser?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('signature, display_name')
+          .eq('user_id', authUser.id)
+          .maybeSingle();
+        userName = profile?.signature || profile?.display_name || userName;
+      }
+
+      const { error } = await supabase
+        .from('winners')
+        .update({ deleted_at: new Date().toISOString(), deleted_by: userName } as any)
+        .eq('id', winner.id);
       if (error) throw error;
 
       await insertAuditLog({
@@ -75,13 +90,13 @@ export function DeleteWinnerDialog({ open, onOpenChange, winner, actionName }: D
             <div className="space-y-3">
               {isBlocked ? (
                 <p className="text-destructive font-medium">
-                  Não é possível excluir ganhador com status "Comprovante Anexado" ou "Comprovante Enviado".
+                  Não é possível excluir ganhador com status "Comprovante Anexado", "Comprovante Enviado" ou "Enviado para Lote".
                 </p>
               ) : (
                 <>
                   <p>
                     Deseja excluir <strong className="text-foreground">{winner?.name}</strong>?
-                    Esta ação não pode ser desfeita.
+                    O registro será marcado como excluído e poderá ser restaurado por um administrador.
                   </p>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">Motivo (opcional)</label>
