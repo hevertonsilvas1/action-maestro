@@ -3,8 +3,10 @@ import { AppHeader } from '@/components/AppHeader';
 import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
 import { formatCurrency, formatPhone } from '@/lib/format';
+import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
 import { useRequestPixBatch } from '@/hooks/useRequestPixBatch';
@@ -13,15 +15,18 @@ import { TablePagination, paginateArray } from '@/components/TablePagination';
 import { NewWinnerModal } from '@/components/NewWinnerModal';
 import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
 import { BatchStatusModal } from '@/components/BatchStatusModal';
+import { PixDataModal } from '@/components/PixDataModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw, CreditCard, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
 import type { Winner } from '@/types';
 
 export default function WinnersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [pixTarget, setPixTarget] = useState<Winner | null>(null);
   const [newWinnerOpen, setNewWinnerOpen] = useState(false);
   const [deleteWinner, setDeleteWinner] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
@@ -29,6 +34,7 @@ export default function WinnersPage() {
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
   const { isAdmin } = useUserRole();
+  const { user } = useAuth();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { data: actions = [], isLoading: loadingActions } = useActions();
 
@@ -170,6 +176,7 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Data/Hora</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Tipo PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Solicitação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Erro</th>
@@ -201,7 +208,24 @@ export default function WinnersPage() {
                         <td className="px-4 py-3 text-xs text-muted-foreground">
                           {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{w.pixKey || '—'}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {w.pixType ? (
+                            <Badge variant="outline" className="text-[10px]">{w.pixType?.toUpperCase()}</Badge>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                            onClick={(e) => { e.stopPropagation(); setPixTarget(w); }}
+                          >
+                            {(() => {
+                              const ps = getPixStatus(w);
+                              if (ps === 'validated') return <><ShieldCheck className="h-3 w-3 text-success" />{maskPixKey(w.pixType, w.pixKey)}</>;
+                              if (ps === 'filled') return <><CreditCard className="h-3 w-3 text-info" />{maskPixKey(w.pixType, w.pixKey)}</>;
+                              return <><AlertTriangle className="h-3 w-3 text-muted-foreground" />Cadastrar</>;
+                            })()}
+                          </button>
+                        </td>
                         <td className="px-3 py-3 text-[10px] text-muted-foreground">
                           {w.lastPixRequestAt
                             ? new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -329,6 +353,15 @@ export default function WinnersPage() {
         onOpenChange={setBatchStatusOpen}
         winnerIds={Array.from(selected)}
         onDone={() => setSelected(new Set())}
+      />
+
+      <PixDataModal
+        open={!!pixTarget}
+        onOpenChange={(v) => { if (!v) setPixTarget(null); }}
+        winner={pixTarget}
+        isAdmin={isAdmin}
+        userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
+        actionId={pixTarget?.actionId || ''}
       />
     </AppLayout>
   );

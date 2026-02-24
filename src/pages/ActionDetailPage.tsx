@@ -9,8 +9,10 @@ import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { formatCurrency, formatPercent, formatDate, formatPhone } from '@/lib/format';
+import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,8 +21,10 @@ import {
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
   History, User, CalendarIcon, X, Search, FileText, AlertCircle, RefreshCw,
+  CreditCard, ShieldCheck, AlertTriangle,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
 import { useArchiveAction, useRestoreAction } from '@/hooks/useArchiveAction';
@@ -28,6 +32,7 @@ import { DeleteActionDialog } from '@/components/DeleteActionDialog';
 import { NewWinnerModal } from '@/components/NewWinnerModal';
 import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
 import { BatchStatusModal } from '@/components/BatchStatusModal';
+import { PixDataModal } from '@/components/PixDataModal';
 import { useState, useMemo, useCallback } from 'react';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
@@ -53,6 +58,7 @@ export default function ActionDetailPage() {
   const { data: costs = [], isLoading: loadingCosts } = useCosts(id ?? '');
   const { data: auditLog = [] } = useAuditLog(id);
   const { isAdmin } = useUserRole();
+  const { user } = useAuth();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();
   const { archive, isPending: isArchiving } = useArchiveAction();
@@ -61,6 +67,7 @@ export default function ActionDetailPage() {
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [pixTarget, setPixTarget] = useState<Winner | null>(null);
   const [newWinnerOpen, setNewWinnerOpen] = useState(false);
   const [deleteWinnerTarget, setDeleteWinnerTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
@@ -490,6 +497,7 @@ export default function ActionDetailPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Data/Hora</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Tipo PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Solicitação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Erro</th>
@@ -529,8 +537,23 @@ export default function ActionDetailPage() {
                           <td className="px-4 py-3 text-xs text-muted-foreground">
                             {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
-                            {w.pixKey || '—'}
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {w.pixType ? (
+                              <Badge variant="outline" className="text-[10px]">{w.pixType?.toUpperCase()}</Badge>
+                            ) : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                              onClick={(e) => { e.stopPropagation(); setPixTarget(w); }}
+                            >
+                              {(() => {
+                                const ps = getPixStatus(w);
+                                if (ps === 'validated') return <><ShieldCheck className="h-3 w-3 text-success" />{maskPixKey(w.pixType, w.pixKey)}</>;
+                                if (ps === 'filled') return <><CreditCard className="h-3 w-3 text-info" />{maskPixKey(w.pixType, w.pixKey)}</>;
+                                return <><AlertTriangle className="h-3 w-3 text-muted-foreground" />Cadastrar</>;
+                              })()}
+                            </button>
                           </td>
                           <td className="px-3 py-3 text-[10px] text-muted-foreground">
                             {w.lastPixRequestAt
@@ -1119,6 +1142,17 @@ export default function ActionDetailPage() {
         winnerIds={Array.from(selectedWinnerIds)}
         onDone={() => setSelectedWinnerIds(new Set())}
       />
+
+      {action && (
+        <PixDataModal
+          open={!!pixTarget}
+          onOpenChange={(v) => { if (!v) setPixTarget(null); }}
+          winner={pixTarget}
+          isAdmin={isAdmin}
+          userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
+          actionId={action.id}
+        />
+      )}
     </AppLayout>
   );
 }
