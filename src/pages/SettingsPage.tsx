@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Camera, Save, User, Mail, Shield, Calendar, Phone, PenLine } from 'lucide-react';
+import { Loader2, Camera, Save, User, Mail, Shield, Calendar, Phone, PenLine, Webhook, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -306,6 +307,29 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Admin-only: Integrations link */}
+        {role === 'admin' && (
+          <Card className="shadow-card">
+            <CardContent className="p-0">
+              <Link
+                to="/settings/integrations"
+                className="flex items-center justify-between p-4 hover:bg-muted/50 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                    <Webhook className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Integrações</p>
+                    <p className="text-xs text-muted-foreground">Webhooks e chaves de API</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );

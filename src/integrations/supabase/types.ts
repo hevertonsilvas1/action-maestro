@@ -273,6 +273,36 @@ export type Database = {
           },
         ]
       }
+      integration_configs: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          label: string | null
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       prize_type_configs: {
         Row: {
           active: boolean

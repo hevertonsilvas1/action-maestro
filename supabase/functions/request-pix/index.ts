@@ -33,11 +33,22 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const n8nWebhookUrl = Deno.env.get("N8N_WEBHOOK_URL");
+
+    // Try to read webhook URL from integration_configs table first, fallback to env var
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: configRow } = await serviceClient
+      .from("integration_configs")
+      .select("value")
+      .eq("key", "N8N_WEBHOOK_URL")
+      .maybeSingle();
+
+    const n8nWebhookUrl = (configRow?.value && configRow.value.trim() !== "")
+      ? configRow.value
+      : Deno.env.get("N8N_WEBHOOK_URL");
 
     if (!n8nWebhookUrl) {
       return new Response(
-        JSON.stringify({ error: "N8N_WEBHOOK_URL not configured" }),
+        JSON.stringify({ error: "N8N_WEBHOOK_URL not configured. Configure em Configurações > Integrações." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
