@@ -76,7 +76,7 @@ export function WinnersFilters({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar ganhadores..."
+            placeholder="Buscar por nome, telefone ou CPF..."
             value={filters.search}
             onChange={(e) => update({ search: e.target.value })}
             className="pl-9 h-9"
@@ -238,9 +238,9 @@ export function applyWinnersFilters<T extends { name: string; status: string; ac
   const valueMax = filters.valueMax ? parseFloat(filters.valueMax) : undefined;
 
   return winners.filter((w) => {
-    // Search
+    // Search (name, fullName, actionName, phone, cpf)
     if (searchLower) {
-      const searchable = [w.name, w.fullName, w.actionName].filter(Boolean).join(' ').toLowerCase();
+      const searchable = [w.name, w.fullName, w.actionName, (w as any).phone, (w as any).cpf].filter(Boolean).join(' ').toLowerCase();
       if (!searchable.includes(searchLower)) return false;
     }
     // Status

@@ -13,17 +13,21 @@ import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/type
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DollarSign, TrendingUp, Users, ArrowLeft, Trophy, Receipt,
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
-  History, User, CalendarIcon, X, Search, FileText,
+  History, User, CalendarIcon, X, Search, FileText, AlertCircle, RefreshCw,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
 import { useArchiveAction, useRestoreAction } from '@/hooks/useArchiveAction';
 import { DeleteActionDialog } from '@/components/DeleteActionDialog';
+import { NewWinnerModal } from '@/components/NewWinnerModal';
+import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
+import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { useState, useMemo, useCallback } from 'react';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
@@ -38,6 +42,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import type { Winner } from '@/types';
 
 export default function ActionDetailPage() {
   const { id } = useParams();
@@ -56,6 +61,9 @@ export default function ActionDetailPage() {
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [newWinnerOpen, setNewWinnerOpen] = useState(false);
+  const [deleteWinnerTarget, setDeleteWinnerTarget] = useState<Winner | null>(null);
+  const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [winnersPage, setWinnersPage] = useState(1);
@@ -419,6 +427,10 @@ export default function ActionDetailPage() {
 
           <TabsContent value="winners" className="space-y-3">
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setNewWinnerOpen(true)}>
+                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                Novo Ganhador
+              </Button>
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportModalOpen(true)}>
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Importar Ganhadores
@@ -439,6 +451,12 @@ export default function ActionDetailPage() {
                 <Send className="h-3.5 w-3.5 mr-1.5" />
                 Solicitar Pix {selectedWinnerIds.size > 0 && `(${selectedWinnerIds.size})`}
               </Button>
+              {isAdmin && selectedWinnerIds.size > 0 && (
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchStatusOpen(true)}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  Alterar Status ({selectedWinnerIds.size})
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="h-8 text-xs">
                 <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
                 Gerar Planilha de Lote
@@ -473,12 +491,15 @@ export default function ActionDetailPage() {
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Data/Hora</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Solicitação</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Erro</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                      {isAdmin && <th className="px-2 py-3 w-8"></th>}
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedWinners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 11 : 9} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
                     ) : (
                       paginatedWinners.map((w, i) => (
                         <tr
@@ -498,7 +519,7 @@ export default function ActionDetailPage() {
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-sm font-medium">{w.name}</p>
-                            {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
+                            {w.fullName && w.fullName !== w.name && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
                             {formatPhone(w.phone)}
@@ -511,9 +532,33 @@ export default function ActionDetailPage() {
                           <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
                             {w.pixKey || '—'}
                           </td>
+                          <td className="px-3 py-3 text-[10px] text-muted-foreground">
+                            {w.lastPixRequestAt
+                              ? new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {w.lastPixError ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center text-destructive cursor-help">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-xs text-xs">{w.lastPixError}</TooltipContent>
+                              </Tooltip>
+                            ) : <span className="text-[10px] text-muted-foreground">—</span>}
+                          </td>
                           <td className="px-4 py-3 text-center">
                             <StatusBadge status={w.status} />
                           </td>
+                          {isAdmin && (
+                            <td className="px-2 py-3">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setDeleteWinnerTarget(w)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}
@@ -1051,6 +1096,29 @@ export default function ActionDetailPage() {
           isAdmin={isAdmin}
         />
       )}
+
+      {action && (
+        <NewWinnerModal
+          open={newWinnerOpen}
+          onOpenChange={setNewWinnerOpen}
+          defaultActionId={action.id}
+          actionsMap={{ [action.id]: action.name }}
+        />
+      )}
+
+      <DeleteWinnerDialog
+        open={!!deleteWinnerTarget}
+        onOpenChange={(v) => { if (!v) setDeleteWinnerTarget(null); }}
+        winner={deleteWinnerTarget}
+        actionName={action?.name || ''}
+      />
+
+      <BatchStatusModal
+        open={batchStatusOpen}
+        onOpenChange={setBatchStatusOpen}
+        winnerIds={Array.from(selectedWinnerIds)}
+        onDone={() => setSelectedWinnerIds(new Set())}
+      />
     </AppLayout>
   );
 }

@@ -10,13 +10,21 @@ import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModa
 import { useRequestPixBatch } from '@/hooks/useRequestPixBatch';
 import { WinnersFilters, useWinnersFilters, applyWinnersFilters } from '@/components/WinnersFilters';
 import { TablePagination, paginateArray } from '@/components/TablePagination';
-import { Download, Loader2, Send } from 'lucide-react';
+import { NewWinnerModal } from '@/components/NewWinnerModal';
+import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
+import { BatchStatusModal } from '@/components/BatchStatusModal';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
+import type { Winner } from '@/types';
 
 export default function WinnersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [newWinnerOpen, setNewWinnerOpen] = useState(false);
+  const [deleteWinner, setDeleteWinner] = useState<Winner | null>(null);
+  const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
@@ -49,7 +57,6 @@ export default function WinnersPage() {
     [filtered, page, pageSize]
   );
 
-  // Reset page when filters change
   const handleFiltersChange = useCallback((f: typeof filters) => {
     setFilters(f);
     setPage(1);
@@ -91,16 +98,33 @@ export default function WinnersPage() {
         title="Ganhadores"
         subtitle={`${winners.length} ganhadores registrados`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setNewWinnerOpen(true)}>
+              <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+              Novo Ganhador
+            </Button>
             {selected.size > 0 && (
-              <Button
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => setPixModalOpen(true)}
-              >
-                <Send className="h-3.5 w-3.5 mr-1.5" />
-                Solicitar Pix ({selected.size})
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setPixModalOpen(true)}
+                >
+                  <Send className="h-3.5 w-3.5 mr-1.5" />
+                  Solicitar Pix ({selected.size})
+                </Button>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => setBatchStatusOpen(true)}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    Alterar Status ({selected.size})
+                  </Button>
+                )}
+              </>
             )}
             <Button size="sm" variant="outline" className="h-8 text-xs">
               <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -147,7 +171,10 @@ export default function WinnersPage() {
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>}
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Data/Hora</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Solicitação</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Erro</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                      {isAdmin && <th className="px-2 py-3 w-8"></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -165,7 +192,7 @@ export default function WinnersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <p className="text-sm font-medium">{w.name}</p>
-                          {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
+                          {w.fullName && w.fullName !== w.name && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{formatPhone(w.phone)}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
@@ -175,9 +202,42 @@ export default function WinnersPage() {
                           {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{w.pixKey || '—'}</td>
+                        <td className="px-3 py-3 text-[10px] text-muted-foreground">
+                          {w.lastPixRequestAt
+                            ? new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                            : '—'}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {w.lastPixError ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1 text-[10px] text-destructive cursor-help">
+                                  <AlertCircle className="h-3.5 w-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-xs text-xs">
+                                {w.lastPixError}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <StatusBadge status={w.status} />
                         </td>
+                        {isAdmin && (
+                          <td className="px-2 py-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteWinner(w)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -206,17 +266,31 @@ export default function WinnersPage() {
                         <p className="text-[10px] text-muted-foreground">{w.actionName}</p>
                       </div>
                     </div>
-                    <StatusBadge status={w.status} />
+                    <div className="flex items-center gap-1.5">
+                      {w.lastPixError && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">{w.lastPixError}</TooltipContent>
+                        </Tooltip>
+                      )}
+                      <StatusBadge status={w.status} />
+                    </div>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">{w.prizeTitle}</span>
                     {isAdmin && <span className="font-medium">{formatCurrency(w.value)}</span>}
                   </div>
+                  {w.lastPixRequestAt && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Últ. solicitação: {new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
 
-            {/* Pagination */}
             <TablePagination
               page={page}
               pageSize={pageSize}
@@ -235,6 +309,26 @@ export default function WinnersPage() {
         onConfirm={handleRequestPix}
         isPending={isPending}
         isAdmin={isAdmin}
+      />
+
+      <NewWinnerModal
+        open={newWinnerOpen}
+        onOpenChange={setNewWinnerOpen}
+        actionsMap={actionsMap}
+      />
+
+      <DeleteWinnerDialog
+        open={!!deleteWinner}
+        onOpenChange={(v) => { if (!v) setDeleteWinner(null); }}
+        winner={deleteWinner}
+        actionName={deleteWinner ? (actionsMap[deleteWinner.actionId] || '') : ''}
+      />
+
+      <BatchStatusModal
+        open={batchStatusOpen}
+        onOpenChange={setBatchStatusOpen}
+        winnerIds={Array.from(selected)}
+        onDone={() => setSelected(new Set())}
       />
     </AppLayout>
   );
