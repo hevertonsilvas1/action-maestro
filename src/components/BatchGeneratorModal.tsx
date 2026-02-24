@@ -77,77 +77,89 @@ export function BatchGeneratorModal({
     setGenerating(true);
 
     try {
-      // 1. Create batch record
       const now = new Date().toISOString();
-      const filename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
-      const { data: batch, error: batchError } = await supabase
-        .from('pix_batches')
-        .insert({
-          action_id: actionId,
-          generated_by: userName,
-          generated_at: now,
-          winner_count: selected.length,
-          total_value: totalValue,
-          filename,
-        } as any)
-        .select('id')
-        .single();
+      // Group winners by actionId to create one batch per action
+      const byAction = new Map<string, Winner[]>();
+      for (const w of selected) {
+        const group = byAction.get(w.actionId) || [];
+        group.push(w);
+        byAction.set(w.actionId, group);
+      }
 
-      if (batchError) throw batchError;
+      const allRows: Record<string, any>[] = [];
 
-      // 2. Update winners: status → sent_to_batch, link batch, set payment_method
-      const winnerIds = selected.map(w => w.id);
-      const { error: updateError } = await supabase
-        .from('winners')
-        .update({
-          status: 'sent_to_batch' as any,
-          batch_id: batch.id,
-          payment_method: 'lote_pix' as any,
-          updated_at: now,
-        } as any)
-        .in('id', winnerIds);
+      for (const [aId, group] of byAction) {
+        const aName = actionId ? actionName : (group[0].prizeTitle || aId.slice(0, 8));
+        const groupTotal = group.reduce((s, w) => s + w.value, 0);
+        const filename = `lote_pix_${aName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
-      if (updateError) throw updateError;
+        const { data: batch, error: batchError } = await supabase
+          .from('pix_batches')
+          .insert({
+            action_id: aId,
+            generated_by: userName,
+            generated_at: now,
+            winner_count: group.length,
+            total_value: groupTotal,
+            filename,
+          } as any)
+          .select('id')
+          .single();
 
-      // 3. Generate XLSX
-      const description = `AÇÃO - ${actionId.slice(0, 8)} - ${actionName}`.slice(0, 240);
-      const rows = selected.map(w => ({
-        'Apelido': w.name,
-        'Tipo de Transação': PIX_TRANSACTION_TYPES[w.pixType || ''] || 'Pix',
-        'Dados de Pagamento': w.pixKey || '',
-        'Valor': w.value,
-        'Categoria': w.prizeTitle || w.prizeType,
-        'Centro de Custo': 'Premiações Instantâneas',
-        'Descrição': description,
-      }));
+        if (batchError) throw batchError;
 
-      const ws = XLSX.utils.json_to_sheet(rows);
+        const winnerIds = group.map(w => w.id);
+        const { error: updateError } = await supabase
+          .from('winners')
+          .update({
+            status: 'sent_to_batch' as any,
+            batch_id: batch.id,
+            payment_method: 'lote_pix' as any,
+            updated_at: now,
+          } as any)
+          .in('id', winnerIds);
+
+        if (updateError) throw updateError;
+
+        const description = `AÇÃO - ${aId.slice(0, 8)} - ${aName}`.slice(0, 240);
+        for (const w of group) {
+          allRows.push({
+            'Apelido': w.name,
+            'Tipo de Transação': PIX_TRANSACTION_TYPES[w.pixType || ''] || 'Pix',
+            'Dados de Pagamento': w.pixKey || '',
+            'Valor': w.value,
+            'Categoria': w.prizeTitle || w.prizeType,
+            'Centro de Custo': 'Premiações Instantâneas',
+            'Descrição': description,
+          });
+        }
+
+        await insertAuditLog({
+          actionId: aId,
+          actionName: aName,
+          tableName: 'winners',
+          operation: 'lote_pix_gerado',
+          changes: {
+            batch_id: batch.id,
+            winner_count: group.length,
+            total_value: groupTotal,
+            winners: group.map(w => w.name).join(', '),
+            status: { before: 'various', after: 'sent_to_batch' },
+          },
+        });
+      }
+
+      // Generate single XLSX with all winners
+      const ws = XLSX.utils.json_to_sheet(allRows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Lote PIX');
-
-      // Set column widths
       ws['!cols'] = [
         { wch: 25 }, { wch: 18 }, { wch: 35 }, { wch: 12 },
         { wch: 20 }, { wch: 25 }, { wch: 50 },
       ];
-
-      XLSX.writeFile(wb, filename);
-
-      // 4. Audit log
-      await insertAuditLog({
-        actionId,
-        actionName,
-        tableName: 'winners',
-        operation: 'lote_pix_gerado',
-        changes: {
-          batch_id: batch.id,
-          winner_count: selected.length,
-          total_value: totalValue,
-          winners: selected.map(w => w.name).join(', '),
-          status: { before: 'various', after: 'sent_to_batch' },
-        },
-      });
+      const xlsxFilename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, xlsxFilename);
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
       toast.success(`Lote PIX gerado com ${selected.length} ganhadores!`);
