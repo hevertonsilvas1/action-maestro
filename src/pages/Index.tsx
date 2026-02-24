@@ -4,6 +4,8 @@ import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useActions } from '@/hooks/useActions';
 import { useWinners } from '@/hooks/useWinners';
+import { useUserRole } from '@/hooks/useUserRole';
+import { isWindowOpen } from '@/lib/time';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
 import {
   DollarSign,
@@ -15,6 +17,13 @@ import {
   Megaphone,
   ArrowRight,
   Loader2,
+  Send,
+  XCircle,
+  Upload,
+  FileText,
+  Phone,
+  UserX,
+  MessageSquare,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
@@ -24,8 +33,9 @@ import { Progress } from '@/components/ui/progress';
 const Index = () => {
   const { data: actions = [], isLoading: loadingActions } = useActions();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
+  const { isAdmin, loading: loadingRole } = useUserRole();
 
-  const isLoading = loadingActions || loadingWinners;
+  const isLoading = loadingActions || loadingWinners || loadingRole;
 
   // Exclude archived from operational KPIs
   const operationalActions = actions.filter(a => a.status !== 'archived');
@@ -40,14 +50,24 @@ const Index = () => {
     statusCounts[w.status] = (statusCounts[w.status] || 0) + 1;
   });
 
-  // Operational KPIs (same as support dashboard)
-  const pending = winners.filter(w => ['imported', 'pix_requested'].includes(w.status));
-  const inProcess = winners.filter(w => ['pix_received', 'sent_to_batch'].includes(w.status));
+  // Detailed operational metrics
+  const imported = winners.filter(w => w.status === 'imported');
+  const pixRequested = winners.filter(w => w.status === 'pix_requested');
+  const pixReceived = winners.filter(w => w.status === 'pix_received');
+  const sentToBatch = winners.filter(w => w.status === 'sent_to_batch');
   const refused = winners.filter(w => w.status === 'pix_refused');
   const noNumber = winners.filter(w => w.status === 'numero_inexistente');
   const noResponse = winners.filter(w => w.status === 'cliente_nao_responde');
-  const completed = winners.filter(w => ['receipt_attached', 'receipt_sent'].includes(w.status));
+  const receiptAttached = winners.filter(w => w.status === 'receipt_attached');
+  const receiptSent = winners.filter(w => w.status === 'receipt_sent');
+  const completed = [...receiptAttached, ...receiptSent];
   const withErrors = winners.filter(w => !!w.lastPixError);
+  const windowOpenCount = winners.filter(w => isWindowOpen(w.ultimaInteracaoWhatsapp)).length;
+  const windowClosedCount = winners.filter(w => w.ultimaInteracaoWhatsapp && !isWindowOpen(w.ultimaInteracaoWhatsapp)).length;
+
+  const pending = [...imported, ...pixRequested];
+  const inProcess = [...pixReceived, ...sentToBatch];
+
   const today = new Date().toISOString().slice(0, 10);
   const paidToday = completed.filter(w =>
     w.createdAt?.slice(0, 10) === today
@@ -79,35 +99,57 @@ const Index = () => {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            title="Receita Total"
-            value={formatCurrency(totalRevenue)}
-            icon={DollarSign}
-            variant="primary"
-          />
-          <StatsCard
-            title="Lucro Bruto"
-            value={formatCurrency(totalProfit)}
-            icon={TrendingUp}
-            variant="success"
-            trend={totalRevenue > 0 ? { value: formatPercent((totalProfit / totalRevenue) * 100) + ' margem', positive: true } : undefined}
-          />
-          <StatsCard
-            title="Ganhadores"
-            value={String(totalWinners)}
-            icon={Users}
-            variant="accent"
-            subtitle={`${totalPaid} pagos · ${totalWinners - totalPaid} pendentes`}
-          />
-          <StatsCard
-            title="Ações Ativas"
-            value={String(activeActions)}
-            icon={Megaphone}
-            variant="warning"
-            subtitle={`${operationalActions.length} total`}
-          />
+        {/* Financial KPI Cards - Admin only */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatsCard
+              title="Receita Total"
+              value={formatCurrency(totalRevenue)}
+              icon={DollarSign}
+              variant="primary"
+            />
+            <StatsCard
+              title="Lucro Bruto"
+              value={formatCurrency(totalProfit)}
+              icon={TrendingUp}
+              variant="success"
+              trend={totalRevenue > 0 ? { value: formatPercent((totalProfit / totalRevenue) * 100) + ' margem', positive: true } : undefined}
+            />
+            <StatsCard
+              title="Ganhadores"
+              value={String(totalWinners)}
+              icon={Users}
+              variant="accent"
+              subtitle={`${totalPaid} pagos · ${totalWinners - totalPaid} pendentes`}
+            />
+            <StatsCard
+              title="Ações Ativas"
+              value={String(activeActions)}
+              icon={Megaphone}
+              variant="warning"
+              subtitle={`${operationalActions.length} total`}
+            />
+          </div>
+        )}
+
+        {/* Operational Metrics - Both roles */}
+        <div>
+          <h2 className="text-sm font-semibold mb-3">Métricas Operacionais</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <StatsCard title="Importados" value={String(imported.length)} icon={Upload} variant="default" />
+            <StatsCard title="Pix Solicitado" value={String(pixRequested.length)} icon={Send} variant="accent" />
+            <StatsCard title="Pix Recebido" value={String(pixReceived.length)} icon={CheckCircle2} variant="primary" />
+            <StatsCard title="Enviado p/ Lote" value={String(sentToBatch.length)} icon={FileText} variant="accent" />
+            <StatsCard title="Pix Recusado" value={String(refused.length)} icon={XCircle} variant="destructive" />
+            <StatsCard title="Nº Inexistente" value={String(noNumber.length)} icon={Phone} variant="destructive" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-3">
+            <StatsCard title="Não Responde" value={String(noResponse.length)} icon={UserX} variant="warning" />
+            <StatsCard title="Comp. Anexados" value={String(receiptAttached.length)} icon={FileText} variant="success" />
+            <StatsCard title="Comp. Enviados" value={String(receiptSent.length)} icon={Send} variant="success" />
+            <StatsCard title="Janela Aberta" value={String(windowOpenCount)} icon={MessageSquare} variant="success" />
+            <StatsCard title="Janela Fechada" value={String(windowClosedCount)} icon={MessageSquare} variant="destructive" />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
@@ -144,8 +186,7 @@ const Index = () => {
                           />
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{formatCurrency(action.expectedRevenue)}</span>
-                          <span>·</span>
+                          {isAdmin && <span>{formatCurrency(action.expectedRevenue)}</span>}
                           <span>{action.winnersCount} ganhadores</span>
                           <span>·</span>
                           <span>{formatDate(action.updatedAt)}</span>
@@ -159,14 +200,16 @@ const Index = () => {
                           </div>
                         )}
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-success">
-                          {formatCurrency(action.grossProfit)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {formatPercent(action.marginPercent)} margem
-                        </p>
-                      </div>
+                      {isAdmin && (
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-semibold text-success">
+                            {formatCurrency(action.grossProfit)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {formatPercent(action.marginPercent)} margem
+                          </p>
+                        </div>
+                      )}
                     </Link>
                   );
                 })}
@@ -194,13 +237,11 @@ const Index = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-muted-foreground">Pagos</span>
                     <span className="text-xs font-semibold text-success">
-                      {winners.filter(w => w.status === 'receipt_attached' || w.status === 'receipt_sent').length}/{winners.length}
+                      {completed.length}/{winners.length}
                     </span>
                   </div>
                   <Progress
-                    value={
-                      (winners.filter(w => w.status === 'receipt_attached' || w.status === 'receipt_sent').length / winners.length) * 100
-                    }
+                    value={(completed.length / winners.length) * 100}
                     className="h-2"
                   />
                 </div>
@@ -208,23 +249,17 @@ const Index = () => {
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   <div className="text-center p-2 rounded-lg bg-warning/5">
                     <Clock className="h-4 w-4 text-warning mx-auto mb-1" />
-                    <p className="text-xs font-semibold">
-                      {winners.filter(w => ['imported', 'pix_requested'].includes(w.status)).length}
-                    </p>
+                    <p className="text-xs font-semibold">{pending.length}</p>
                     <p className="text-[9px] text-muted-foreground">Pendente</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-info/5">
                     <AlertCircle className="h-4 w-4 text-info mx-auto mb-1" />
-                    <p className="text-xs font-semibold">
-                      {winners.filter(w => ['pix_received', 'sent_to_batch'].includes(w.status)).length}
-                    </p>
+                    <p className="text-xs font-semibold">{inProcess.length}</p>
                     <p className="text-[9px] text-muted-foreground">Em processo</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-success/5">
                     <CheckCircle2 className="h-4 w-4 text-success mx-auto mb-1" />
-                    <p className="text-xs font-semibold">
-                      {winners.filter(w => ['receipt_attached', 'receipt_sent'].includes(w.status)).length}
-                    </p>
+                    <p className="text-xs font-semibold">{completed.length}</p>
                     <p className="text-[9px] text-muted-foreground">Concluído</p>
                   </div>
                 </div>
@@ -233,47 +268,49 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Operational Overview (macro view) */}
-        <div className="rounded-xl border bg-card p-4 lg:p-5">
-          <h2 className="text-sm font-semibold mb-4">Visão Operacional</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <StatsCard
-              title="Pendentes"
-              value={String(pending.length)}
-              icon={Clock}
-              variant="warning"
-              subtitle={formatCurrency(pending.reduce((s, w) => s + w.value, 0))}
-            />
-            <StatsCard
-              title="Em Processo"
-              value={String(inProcess.length)}
-              icon={AlertCircle}
-              variant="accent"
-              subtitle={formatCurrency(inProcess.reduce((s, w) => s + w.value, 0))}
-            />
-            <StatsCard
-              title="Pix Recusado"
-              value={String(refused.length)}
-              icon={AlertCircle}
-              variant="destructive"
-              subtitle={formatCurrency(refused.reduce((s, w) => s + w.value, 0))}
-            />
-            <StatsCard
-              title="Concluídos"
-              value={String(completed.length)}
-              icon={CheckCircle2}
-              variant="success"
-              subtitle={`${paidToday} hoje · ${formatCurrency(completed.reduce((s, w) => s + w.value, 0))}`}
-            />
-            <StatsCard
-              title="Com Erros"
-              value={String(withErrors.length)}
-              icon={AlertCircle}
-              variant="destructive"
-              subtitle="Falha no último envio"
-            />
+        {/* Operational Overview - Admin sees full, support sees summary */}
+        {isAdmin && (
+          <div className="rounded-xl border bg-card p-4 lg:p-5">
+            <h2 className="text-sm font-semibold mb-4">Visão Operacional</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <StatsCard
+                title="Pendentes"
+                value={String(pending.length)}
+                icon={Clock}
+                variant="warning"
+                subtitle={formatCurrency(pending.reduce((s, w) => s + w.value, 0))}
+              />
+              <StatsCard
+                title="Em Processo"
+                value={String(inProcess.length)}
+                icon={AlertCircle}
+                variant="accent"
+                subtitle={formatCurrency(inProcess.reduce((s, w) => s + w.value, 0))}
+              />
+              <StatsCard
+                title="Pix Recusado"
+                value={String(refused.length)}
+                icon={AlertCircle}
+                variant="destructive"
+                subtitle={formatCurrency(refused.reduce((s, w) => s + w.value, 0))}
+              />
+              <StatsCard
+                title="Concluídos"
+                value={String(completed.length)}
+                icon={CheckCircle2}
+                variant="success"
+                subtitle={`${paidToday} hoje · ${formatCurrency(completed.reduce((s, w) => s + w.value, 0))}`}
+              />
+              <StatsCard
+                title="Com Erros"
+                value={String(withErrors.length)}
+                icon={AlertCircle}
+                variant="destructive"
+                subtitle="Falha no último envio"
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   );

@@ -3,6 +3,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
 import { formatCurrency, formatPhone } from '@/lib/format';
+import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -14,12 +15,13 @@ import { WinnersFilters, useWinnersFilters, applyWinnersFilters } from '@/compon
 import { TablePagination, paginateArray } from '@/components/TablePagination';
 import { NewWinnerModal } from '@/components/NewWinnerModal';
 import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
+import { BulkDeleteWinnersDialog } from '@/components/BulkDeleteWinnersDialog';
 import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw, CreditCard, ShieldCheck, AlertTriangle, Paperclip, FileSpreadsheet } from 'lucide-react';
+import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw, CreditCard, ShieldCheck, AlertTriangle, Paperclip, FileSpreadsheet, MessageSquare } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,6 +33,7 @@ export default function WinnersPage() {
   const [pixTarget, setPixTarget] = useState<Winner | null>(null);
   const [newWinnerOpen, setNewWinnerOpen] = useState(false);
   const [deleteWinner, setDeleteWinner] = useState<Winner | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
@@ -124,15 +127,26 @@ export default function WinnersPage() {
                   Solicitar Pix ({selected.size})
                 </Button>
                 {isAdmin && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs"
-                    onClick={() => setBatchStatusOpen(true)}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                    Alterar Status ({selected.size})
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() => setBatchStatusOpen(true)}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      Alterar Status ({selected.size})
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs text-destructive hover:text-destructive"
+                      onClick={() => setBulkDeleteOpen(true)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      Excluir ({selected.size})
+                    </Button>
+                  </>
                 )}
               </>
             )}
@@ -189,6 +203,7 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Tipo PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Solicitação</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Interação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Erro</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Comprovante</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
@@ -196,97 +211,120 @@ export default function WinnersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginated.map((w, i) => (
-                      <tr
-                        key={w.id}
-                        className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
-                        style={{ animationDelay: `${i * 30}ms` }}
-                      >
-                        <td className="px-4 py-3">
-                          <Checkbox
-                            checked={selected.has(w.id)}
-                            onCheckedChange={() => toggleWinner(w.id)}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-sm font-medium">{w.name}</p>
-                          {w.fullName && w.fullName !== w.name && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{formatPhone(w.phone)}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
-                        {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
-                        <td className="px-4 py-3 text-xs text-muted-foreground">
-                          {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">
-                          {w.pixType ? (
-                            <Badge variant="outline" className="text-[10px]">{w.pixType?.toUpperCase()}</Badge>
-                          ) : '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-                            onClick={(e) => { e.stopPropagation(); setPixTarget(w); }}
-                          >
-                            {(() => {
-                              const ps = getPixStatus(w);
-                              if (ps === 'validated') return <><ShieldCheck className="h-3 w-3 text-success" />{maskPixKey(w.pixType, w.pixKey)}</>;
-                              if (ps === 'filled') return <><CreditCard className="h-3 w-3 text-info" />{maskPixKey(w.pixType, w.pixKey)}</>;
-                              return <><AlertTriangle className="h-3 w-3 text-muted-foreground" />Cadastrar</>;
-                            })()}
-                          </button>
-                        </td>
-                        <td className="px-3 py-3 text-[10px] text-muted-foreground">
-                          {w.lastPixRequestAt
-                            ? new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-                            : '—'}
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          {w.lastPixError ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center gap-1 text-[10px] text-destructive cursor-help">
-                                  <AlertCircle className="h-3.5 w-3.5" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="left" className="max-w-xs text-xs">
-                                {w.lastPixError}
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <button
-                            className="text-xs text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
-                            onClick={(e) => { e.stopPropagation(); setReceiptTarget(w); }}
-                          >
-                            {w.receiptUrl ? (
-                              <><Paperclip className="h-3 w-3 text-success" />v{w.receiptVersion}</>
-                            ) : (
-                              <span className="text-[10px]">—</span>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <StatusBadge status={w.status} />
-                        </td>
-                        {isAdmin && (
-                          <td className="px-2 py-3">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeleteWinner(w)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                    {paginated.map((w, i) => {
+                      const windowOpen = isWindowOpen(w.ultimaInteracaoWhatsapp);
+                      return (
+                        <tr
+                          key={w.id}
+                          className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
+                          style={{ animationDelay: `${i * 30}ms` }}
+                        >
+                          <td className="px-4 py-3">
+                            <Checkbox
+                              checked={selected.has(w.id)}
+                              onCheckedChange={() => toggleWinner(w.id)}
+                            />
                           </td>
-                        )}
-                      </tr>
-                    ))}
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-medium">{w.name}</p>
+                            {w.fullName && w.fullName !== w.name && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{formatPhone(w.phone)}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{w.actionName}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{w.prizeTitle}</td>
+                          {isAdmin && <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {w.pixType ? (
+                              <Badge variant="outline" className="text-[10px]">{w.pixType?.toUpperCase()}</Badge>
+                            ) : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                              onClick={(e) => { e.stopPropagation(); setPixTarget(w); }}
+                            >
+                              {(() => {
+                                const ps = getPixStatus(w);
+                                if (ps === 'validated') return <><ShieldCheck className="h-3 w-3 text-success" />{maskPixKey(w.pixType, w.pixKey)}</>;
+                                if (ps === 'filled') return <><CreditCard className="h-3 w-3 text-info" />{maskPixKey(w.pixType, w.pixKey)}</>;
+                                return <><AlertTriangle className="h-3 w-3 text-muted-foreground" />Cadastrar</>;
+                              })()}
+                            </button>
+                          </td>
+                          <td className="px-3 py-3 text-[10px] text-muted-foreground">
+                            {w.lastPixRequestAt
+                              ? new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[10px] text-muted-foreground">
+                                {formatRelativeTime(w.ultimaInteracaoWhatsapp)}
+                              </span>
+                              {w.ultimaInteracaoWhatsapp && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[9px] px-1.5 py-0 ${
+                                    windowOpen
+                                      ? 'bg-success/15 text-success border-success/30'
+                                      : 'bg-destructive/15 text-destructive border-destructive/30'
+                                  }`}
+                                >
+                                  <MessageSquare className="h-2.5 w-2.5 mr-0.5" />
+                                  {windowOpen ? 'Aberta' : 'Fechada'}
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {w.lastPixError ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-destructive cursor-help">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-xs text-xs">
+                                  {w.lastPixError}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <button
+                              className="text-xs text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+                              onClick={(e) => { e.stopPropagation(); setReceiptTarget(w); }}
+                            >
+                              {w.receiptUrl ? (
+                                <><Paperclip className="h-3 w-3 text-success" />v{w.receiptVersion}</>
+                              ) : (
+                                <span className="text-[10px]">—</span>
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <StatusBadge status={w.status} />
+                          </td>
+                          {isAdmin && (
+                            <td className="px-2 py-3">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => setDeleteWinner(w)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -294,48 +332,68 @@ export default function WinnersPage() {
 
             {/* Mobile */}
             <div className="md:hidden space-y-3">
-              {paginated.map((w, i) => (
-                <div
-                  key={w.id}
-                  className={`rounded-xl border bg-card p-4 animate-fade-in cursor-pointer transition-colors ${selected.has(w.id) ? 'ring-2 ring-primary' : ''}`}
-                  style={{ animationDelay: `${i * 50}ms` }}
-                  onClick={() => toggleWinner(w.id)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selected.has(w.id)}
-                        onCheckedChange={() => toggleWinner(w.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div>
-                        <p className="text-sm font-semibold">{w.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{w.actionName}</p>
+              {paginated.map((w, i) => {
+                const windowOpen = isWindowOpen(w.ultimaInteracaoWhatsapp);
+                return (
+                  <div
+                    key={w.id}
+                    className={`rounded-xl border bg-card p-4 animate-fade-in cursor-pointer transition-colors ${selected.has(w.id) ? 'ring-2 ring-primary' : ''}`}
+                    style={{ animationDelay: `${i * 50}ms` }}
+                    onClick={() => toggleWinner(w.id)}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selected.has(w.id)}
+                          onCheckedChange={() => toggleWinner(w.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div>
+                          <p className="text-sm font-semibold">{w.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{w.actionName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {w.ultimaInteracaoWhatsapp && (
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] px-1.5 py-0 ${
+                              windowOpen
+                                ? 'bg-success/15 text-success border-success/30'
+                                : 'bg-destructive/15 text-destructive border-destructive/30'
+                            }`}
+                          >
+                            {windowOpen ? 'Aberta' : 'Fechada'}
+                          </Badge>
+                        )}
+                        {w.lastPixError && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs text-xs">{w.lastPixError}</TooltipContent>
+                          </Tooltip>
+                        )}
+                        <StatusBadge status={w.status} />
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      {w.lastPixError && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs text-xs">{w.lastPixError}</TooltipContent>
-                        </Tooltip>
-                      )}
-                      <StatusBadge status={w.status} />
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{w.prizeTitle}</span>
+                      {isAdmin && <span className="font-medium">{formatCurrency(w.value)}</span>}
                     </div>
+                    {w.ultimaInteracaoWhatsapp && (
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Últ. interação: {formatRelativeTime(w.ultimaInteracaoWhatsapp)}
+                      </p>
+                    )}
+                    {w.lastPixRequestAt && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Últ. solicitação: {new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{w.prizeTitle}</span>
-                    {isAdmin && <span className="font-medium">{formatCurrency(w.value)}</span>}
-                  </div>
-                  {w.lastPixRequestAt && (
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Últ. solicitação: {new Date(w.lastPixRequestAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <TablePagination
@@ -369,6 +427,14 @@ export default function WinnersPage() {
         onOpenChange={(v) => { if (!v) setDeleteWinner(null); }}
         winner={deleteWinner}
         actionName={deleteWinner ? (actionsMap[deleteWinner.actionId] || '') : ''}
+      />
+
+      <BulkDeleteWinnersDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        winners={selectedWinners}
+        actionsMap={actionsMap}
+        onDone={() => setSelected(new Set())}
       />
 
       <BatchStatusModal
