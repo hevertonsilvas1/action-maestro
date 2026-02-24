@@ -33,6 +33,8 @@ function mapWinner(row: any): Winner {
     pixRegisteredAt: row.pix_registered_at ?? undefined,
     pixValidatedBy: row.pix_validated_by ?? undefined,
     pixValidatedAt: row.pix_validated_at ?? undefined,
+    batchId: row.batch_id ?? undefined,
+    paymentMethod: row.payment_method ?? undefined,
     createdAt: row.created_at,
   };
 }

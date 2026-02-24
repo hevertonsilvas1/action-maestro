@@ -17,8 +17,9 @@ import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
 import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
+import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw, CreditCard, ShieldCheck, AlertTriangle, Paperclip } from 'lucide-react';
+import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw, CreditCard, ShieldCheck, AlertTriangle, Paperclip, FileSpreadsheet } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +33,7 @@ export default function WinnersPage() {
   const [deleteWinner, setDeleteWinner] = useState<Winner | null>(null);
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
+  const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
@@ -133,6 +135,12 @@ export default function WinnersPage() {
                   </Button>
                 )}
               </>
+            )}
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
+                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                Gerar Lote PIX
+              </Button>
             )}
             <Button size="sm" variant="outline" className="h-8 text-xs">
               <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -386,6 +394,15 @@ export default function WinnersPage() {
         userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
         actionId={receiptTarget?.actionId || ''}
         actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''}
+      />
+
+      <BatchGeneratorModal
+        open={batchGeneratorOpen}
+        onOpenChange={setBatchGeneratorOpen}
+        winners={winners}
+        actionId=""
+        actionName="Todos"
+        userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
       />
     </AppLayout>
   );

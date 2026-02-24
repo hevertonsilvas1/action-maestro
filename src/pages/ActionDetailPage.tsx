@@ -34,6 +34,7 @@ import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
 import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
+import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { useState, useMemo, useCallback } from 'react';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
@@ -74,6 +75,7 @@ export default function ActionDetailPage() {
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
+  const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [winnersPage, setWinnersPage] = useState(1);
   const [winnersPageSize, setWinnersPageSize] = useState(20);
@@ -466,10 +468,12 @@ export default function ActionDetailPage() {
                   Alterar Status ({selectedWinnerIds.size})
                 </Button>
               )}
-              <Button size="sm" variant="outline" className="h-8 text-xs">
-                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                Gerar Planilha de Lote
-              </Button>
+              {isAdmin && (
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                  Gerar Lote PIX
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="h-8 text-xs">
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 Exportar
@@ -1177,6 +1181,17 @@ export default function ActionDetailPage() {
           userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
           actionId={action.id}
           actionName={action.name}
+        />
+      )}
+
+      {action && (
+        <BatchGeneratorModal
+          open={batchGeneratorOpen}
+          onOpenChange={setBatchGeneratorOpen}
+          winners={winners}
+          actionId={action.id}
+          actionName={action.name}
+          userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
         />
       )}
     </AppLayout>
