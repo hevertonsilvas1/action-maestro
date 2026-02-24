@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const { data: webhookConfig, error: configError } = await serviceClient
       .from("integration_configs")
       .select("value")
-      .eq("key", "UNNICHAT_WEBHOOK_URL")
+      .eq("key", "UNNICHAT_PIX")
       .maybeSingle();
 
     if (configError || !webhookConfig?.value) {
