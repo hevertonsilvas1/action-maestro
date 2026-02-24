@@ -126,12 +126,12 @@ export function BatchGeneratorModal({
         for (const w of group) {
           allRows.push({
             'Apelido': w.name,
-            'Tipo de Transação': PIX_TRANSACTION_TYPES[w.pixType || ''] || 'Pix',
-            'Dados de Pagamento': w.pixKey || '',
-            'Valor': w.value,
-            'Categoria': w.prizeTitle || w.prizeType,
-            'Centro de Custo': 'Premiações Instantâneas',
-            'Descrição': description,
+            'Tipo de Transação': PIX_TRANSACTION_TYPES[w.pixType || ''] || 'Pix - Celular',
+            'Dados de Pagamento (Número do Boleto ou Chave Pix)': w.pixKey || '',
+            'Valor (R$)': w.value,
+            'Categoria (Opcional)': w.prizeTitle || w.prizeType || '',
+            'Centro de Custo (Opcional)': 'Premiações Instantâneas',
+            'Descrição (Opcional) (Max. 240 Caractéres)': description,
           });
         }
 
@@ -150,16 +150,59 @@ export function BatchGeneratorModal({
         });
       }
 
-      // Generate single XLSX with all winners
-      const ws = XLSX.utils.json_to_sheet(allRows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Lote PIX');
-      ws['!cols'] = [
-        { wch: 25 }, { wch: 18 }, { wch: 35 }, { wch: 12 },
-        { wch: 20 }, { wch: 25 }, { wch: 50 },
-      ];
-      const xlsxFilename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      XLSX.writeFile(wb, xlsxFilename);
+      // Generate XLSX files, splitting if > 2MB
+      const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+      const baseFilename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+
+      const buildWorkbook = (rows: Record<string, any>[]) => {
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Lote PIX');
+        ws['!cols'] = [
+          { wch: 25 }, { wch: 18 }, { wch: 50 }, { wch: 12 },
+          { wch: 20 }, { wch: 25 }, { wch: 50 },
+        ];
+        return wb;
+      };
+
+      // Try full file first
+      const fullWb = buildWorkbook(allRows);
+      const fullBuf = XLSX.write(fullWb, { type: 'array', bookType: 'xlsx' });
+
+      if (fullBuf.byteLength <= MAX_SIZE) {
+        XLSX.writeFile(fullWb, `${baseFilename}.xlsx`);
+      } else {
+        // Split into chunks that fit under 2MB
+        let chunkStart = 0;
+        let part = 1;
+        while (chunkStart < allRows.length) {
+          let chunkEnd = allRows.length;
+          let buf: ArrayBuffer;
+          // Binary search for max rows that fit
+          while (chunkEnd > chunkStart + 1) {
+            const mid = Math.floor((chunkStart + chunkEnd) / 2);
+            const testWb = buildWorkbook(allRows.slice(chunkStart, mid));
+            buf = XLSX.write(testWb, { type: 'array', bookType: 'xlsx' });
+            if (buf.byteLength <= MAX_SIZE) {
+              chunkEnd = mid;
+              // Try more rows
+              const testWb2 = buildWorkbook(allRows.slice(chunkStart, chunkEnd + Math.floor((allRows.length - chunkEnd) / 2)));
+              const buf2 = XLSX.write(testWb2, { type: 'array', bookType: 'xlsx' });
+              if (buf2.byteLength <= MAX_SIZE) {
+                chunkEnd = chunkStart + Math.floor((chunkEnd - chunkStart + (allRows.length - chunkEnd) / 2));
+              }
+              break;
+            } else {
+              chunkEnd = mid;
+            }
+          }
+          const chunkWb = buildWorkbook(allRows.slice(chunkStart, chunkEnd));
+          XLSX.writeFile(chunkWb, `${baseFilename}_parte${part}.xlsx`);
+          chunkStart = chunkEnd;
+          part++;
+        }
+        toast.info(`Arquivo dividido em ${part - 1} partes (limite 2MB por arquivo).`);
+      }
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
       toast.success(`Lote PIX gerado com ${selected.length} ganhadores!`);
