@@ -24,6 +24,8 @@ const CHANGEABLE_STATUSES: WinnerStatus[] = [
   'pix_received',
   'sent_to_batch',
   'pix_refused',
+  'numero_inexistente',
+  'cliente_nao_responde',
   'receipt_attached',
   'receipt_sent',
 ];

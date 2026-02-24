@@ -44,6 +44,8 @@ const Index = () => {
   const pending = winners.filter(w => ['imported', 'pix_requested'].includes(w.status));
   const inProcess = winners.filter(w => ['pix_received', 'sent_to_batch'].includes(w.status));
   const refused = winners.filter(w => w.status === 'pix_refused');
+  const noNumber = winners.filter(w => w.status === 'numero_inexistente');
+  const noResponse = winners.filter(w => w.status === 'cliente_nao_responde');
   const completed = winners.filter(w => ['receipt_attached', 'receipt_sent'].includes(w.status));
   const withErrors = winners.filter(w => !!w.lastPixError);
   const today = new Date().toISOString().slice(0, 10);

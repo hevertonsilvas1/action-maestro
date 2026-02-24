@@ -303,6 +303,47 @@ export type Database = {
         }
         Relationships: []
       }
+      pix_batches: {
+        Row: {
+          action_id: string
+          created_at: string
+          filename: string | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          total_value: number
+          winner_count: number
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          filename?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          total_value?: number
+          winner_count?: number
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          filename?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          total_value?: number
+          winner_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pix_batches_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prize_type_configs: {
         Row: {
           active: boolean
@@ -447,6 +488,7 @@ export type Database = {
       winners: {
         Row: {
           action_id: string
+          batch_id: string | null
           cpf: string | null
           created_at: string
           full_name: string | null
@@ -455,6 +497,7 @@ export type Database = {
           last_pix_request_at: string | null
           last_pix_requested_by: string | null
           name: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
           phone: string | null
           pix_holder_doc: string | null
           pix_holder_name: string | null
@@ -480,6 +523,7 @@ export type Database = {
         }
         Insert: {
           action_id: string
+          batch_id?: string | null
           cpf?: string | null
           created_at?: string
           full_name?: string | null
@@ -488,6 +532,7 @@ export type Database = {
           last_pix_request_at?: string | null
           last_pix_requested_by?: string | null
           name: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           phone?: string | null
           pix_holder_doc?: string | null
           pix_holder_name?: string | null
@@ -513,6 +558,7 @@ export type Database = {
         }
         Update: {
           action_id?: string
+          batch_id?: string | null
           cpf?: string | null
           created_at?: string
           full_name?: string | null
@@ -521,6 +567,7 @@ export type Database = {
           last_pix_request_at?: string | null
           last_pix_requested_by?: string | null
           name?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           phone?: string | null
           pix_holder_doc?: string | null
           pix_holder_name?: string | null
@@ -550,6 +597,13 @@ export type Database = {
             columns: ["action_id"]
             isOneToOne: false
             referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winners_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "pix_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -583,6 +637,7 @@ export type Database = {
         | "taxes"
         | "legalization"
         | "other"
+      payment_method: "lote_pix" | "manual"
       pix_type: "cpf" | "cnpj" | "email" | "phone" | "random"
       prize_type:
         | "main"
@@ -603,6 +658,8 @@ export type Database = {
         | "receipt_sent"
         | "pix_refused"
         | "receipt_attached"
+        | "numero_inexistente"
+        | "cliente_nao_responde"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -745,6 +802,7 @@ export const Constants = {
         "legalization",
         "other",
       ],
+      payment_method: ["lote_pix", "manual"],
       pix_type: ["cpf", "cnpj", "email", "phone", "random"],
       prize_type: ["main", "instant", "spin", "quota", "blessed_hour", "bonus"],
       winner_status: [
@@ -759,6 +817,8 @@ export const Constants = {
         "receipt_sent",
         "pix_refused",
         "receipt_attached",
+        "numero_inexistente",
+        "cliente_nao_responde",
       ],
     },
   },

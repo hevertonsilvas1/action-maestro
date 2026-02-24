@@ -53,10 +53,13 @@ export interface Winner {
   pixRegisteredAt?: string;
   pixValidatedBy?: string;
   pixValidatedAt?: string;
+  batchId?: string;
+  paymentMethod?: PaymentMethod;
   createdAt: string;
 }
 
 export type PixType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
+export type PaymentMethod = 'lote_pix' | 'manual';
 
 export const PIX_TYPE_LABELS: Record<PixType, string> = {
   cpf: 'CPF',
@@ -83,7 +86,9 @@ export type WinnerStatus =
   | 'paid'
   | 'receipt_sent'
   | 'pix_refused'
-  | 'receipt_attached';
+  | 'receipt_attached'
+  | 'numero_inexistente'
+  | 'cliente_nao_responde';
 
 export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
   imported: 'Importado',
@@ -97,6 +102,8 @@ export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
   receipt_sent: 'Comprovante Enviado',
   pix_refused: 'Pix Recusado',
   receipt_attached: 'Comprovante Anexado',
+  numero_inexistente: 'Número Inexistente',
+  cliente_nao_responde: 'Cliente Não Responde',
 };
 
 export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
@@ -111,6 +118,8 @@ export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
   receipt_sent: 'bg-success/15 text-success',
   pix_refused: 'bg-destructive/15 text-destructive',
   receipt_attached: 'bg-success/15 text-success',
+  numero_inexistente: 'bg-destructive/15 text-destructive',
+  cliente_nao_responde: 'bg-warning/15 text-warning',
 };
 
 export const ACTION_STATUS_LABELS: Record<Action['status'], string> = {

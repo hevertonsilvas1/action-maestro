@@ -30,6 +30,8 @@ export default function SupportDashboard() {
 
   const pending = winners.filter(w => ['imported', 'pix_requested'].includes(w.status));
   const refused = winners.filter(w => w.status === 'pix_refused');
+  const noNumber = winners.filter(w => w.status === 'numero_inexistente');
+  const noResponse = winners.filter(w => w.status === 'cliente_nao_responde');
   const inProcess = winners.filter(w => ['pix_received', 'sent_to_batch'].includes(w.status));
   const completed = winners.filter(w => ['receipt_attached', 'receipt_sent'].includes(w.status));
   const withErrors = winners.filter(w => !!w.lastPixError);
@@ -41,7 +43,7 @@ export default function SupportDashboard() {
   const completedValue = completed.reduce((s, w) => s + w.value, 0);
 
   // Work queue: imported + pix_requested + pix_refused
-  const workQueue = winners.filter(w => ['imported', 'pix_requested', 'pix_refused'].includes(w.status));
+  const workQueue = winners.filter(w => ['imported', 'pix_requested', 'pix_refused', 'numero_inexistente', 'cliente_nao_responde'].includes(w.status));
 
   if (isLoading) {
     return (

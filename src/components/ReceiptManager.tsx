@@ -14,7 +14,7 @@ import type { Winner } from '@/types';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const RECEIPT_ELIGIBLE_STATUSES = ['sent_to_batch', 'pix_refused', 'receipt_attached', 'receipt_sent'];
+const RECEIPT_ELIGIBLE_STATUSES = ['sent_to_batch', 'pix_received', 'pix_refused', 'receipt_attached', 'receipt_sent'];
 
 interface ReceiptManagerProps {
   open: boolean;
@@ -81,6 +81,9 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
 
       // Since bucket is private, we store the path for signed URL generation
       const now = new Date().toISOString();
+      // If no payment_method yet, set to manual (no batch)
+      const paymentMethod = winner.paymentMethod || 'manual';
+
       const { error: updateError } = await supabase
         .from('winners')
         .update({
@@ -90,8 +93,9 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           receipt_attached_by: userName,
           receipt_version: newVersion,
           status: 'receipt_attached' as any,
+          payment_method: paymentMethod as any,
           updated_at: now,
-        })
+        } as any)
         .eq('id', winner.id);
 
       if (updateError) throw updateError;
@@ -148,6 +152,9 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
       if (storageError) throw storageError;
 
       const now = new Date().toISOString();
+      // Revert to previous status based on payment method
+      const revertStatus = winner.batchId ? 'sent_to_batch' : 'pix_received';
+
       const { error: updateError } = await supabase
         .from('winners')
         .update({
@@ -157,7 +164,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           receipt_attached_by: null,
           receipt_sent_at: null,
           receipt_version: 0,
-          status: 'sent_to_batch' as any,
+          status: revertStatus as any,
           updated_at: now,
         })
         .eq('id', winner.id);
@@ -178,7 +185,8 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
       });
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      toast.success('Comprovante excluído. Status voltou para "Enviado para Lote".');
+      const revertLabel = winner.batchId ? 'Enviado para Lote' : 'Pix Recebido / Validado';
+      toast.success(`Comprovante excluído. Status voltou para "${revertLabel}".`);
       onOpenChange(false);
     } catch (err) {
       console.error('Delete receipt error:', err);
@@ -279,8 +287,8 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         )}
 
         {!canUpload && !hasReceipt && (
-          <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
-            O comprovante só pode ser anexado quando o ganhador estiver em "Enviado para Lote" ou "Pix Recusado".
+    <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+            O comprovante só pode ser anexado quando o ganhador estiver em "Pix Recebido / Validado", "Enviado para Lote" ou "Pix Recusado".
           </div>
         )}
 
