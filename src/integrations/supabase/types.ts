@@ -451,6 +451,9 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          last_pix_error: string | null
+          last_pix_request_at: string | null
+          last_pix_requested_by: string | null
           name: string
           phone: string | null
           pix_key: string | null
@@ -469,6 +472,9 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          last_pix_error?: string | null
+          last_pix_request_at?: string | null
+          last_pix_requested_by?: string | null
           name: string
           phone?: string | null
           pix_key?: string | null
@@ -487,6 +493,9 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          last_pix_error?: string | null
+          last_pix_request_at?: string | null
+          last_pix_requested_by?: string | null
           name?: string
           phone?: string | null
           pix_key?: string | null
@@ -556,6 +565,8 @@ export type Database = {
         | "awaiting_receipt"
         | "paid"
         | "receipt_sent"
+        | "pix_refused"
+        | "receipt_attached"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -710,6 +721,8 @@ export const Constants = {
         "awaiting_receipt",
         "paid",
         "receipt_sent",
+        "pix_refused",
+        "receipt_attached",
       ],
     },
   },
