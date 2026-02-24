@@ -1,0 +1,1 @@
+ALTER TABLE public.winners ADD COLUMN IF NOT EXISTS ultima_interacao_whatsapp timestamp with time zone;

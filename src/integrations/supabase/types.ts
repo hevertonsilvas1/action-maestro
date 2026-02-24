@@ -518,6 +518,7 @@ export type Database = {
           receipt_url: string | null
           receipt_version: number
           status: Database["public"]["Enums"]["winner_status"]
+          ultima_interacao_whatsapp: string | null
           updated_at: string
           value: number
         }
@@ -553,6 +554,7 @@ export type Database = {
           receipt_url?: string | null
           receipt_version?: number
           status?: Database["public"]["Enums"]["winner_status"]
+          ultima_interacao_whatsapp?: string | null
           updated_at?: string
           value?: number
         }
@@ -588,6 +590,7 @@ export type Database = {
           receipt_url?: string | null
           receipt_version?: number
           status?: Database["public"]["Enums"]["winner_status"]
+          ultima_interacao_whatsapp?: string | null
           updated_at?: string
           value?: number
         }
