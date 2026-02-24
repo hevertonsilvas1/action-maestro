@@ -1,1 +1,4 @@
 project_id = "souftmjtvzawjvgvrxfc"
+
+[functions.request-pix]
+verify_jwt = false

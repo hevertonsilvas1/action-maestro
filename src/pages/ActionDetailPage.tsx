@@ -24,8 +24,12 @@ import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
 import { useArchiveAction, useRestoreAction } from '@/hooks/useArchiveAction';
 import { DeleteActionDialog } from '@/components/DeleteActionDialog';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
+import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
+import { useRequestPix } from '@/hooks/useRequestPix';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -49,6 +53,8 @@ export default function ActionDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
@@ -91,6 +97,38 @@ export default function ActionDetailPage() {
   const auditTotalPages = Math.max(1, Math.ceil(filteredAuditLog.length / auditPageSize));
   const safeAuditPage = Math.min(auditPage, auditTotalPages);
   const paginatedAuditLog = filteredAuditLog.slice((safeAuditPage - 1) * auditPageSize, safeAuditPage * auditPageSize);
+
+  const { requestPix, isPending: isRequestingPix } = useRequestPix(id ?? '', action?.name ?? '');
+
+  const toggleWinner = useCallback((winnerId: string) => {
+    setSelectedWinnerIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(winnerId)) next.delete(winnerId);
+      else next.add(winnerId);
+      return next;
+    });
+  }, []);
+
+  const toggleAllWinners = useCallback(() => {
+    if (selectedWinnerIds.size === winners.length) {
+      setSelectedWinnerIds(new Set());
+    } else {
+      setSelectedWinnerIds(new Set(winners.map((w) => w.id)));
+    }
+  }, [winners, selectedWinnerIds.size]);
+
+  const selectedWinners = useMemo(
+    () => winners.filter((w) => selectedWinnerIds.has(w.id)),
+    [winners, selectedWinnerIds]
+  );
+
+  const handleRequestPix = async () => {
+    const eligible = getEligibleWinners(selectedWinners);
+    if (eligible.length === 0) return;
+    await requestPix(eligible);
+    setPixModalOpen(false);
+    setSelectedWinnerIds(new Set());
+  };
 
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
@@ -365,9 +403,21 @@ export default function ActionDetailPage() {
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Importar Ganhadores
               </Button>
-              <Button size="sm" variant="outline" className="h-8 text-xs">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => {
+                  if (selectedWinnerIds.size === 0) {
+                    toast.info('Selecione pelo menos um ganhador.');
+                    return;
+                  }
+                  setPixModalOpen(true);
+                }}
+                disabled={isRequestingPix}
+              >
                 <Send className="h-3.5 w-3.5 mr-1.5" />
-                Solicitar Pix
+                Solicitar Pix {selectedWinnerIds.size > 0 && `(${selectedWinnerIds.size})`}
               </Button>
               <Button size="sm" variant="outline" className="h-8 text-xs">
                 <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
@@ -384,6 +434,13 @@ export default function ActionDetailPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/40">
+                      <th className="px-3 py-3 w-10">
+                        <Checkbox
+                          checked={winners.length > 0 && selectedWinnerIds.size === winners.length}
+                          onCheckedChange={toggleAllWinners}
+                          aria-label="Selecionar todos"
+                        />
+                      </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nome</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Telefone</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Prêmio</th>
@@ -395,14 +452,24 @@ export default function ActionDetailPage() {
                   </thead>
                   <tbody>
                     {winners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 7 : 6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
                     ) : (
                       winners.map((w, i) => (
                         <tr
                           key={w.id}
-                          className="border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in"
+                          className={cn(
+                            "border-b last:border-b-0 hover:bg-muted/30 transition-colors animate-fade-in",
+                            selectedWinnerIds.has(w.id) && "bg-primary/5"
+                          )}
                           style={{ animationDelay: `${i * 30}ms` }}
                         >
+                          <td className="px-3 py-3">
+                            <Checkbox
+                              checked={selectedWinnerIds.has(w.id)}
+                              onCheckedChange={() => toggleWinner(w.id)}
+                              aria-label={`Selecionar ${w.name}`}
+                            />
+                          </td>
                           <td className="px-4 py-3">
                             <p className="text-sm font-medium">{w.name}</p>
                             {w.fullName && <p className="text-[10px] text-muted-foreground">{w.fullName}</p>}
@@ -937,6 +1004,17 @@ export default function ActionDetailPage() {
           onClose={() => setImportModalOpen(false)}
           actionId={action.id}
           actionName={action.name}
+        />
+      )}
+
+      {action && (
+        <RequestPixModal
+          open={pixModalOpen}
+          onOpenChange={setPixModalOpen}
+          winners={selectedWinners}
+          onConfirm={handleRequestPix}
+          isPending={isRequestingPix}
+          isAdmin={isAdmin}
         />
       )}
     </AppLayout>
