@@ -21,7 +21,7 @@ import {
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
   History, User, CalendarIcon, X, Search, FileText, AlertCircle, RefreshCw,
-  CreditCard, ShieldCheck, AlertTriangle,
+  CreditCard, ShieldCheck, AlertTriangle, Paperclip,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +33,7 @@ import { NewWinnerModal } from '@/components/NewWinnerModal';
 import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
 import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
+import { ReceiptManager } from '@/components/ReceiptManager';
 import { useState, useMemo, useCallback } from 'react';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
@@ -72,6 +73,7 @@ export default function ActionDetailPage() {
   const [deleteWinnerTarget, setDeleteWinnerTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
+  const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [winnersPage, setWinnersPage] = useState(1);
   const [winnersPageSize, setWinnersPageSize] = useState(20);
@@ -501,6 +503,7 @@ export default function ActionDetailPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Solicitação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Erro</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Comprovante</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                       {isAdmin && <th className="px-2 py-3 w-8"></th>}
                     </tr>
@@ -571,6 +574,18 @@ export default function ActionDetailPage() {
                                 <TooltipContent side="left" className="max-w-xs text-xs">{w.lastPixError}</TooltipContent>
                               </Tooltip>
                             ) : <span className="text-[10px] text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <button
+                              className="text-xs text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+                              onClick={(e) => { e.stopPropagation(); setReceiptTarget(w); }}
+                            >
+                              {w.receiptUrl ? (
+                                <><Paperclip className="h-3 w-3 text-success" />v{w.receiptVersion}</>
+                              ) : (
+                                <span className="text-[10px]">—</span>
+                              )}
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-center">
                             <StatusBadge status={w.status} />
@@ -1151,6 +1166,17 @@ export default function ActionDetailPage() {
           isAdmin={isAdmin}
           userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
           actionId={action.id}
+        />
+      )}
+
+      {action && (
+        <ReceiptManager
+          open={!!receiptTarget}
+          onOpenChange={(v) => { if (!v) setReceiptTarget(null); }}
+          winner={receiptTarget}
+          userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
+          actionId={action.id}
+          actionName={action.name}
         />
       )}
     </AppLayout>

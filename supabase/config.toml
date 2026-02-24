@@ -2,3 +2,6 @@ project_id = "souftmjtvzawjvgvrxfc"
 
 [functions.request-pix]
 verify_jwt = false
+
+[functions.send-receipt]
+verify_jwt = false

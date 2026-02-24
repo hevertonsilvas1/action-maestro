@@ -468,7 +468,12 @@ export type Database = {
           prize_datetime: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
+          receipt_attached_at: string | null
+          receipt_attached_by: string | null
+          receipt_filename: string | null
+          receipt_sent_at: string | null
           receipt_url: string | null
+          receipt_version: number
           status: Database["public"]["Enums"]["winner_status"]
           updated_at: string
           value: number
@@ -496,7 +501,12 @@ export type Database = {
           prize_datetime?: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
+          receipt_attached_at?: string | null
+          receipt_attached_by?: string | null
+          receipt_filename?: string | null
+          receipt_sent_at?: string | null
           receipt_url?: string | null
+          receipt_version?: number
           status?: Database["public"]["Enums"]["winner_status"]
           updated_at?: string
           value?: number
@@ -524,7 +534,12 @@ export type Database = {
           prize_datetime?: string | null
           prize_title?: string
           prize_type?: Database["public"]["Enums"]["prize_type"]
+          receipt_attached_at?: string | null
+          receipt_attached_by?: string | null
+          receipt_filename?: string | null
+          receipt_sent_at?: string | null
           receipt_url?: string | null
+          receipt_version?: number
           status?: Database["public"]["Enums"]["winner_status"]
           updated_at?: string
           value?: number
