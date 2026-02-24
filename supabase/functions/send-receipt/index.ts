@@ -121,11 +121,27 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Send to UnniChat
-    const unnichatResponse = await fetch(unnichatUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    // Check if this is a confirmation message mode
+    const isConfirmation = body.mode === "confirmation";
+
+    let payloadBody: Record<string, unknown>;
+    if (isConfirmation) {
+      // Fetch configurable template
+      const { data: templateConfig } = await serviceClient
+        .from("integration_configs")
+        .select("value")
+        .eq("key", "RECEIPT_CONFIRMATION_TEMPLATE")
+        .maybeSingle();
+      const template = templateConfig?.value || "Olá! Temos seu comprovante de pagamento. Responda esta mensagem para recebê-lo.";
+      payloadBody = {
+        tel: winner_phone,
+        nome: winner_name,
+        acao: action_name,
+        mensagem: template,
+        row_number: 0,
+      };
+    } else {
+      payloadBody = {
         tel: winner_phone,
         nome: winner_name,
         acao: action_name,
@@ -133,7 +149,14 @@ Deno.serve(async (req) => {
         valor: String(prize_value),
         comprovante_url: signedUrlData.signedUrl,
         row_number: 0,
-      }),
+      };
+    }
+
+    // Send to UnniChat
+    const unnichatResponse = await fetch(unnichatUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloadBody),
     });
 
     if (!unnichatResponse.ok) {
@@ -169,11 +192,13 @@ Deno.serve(async (req) => {
 
     // Success: update status
     const now = new Date().toISOString();
+    const isConfirmationMode = body.mode === "confirmation";
     await serviceClient
       .from("winners")
       .update({
-        status: "receipt_sent",
-        receipt_sent_at: now,
+        status: isConfirmationMode ? "receipt_attached" : "receipt_sent",
+        receipt_sent_at: isConfirmationMode ? undefined : now,
+        last_outbound_at: now,
         last_pix_error: null,
         updated_at: now,
       })
@@ -185,7 +210,7 @@ Deno.serve(async (req) => {
       action_name,
       table_name: "winners",
       record_id: winner_id,
-      operation: "comprovante_enviado",
+      operation: isConfirmationMode ? "confirmacao_enviada" : "comprovante_enviado",
       user_id: user.id,
       user_name: userName,
       user_role: userRole,
@@ -194,7 +219,8 @@ Deno.serve(async (req) => {
         prize_title,
         prize_value,
         channel: "UnniChat",
-        status: { before: "receipt_attached", after: "receipt_sent" },
+        mode: isConfirmationMode ? "confirmation" : "receipt",
+        status: { before: "receipt_attached", after: isConfirmationMode ? "receipt_attached" : "receipt_sent" },
       },
     });
 

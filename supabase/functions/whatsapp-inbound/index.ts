@@ -7,13 +7,10 @@ const corsHeaders = {
 };
 
 function normalizePhone(raw: string): string {
-  // Strip everything non-digit
   let digits = raw.replace(/\D/g, "");
-  // Remove leading 55 (Brazil country code) if present and long enough
   if (digits.startsWith("55") && digits.length >= 12) {
     digits = digits.slice(2);
   }
-  // Remove leading 0
   if (digits.startsWith("0")) {
     digits = digits.slice(1);
   }
@@ -33,7 +30,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate webhook secret
     const secret = req.headers.get("x-webhook-secret");
     const expectedSecret = Deno.env.get("UNNICHAT_INBOUND_SECRET");
 
@@ -45,7 +41,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { phone, name, message, timestamp } = body;
+    const { phone } = body;
 
     if (!phone) {
       return new Response(JSON.stringify({ error: "phone is required" }), {
@@ -60,10 +56,10 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Find winner by normalized phone (strip non-digits from DB phone too)
+    // Find winners by phone
     const { data: winners, error: findErr } = await serviceClient
       .from("winners")
-      .select("id, status, action_id, name, phone, prize_title, prize_type, value, receipt_url, receipt_sent_at")
+      .select("id, status, action_id, name, phone, prize_title, prize_type, value, receipt_url, receipt_sent_at, created_at")
       .not("phone", "is", null);
 
     if (findErr) {
@@ -74,7 +70,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Match by normalized phone
     const matched = (winners || []).filter(
       (w) => normalizePhone(w.phone || "") === normalized
     );
@@ -86,105 +81,159 @@ Deno.serve(async (req) => {
       });
     }
 
-    let receiptsSent = 0;
-
+    // Update ultima_interacao_whatsapp for all matched
+    const now = new Date().toISOString();
     for (const winner of matched) {
-      // Update last interaction timestamp
       await serviceClient
         .from("winners")
-        .update({ ultima_interacao_whatsapp: new Date().toISOString() })
+        .update({ ultima_interacao_whatsapp: now })
         .eq("id", winner.id);
+    }
 
-      // Auto-send receipt if status is receipt_attached and not yet sent
-      if (winner.status === "receipt_attached" && !winner.receipt_sent_at) {
-        // Get receipt path from URL
-        const receiptPath = extractStoragePath(winner.receipt_url || "");
-        if (!receiptPath) continue;
+    // Check auto-send config
+    const { data: autoSendConfig } = await serviceClient
+      .from("integration_configs")
+      .select("value")
+      .eq("key", "AUTO_SEND_RECEIPT_ON_INBOUND")
+      .maybeSingle();
 
-        // Get action name
-        const { data: action } = await serviceClient
-          .from("actions")
-          .select("name")
-          .eq("id", winner.action_id)
-          .maybeSingle();
+    const autoSendEnabled = autoSendConfig?.value !== "false";
 
-        // Get webhook URL
-        const { data: webhookConfig } = await serviceClient
-          .from("integration_configs")
-          .select("value")
-          .eq("key", "UNNICHAT_COMPROVANTE")
-          .maybeSingle();
+    if (!autoSendEnabled) {
+      return new Response(
+        JSON.stringify({ ok: true, matched: matched.length, receipts_sent: 0, auto_send: false }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-        let unnichatUrl = webhookConfig?.value;
-        if (!unnichatUrl) {
-          const { data: fallback } = await serviceClient
-            .from("integration_configs")
-            .select("value")
-            .eq("key", "UNNICHAT_PIX")
-            .maybeSingle();
-          unnichatUrl = fallback?.value;
-        }
+    // Filter candidates for auto-send: receipt_attached and not yet sent
+    const candidates = matched
+      .filter((w) => w.status === "receipt_attached" && !w.receipt_sent_at && w.receipt_url)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        if (!unnichatUrl) continue;
-
-        // Generate signed URL
-        const { data: signedUrlData, error: signedErr } = await serviceClient.storage
-          .from("receipts")
-          .createSignedUrl(receiptPath, 7 * 24 * 60 * 60);
-
-        if (signedErr || !signedUrlData?.signedUrl) continue;
-
-        // Send to UnniChat
-        const resp = await fetch(unnichatUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tel: winner.phone,
-            nome: winner.name,
-            acao: action?.name || "",
-            tipo_premio: winner.prize_title,
-            valor: String(winner.value),
-            comprovante_url: signedUrlData.signedUrl,
-            row_number: 0,
-          }),
-        });
-
-        if (resp.ok) {
-          await resp.text();
-          const now = new Date().toISOString();
-          await serviceClient
-            .from("winners")
-            .update({
-              status: "receipt_sent",
-              receipt_sent_at: now,
-              last_pix_error: null,
-              updated_at: now,
-            })
-            .eq("id", winner.id);
-
-          // Audit
-          await serviceClient.from("action_audit_log").insert({
-            action_id: winner.action_id,
-            action_name: action?.name || null,
-            table_name: "winners",
-            record_id: winner.id,
-            operation: "comprovante_enviado_auto",
-            user_id: null,
-            user_name: "Sistema (Inbound WhatsApp)",
-            user_role: null,
-            changes: {
-              winner_name: winner.name,
-              prize_title: winner.prize_title,
-              trigger: "whatsapp_inbound",
-              status: { before: "receipt_attached", after: "receipt_sent" },
-            },
-          });
-
-          receiptsSent++;
-        } else {
-          await resp.text();
-        }
+    if (candidates.length > 1) {
+      // Log conflict on extras
+      for (let i = 1; i < candidates.length; i++) {
+        await serviceClient
+          .from("winners")
+          .update({ last_pix_error: `Conflito: múltiplos ganhadores com mesmo telefone. Comprovante enviado para ${candidates[0].name} (mais recente).` })
+          .eq("id", candidates[i].id);
       }
+    }
+
+    let receiptsSent = 0;
+    const target = candidates[0];
+    if (!target) {
+      return new Response(
+        JSON.stringify({ ok: true, matched: matched.length, receipts_sent: 0 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get receipt path
+    const receiptPath = extractStoragePath(target.receipt_url || "");
+    if (!receiptPath) {
+      return new Response(
+        JSON.stringify({ ok: true, matched: matched.length, receipts_sent: 0 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get action name
+    const { data: action } = await serviceClient
+      .from("actions")
+      .select("name")
+      .eq("id", target.action_id)
+      .maybeSingle();
+
+    // Get webhook URL
+    const { data: webhookConfig } = await serviceClient
+      .from("integration_configs")
+      .select("value")
+      .eq("key", "UNNICHAT_COMPROVANTE")
+      .maybeSingle();
+
+    let unnichatUrl = webhookConfig?.value;
+    if (!unnichatUrl) {
+      const { data: fallback } = await serviceClient
+        .from("integration_configs")
+        .select("value")
+        .eq("key", "UNNICHAT_PIX")
+        .maybeSingle();
+      unnichatUrl = fallback?.value;
+    }
+
+    if (!unnichatUrl) {
+      return new Response(
+        JSON.stringify({ ok: true, matched: matched.length, receipts_sent: 0, error: "No webhook configured" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Generate signed URL
+    const { data: signedUrlData, error: signedErr } = await serviceClient.storage
+      .from("receipts")
+      .createSignedUrl(receiptPath, 7 * 24 * 60 * 60);
+
+    if (signedErr || !signedUrlData?.signedUrl) {
+      return new Response(
+        JSON.stringify({ ok: true, matched: matched.length, receipts_sent: 0, error: "Signed URL failed" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Send to UnniChat
+    const resp = await fetch(unnichatUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tel: target.phone,
+        nome: target.name,
+        acao: action?.name || "",
+        tipo_premio: target.prize_title,
+        valor: String(target.value),
+        comprovante_url: signedUrlData.signedUrl,
+        row_number: 0,
+      }),
+    });
+
+    if (resp.ok) {
+      await resp.text();
+      await serviceClient
+        .from("winners")
+        .update({
+          status: "receipt_sent",
+          receipt_sent_at: now,
+          last_outbound_at: now,
+          last_pix_error: null,
+          updated_at: now,
+        })
+        .eq("id", target.id);
+
+      await serviceClient.from("action_audit_log").insert({
+        action_id: target.action_id,
+        action_name: action?.name || null,
+        table_name: "winners",
+        record_id: target.id,
+        operation: "comprovante_enviado_auto",
+        user_id: null,
+        user_name: "Sistema (Inbound WhatsApp)",
+        user_role: null,
+        changes: {
+          winner_name: target.name,
+          prize_title: target.prize_title,
+          trigger: "whatsapp_inbound",
+          status: { before: "receipt_attached", after: "receipt_sent" },
+        },
+      });
+
+      receiptsSent++;
+    } else {
+      const errText = await resp.text();
+      await serviceClient
+        .from("winners")
+        .update({ last_pix_error: `Erro auto-envio inbound: ${resp.status} ${resp.statusText}`.substring(0, 200) })
+        .eq("id", target.id);
     }
 
     return new Response(
@@ -202,13 +251,10 @@ Deno.serve(async (req) => {
 
 function extractStoragePath(url: string): string | null {
   if (!url) return null;
-  // Handle /object/public/receipts/... or /object/sign/receipts/...
   const match = url.match(/\/object\/(?:public|sign)\/receipts\/(.+?)(?:\?|$)/);
   if (match) return match[1];
-  // Handle /storage/v1/object/...
   const match2 = url.match(/\/storage\/v1\/object\/(?:public|sign)\/receipts\/(.+?)(?:\?|$)/);
   if (match2) return match2[1];
-  // Fallback: just use the URL as-is if it looks like a path
   if (!url.startsWith("http")) return url;
   return null;
 }
