@@ -491,6 +491,8 @@ export type Database = {
           batch_id: string | null
           cpf: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           full_name: string | null
           id: string
           last_outbound_at: string | null
@@ -528,6 +530,8 @@ export type Database = {
           batch_id?: string | null
           cpf?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           full_name?: string | null
           id?: string
           last_outbound_at?: string | null
@@ -565,6 +569,8 @@ export type Database = {
           batch_id?: string | null
           cpf?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           full_name?: string | null
           id?: string
           last_outbound_at?: string | null

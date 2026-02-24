@@ -4,6 +4,7 @@ import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useWinners } from '@/hooks/useWinners';
 import { formatCurrency } from '@/lib/format';
+import { isWindowOpen } from '@/lib/time';
 import {
   Users,
   CheckCircle2,
@@ -12,6 +13,11 @@ import {
   Loader2,
   Send,
   XCircle,
+  MessageSquare,
+  Upload,
+  FileText,
+  Phone,
+  UserX,
 } from 'lucide-react';
 import { WinnerStatus, WINNER_STATUS_LABELS } from '@/types';
 import { Progress } from '@/components/ui/progress';
@@ -28,21 +34,24 @@ export default function SupportDashboard() {
     statusCounts[w.status].value += w.value;
   });
 
-  const pending = winners.filter(w => ['imported', 'pix_requested'].includes(w.status));
+  const imported = winners.filter(w => w.status === 'imported');
+  const pixRequested = winners.filter(w => w.status === 'pix_requested');
+  const pixReceived = winners.filter(w => w.status === 'pix_received');
+  const sentToBatch = winners.filter(w => w.status === 'sent_to_batch');
   const refused = winners.filter(w => w.status === 'pix_refused');
   const noNumber = winners.filter(w => w.status === 'numero_inexistente');
   const noResponse = winners.filter(w => w.status === 'cliente_nao_responde');
-  const inProcess = winners.filter(w => ['pix_received', 'sent_to_batch'].includes(w.status));
-  const completed = winners.filter(w => ['receipt_attached', 'receipt_sent'].includes(w.status));
+  const receiptAttached = winners.filter(w => w.status === 'receipt_attached');
+  const receiptSent = winners.filter(w => w.status === 'receipt_sent');
+  const completed = [...receiptAttached, ...receiptSent];
   const withErrors = winners.filter(w => !!w.lastPixError);
+  const windowOpenCount = winners.filter(w => isWindowOpen(w.ultimaInteracaoWhatsapp)).length;
+  const windowClosedCount = winners.filter(w => w.ultimaInteracaoWhatsapp && !isWindowOpen(w.ultimaInteracaoWhatsapp)).length;
 
   const today = new Date().toISOString().slice(0, 10);
   const paidToday = completed.filter(w => w.createdAt?.slice(0, 10) === today).length;
-
-  const totalValue = winners.reduce((s, w) => s + w.value, 0);
   const completedValue = completed.reduce((s, w) => s + w.value, 0);
 
-  // Work queue: imported + pix_requested + pix_refused
   const workQueue = winners.filter(w => ['imported', 'pix_requested', 'pix_refused', 'numero_inexistente', 'cliente_nao_responde'].includes(w.status));
 
   if (isLoading) {
@@ -63,21 +72,49 @@ export default function SupportDashboard() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6">
-        {/* KPI Cards */}
+        {/* Operational Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatsCard title="Importados" value={String(imported.length)} icon={Upload} variant="default" />
+          <StatsCard title="Pix Solicitado" value={String(pixRequested.length)} icon={Send} variant="accent" />
+          <StatsCard title="Pix Recebido" value={String(pixReceived.length)} icon={CheckCircle2} variant="primary" />
+          <StatsCard title="Enviado p/ Lote" value={String(sentToBatch.length)} icon={FileText} variant="accent" />
+          <StatsCard title="Pix Recusado" value={String(refused.length)} icon={XCircle} variant="destructive" />
+          <StatsCard title="Nº Inexistente" value={String(noNumber.length)} icon={Phone} variant="destructive" />
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <StatsCard title="Não Responde" value={String(noResponse.length)} icon={UserX} variant="warning" />
+          <StatsCard title="Comp. Anexados" value={String(receiptAttached.length)} icon={FileText} variant="success" />
+          <StatsCard title="Comp. Enviados" value={String(receiptSent.length)} icon={Send} variant="success" />
+          <StatsCard
+            title="Janela Aberta"
+            value={String(windowOpenCount)}
+            icon={MessageSquare}
+            variant="success"
+          />
+          <StatsCard
+            title="Janela Fechada"
+            value={String(windowClosedCount)}
+            icon={MessageSquare}
+            variant="destructive"
+          />
+        </div>
+
+        {/* KPI Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatsCard
             title="Pendentes"
-            value={String(pending.length)}
+            value={String(imported.length + pixRequested.length)}
             icon={Clock}
             variant="warning"
-            subtitle={formatCurrency(pending.reduce((s, w) => s + w.value, 0))}
+            subtitle={formatCurrency((imported.reduce((s, w) => s + w.value, 0)) + (pixRequested.reduce((s, w) => s + w.value, 0)))}
           />
           <StatsCard
             title="Em Processo"
-            value={String(inProcess.length)}
+            value={String(pixReceived.length + sentToBatch.length)}
             icon={AlertCircle}
             variant="accent"
-            subtitle={formatCurrency(inProcess.reduce((s, w) => s + w.value, 0))}
+            subtitle={formatCurrency((pixReceived.reduce((s, w) => s + w.value, 0)) + (sentToBatch.reduce((s, w) => s + w.value, 0)))}
           />
           <StatsCard
             title="Pix Recusado"
@@ -103,7 +140,7 @@ export default function SupportDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-          {/* Status Pipeline with R$ values */}
+          {/* Status Pipeline */}
           <div className="rounded-xl border bg-card p-4 lg:p-5">
             <h2 className="text-sm font-semibold mb-4">Pipeline por Status</h2>
             {winners.length === 0 ? (
@@ -152,12 +189,12 @@ export default function SupportDashboard() {
             <div className="grid grid-cols-3 gap-3 mb-4">
               <Link to="/winners" className="text-center p-3 rounded-lg bg-warning/5 hover:bg-warning/10 transition-colors">
                 <Clock className="h-5 w-5 text-warning mx-auto mb-1.5" />
-                <p className="text-lg font-bold">{pending.length}</p>
+                <p className="text-lg font-bold">{imported.length + pixRequested.length}</p>
                 <p className="text-[10px] text-muted-foreground">Pendente</p>
               </Link>
               <Link to="/winners" className="text-center p-3 rounded-lg bg-info/5 hover:bg-info/10 transition-colors">
                 <Send className="h-5 w-5 text-info mx-auto mb-1.5" />
-                <p className="text-lg font-bold">{inProcess.length}</p>
+                <p className="text-lg font-bold">{pixReceived.length + sentToBatch.length}</p>
                 <p className="text-[10px] text-muted-foreground">Em processo</p>
               </Link>
               <Link to="/winners" className="text-center p-3 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors">
@@ -167,7 +204,6 @@ export default function SupportDashboard() {
               </Link>
             </div>
 
-            {/* Recent items needing attention */}
             {workQueue.length > 0 ? (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {workQueue.slice(0, 10).map((w) => (
