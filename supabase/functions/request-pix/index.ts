@@ -17,6 +17,8 @@ interface WinnerPayload {
   prize_value: number;
 }
 
+const ALLOWED_STATUSES = ["imported", "pix_refused"];
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -33,49 +35,52 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Try to read webhook URL from integration_configs table first, fallback to env var
-    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: configRow } = await serviceClient
-      .from("integration_configs")
-      .select("value")
-      .eq("key", "N8N_WEBHOOK_URL")
-      .maybeSingle();
-
-    const n8nWebhookUrl = (configRow?.value && configRow.value.trim() !== "")
-      ? configRow.value
-      : Deno.env.get("N8N_WEBHOOK_URL");
-
-    if (!n8nWebhookUrl) {
+    const unnichatUrl = Deno.env.get("UNNICHAT_WEBHOOK_URL");
+    if (!unnichatUrl) {
       return new Response(
-        JSON.stringify({ error: "N8N_WEBHOOK_URL not configured. Configure em Configurações > Integrações." }),
+        JSON.stringify({ error: "UNNICHAT_WEBHOOK_URL não configurada." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Auth client (respects RLS)
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // Service client (bypasses RLS for audit logging)
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
-    // Get user profile for logging
-    const { data: profile } = await supabase
+    // Get user profile for audit
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("signature, display_name")
       .eq("user_id", userId)
       .maybeSingle();
 
-    const userName = profile?.signature || profile?.display_name || claimsData.claims.email || "Sistema";
+    const userName = profile?.signature || profile?.display_name || user.email || "Sistema";
+
+    // Get user role
+    const { data: roleData } = await serviceClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const userRole = roleData?.role || null;
 
     const { winners } = await req.json() as { winners: WinnerPayload[] };
 
@@ -88,45 +93,74 @@ Deno.serve(async (req) => {
 
     const results: { winner_id: string; success: boolean; error?: string }[] = [];
 
-    // Process each winner
     for (const w of winners) {
       try {
-        // Send to n8n webhook
-        const n8nResponse = await fetch(n8nWebhookUrl, {
+        // --- Idempotency check: re-read current status from DB ---
+        const { data: currentWinner, error: fetchErr } = await serviceClient
+          .from("winners")
+          .select("status, last_pix_request_at")
+          .eq("id", w.winner_id)
+          .maybeSingle();
+
+        if (fetchErr || !currentWinner) {
+          throw new Error("Ganhador não encontrado no banco.");
+        }
+
+        if (!ALLOWED_STATUSES.includes(currentWinner.status)) {
+          throw new Error(
+            `Status "${currentWinner.status}" não permite solicitar PIX. Permitidos: ${ALLOWED_STATUSES.join(", ")}.`
+          );
+        }
+
+        // Duplicate prevention: block if last request was < 30 seconds ago
+        if (currentWinner.last_pix_request_at) {
+          const lastReq = new Date(currentWinner.last_pix_request_at).getTime();
+          const now = Date.now();
+          if (now - lastReq < 30_000) {
+            throw new Error("Solicitação duplicada. Aguarde 30 segundos entre tentativas.");
+          }
+        }
+
+        // --- Send to UnniChat ---
+        const unnichatResponse = await fetch(unnichatUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action_id: w.action_id,
-            action_name: w.action_name,
-            winner_id: w.winner_id,
-            winner_name: w.winner_name,
-            winner_phone: w.winner_phone,
-            prize_type: w.prize_type,
-            prize_title: w.prize_title,
-            prize_value: w.prize_value,
+            tel: w.winner_phone,
+            nome: w.winner_name,
+            acao: w.action_name,
+            tipo_premio: w.prize_title,
+            valor: String(w.prize_value),
+            row_number: 0,
           }),
         });
 
-        if (!n8nResponse.ok) {
-          const errText = await n8nResponse.text();
-          throw new Error(`n8n error [${n8nResponse.status}]: ${errText}`);
+        if (!unnichatResponse.ok) {
+          const errText = await unnichatResponse.text();
+          throw new Error(`UnniChat error [${unnichatResponse.status}]: ${errText}`);
         }
 
         // Consume response body
-        await n8nResponse.text();
+        await unnichatResponse.text();
 
-        // Update winner status to pix_requested
-        const { error: updateError } = await supabase
+        // --- Update winner status + tracking fields ---
+        const now = new Date().toISOString();
+        const { error: updateError } = await serviceClient
           .from("winners")
-          .update({ status: "pix_requested", updated_at: new Date().toISOString() })
+          .update({
+            status: "pix_requested",
+            updated_at: now,
+            last_pix_request_at: now,
+            last_pix_requested_by: userName,
+            last_pix_error: null,
+          })
           .eq("id", w.winner_id);
 
         if (updateError) {
           throw new Error(`DB update error: ${updateError.message}`);
         }
 
-        // Log success in audit
-        const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        // --- Audit log (success) ---
         await serviceClient.from("action_audit_log").insert({
           action_id: w.action_id,
           action_name: w.action_name,
@@ -135,13 +169,13 @@ Deno.serve(async (req) => {
           operation: "pix_solicitado",
           user_id: userId,
           user_name: userName,
-          user_role: null,
+          user_role: userRole,
           changes: {
             winner_name: w.winner_name,
             prize_title: w.prize_title,
             prize_value: w.prize_value,
-            channel: "n8n/UnniChat",
-            status_before: "imported",
+            channel: "UnniChat",
+            status_before: currentWinner.status,
             status_after: "pix_requested",
           },
         });
@@ -149,10 +183,18 @@ Deno.serve(async (req) => {
         results.push({ winner_id: w.winner_id, success: true });
       } catch (err) {
         console.error(`Error processing winner ${w.winner_id}:`, err);
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
 
-        // Log failure
+        // Save error on winner record
         try {
-          const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+          await serviceClient
+            .from("winners")
+            .update({ last_pix_error: errorMsg })
+            .eq("id", w.winner_id);
+        } catch (_) { /* ignore */ }
+
+        // Audit log (failure)
+        try {
           await serviceClient.from("action_audit_log").insert({
             action_id: w.action_id,
             action_name: w.action_name,
@@ -161,11 +203,11 @@ Deno.serve(async (req) => {
             operation: "pix_solicitado_erro",
             user_id: userId,
             user_name: userName,
-            user_role: null,
+            user_role: userRole,
             changes: {
               winner_name: w.winner_name,
-              error: err instanceof Error ? err.message : "Unknown error",
-              channel: "n8n/UnniChat",
+              error: errorMsg,
+              channel: "UnniChat",
             },
           });
         } catch (_) { /* ignore audit log error */ }
@@ -173,7 +215,7 @@ Deno.serve(async (req) => {
         results.push({
           winner_id: w.winner_id,
           success: false,
-          error: err instanceof Error ? err.message : "Unknown error",
+          error: errorMsg,
         });
       }
     }

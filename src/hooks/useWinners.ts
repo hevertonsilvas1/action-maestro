@@ -18,6 +18,9 @@ function mapWinner(row: any): Winner {
     cpf: row.cpf ?? undefined,
     phone: row.phone ?? undefined,
     prizeDatetime: row.prize_datetime ?? undefined,
+    lastPixRequestAt: row.last_pix_request_at ?? undefined,
+    lastPixError: row.last_pix_error ?? undefined,
+    lastPixRequestedBy: row.last_pix_requested_by ?? undefined,
     createdAt: row.created_at,
   };
 }
