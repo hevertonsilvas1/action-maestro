@@ -5,7 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Upload, Download, Trash2, RefreshCw, Send, FileText, Paperclip } from 'lucide-react';
+import { Loader2, Upload, Download, Trash2, RefreshCw, Send, FileText, Paperclip, MessageSquare, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -25,21 +25,31 @@ interface ReceiptManagerProps {
   actionName: string;
 }
 
+function isWindowOpen(winner: Winner, windowHours = 24): boolean {
+  if (!winner.ultimaInteracaoWhatsapp) return false;
+  const lastInbound = new Date(winner.ultimaInteracaoWhatsapp).getTime();
+  const now = Date.now();
+  return (now - lastInbound) < windowHours * 60 * 60 * 1000;
+}
+
 export function ReceiptManager({ open, onOpenChange, winner, userName, actionId, actionName }: ReceiptManagerProps) {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showManualOptions, setShowManualOptions] = useState(false);
 
   if (!winner) return null;
 
   const hasReceipt = !!winner.receiptUrl;
   const canUpload = RECEIPT_ELIGIBLE_STATUSES.includes(winner.status);
-  const canSendReceipt = winner.status === 'receipt_attached' && hasReceipt;
+  const canSendReceipt = (winner.status === 'receipt_attached') && hasReceipt;
+  const windowOpen = isWindowOpen(winner);
 
   const storagePath = `${actionId}/${winner.id}`;
 
+  // --- Upload ---
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -61,7 +71,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
       const fileName = `comprovante_v${newVersion}.${ext}`;
       const fullPath = `${storagePath}/${fileName}`;
 
-      // Remove old file if replacing
       if (isReplace && winner.receiptUrl) {
         const oldPath = extractStoragePath(winner.receiptUrl);
         if (oldPath) {
@@ -72,16 +81,9 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
       const { error: uploadError } = await supabase.storage
         .from('receipts')
         .upload(fullPath, file, { upsert: true });
-
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('receipts')
-        .getPublicUrl(fullPath);
-
-      // Since bucket is private, we store the path for signed URL generation
       const now = new Date().toISOString();
-      // If no payment_method yet, set to manual (no batch)
       const paymentMethod = winner.paymentMethod || 'manual';
 
       const { error: updateError } = await supabase
@@ -97,7 +99,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           updated_at: now,
         } as any)
         .eq('id', winner.id);
-
       if (updateError) throw updateError;
 
       await insertAuditLog({
@@ -126,13 +127,13 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
     }
   };
 
+  // --- Download ---
   const handleDownload = async () => {
     if (!winner.receiptUrl) return;
     try {
       const { data, error } = await supabase.storage
         .from('receipts')
         .createSignedUrl(winner.receiptUrl, 60);
-
       if (error) throw error;
       window.open(data.signedUrl, '_blank');
     } catch (err) {
@@ -141,6 +142,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
     }
   };
 
+  // --- Delete ---
   const handleDelete = async () => {
     if (!winner.receiptUrl) return;
     setDeleting(true);
@@ -148,11 +150,9 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
       const { error: storageError } = await supabase.storage
         .from('receipts')
         .remove([winner.receiptUrl]);
-
       if (storageError) throw storageError;
 
       const now = new Date().toISOString();
-      // Revert to previous status based on payment method
       const revertStatus = winner.batchId ? 'sent_to_batch' : 'pix_received';
 
       const { error: updateError } = await supabase
@@ -168,7 +168,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           updated_at: now,
         })
         .eq('id', winner.id);
-
       if (updateError) throw updateError;
 
       await insertAuditLog({
@@ -180,13 +179,12 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         changes: {
           winner_name: winner.name,
           filename: winner.receiptFilename,
-          status: { before: winner.status, after: 'sent_to_batch' },
+          status: { before: winner.status, after: revertStatus },
         },
       });
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      const revertLabel = winner.batchId ? 'Enviado para Lote' : 'Pix Recebido / Validado';
-      toast.success(`Comprovante excluído. Status voltou para "${revertLabel}".`);
+      toast.success('Comprovante excluído.');
       onOpenChange(false);
     } catch (err) {
       console.error('Delete receipt error:', err);
@@ -196,9 +194,21 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
     }
   };
 
+  // --- Send Receipt (hybrid) ---
   const handleSendReceipt = async () => {
     if (!winner.receiptUrl) return;
+
+    if (!windowOpen) {
+      setShowManualOptions(true);
+      return;
+    }
+
+    await doSendReceipt('receipt');
+  };
+
+  const doSendReceipt = async (mode: 'receipt' | 'confirmation') => {
     setSending(true);
+    setShowManualOptions(false);
     try {
       const { data, error } = await supabase.functions.invoke('send-receipt', {
         body: {
@@ -210,6 +220,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           prize_title: winner.prizeTitle,
           prize_value: winner.value,
           receipt_path: winner.receiptUrl,
+          mode,
         },
       });
 
@@ -217,10 +228,14 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
 
       if (data?.success) {
         await queryClient.invalidateQueries({ queryKey: ['winners'] });
-        toast.success('Comprovante enviado ao ganhador com sucesso!');
+        if (mode === 'confirmation') {
+          toast.success('Mensagem de confirmação enviada ao ganhador!');
+        } else {
+          toast.success('Comprovante enviado ao ganhador com sucesso!');
+        }
         onOpenChange(false);
       } else {
-        toast.error(data?.error || 'Erro ao enviar comprovante.');
+        toast.error(data?.error || 'Erro ao enviar.');
       }
     } catch (err) {
       console.error('Send receipt error:', err);
@@ -230,10 +245,27 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
     }
   };
 
+  const handleMarkPending = async () => {
+    setShowManualOptions(false);
+    await insertAuditLog({
+      actionId,
+      actionName,
+      tableName: 'winners',
+      recordId: winner.id,
+      operation: 'comprovante_pendente_manual',
+      changes: {
+        winner_name: winner.name,
+        note: 'Marcado para envio manual na conversa (janela fechada)',
+      },
+    });
+    toast.info('Registrado como pendente para envio manual.');
+    onOpenChange(false);
+  };
+
   const isBusy = uploading || deleting || sending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { setShowManualOptions(false); onOpenChange(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -262,6 +294,13 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
               Versão {winner.receiptVersion}
             </Badge>
           )}
+          {/* Window indicator */}
+          {hasReceipt && (
+            <Badge variant="outline" className={`text-[10px] gap-1 ${windowOpen ? 'border-success/30 text-success' : 'border-warning/30 text-warning'}`}>
+              <Clock className="h-3 w-3" />
+              {windowOpen ? 'Janela aberta' : 'Janela fechada'}
+            </Badge>
+          )}
         </div>
 
         {/* Receipt details */}
@@ -283,12 +322,59 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
                 Enviado ao cliente em: {new Date(winner.receiptSentAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
               </p>
             )}
+            {winner.ultimaInteracaoWhatsapp && (
+              <p className="text-[10px] text-muted-foreground">
+                Última interação: {new Date(winner.ultimaInteracaoWhatsapp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+              </p>
+            )}
+            {winner.lastPixError && (
+              <p className="text-[10px] text-destructive">
+                Último erro: {winner.lastPixError}
+              </p>
+            )}
           </div>
         )}
 
         {!canUpload && !hasReceipt && (
-    <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+          <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
             O comprovante só pode ser anexado quando o ganhador estiver em "Pix Recebido / Validado", "Enviado para Lote" ou "Pix Recusado".
+          </div>
+        )}
+
+        {/* Manual options modal (window closed) */}
+        {showManualOptions && (
+          <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-warning">Janela de envio fechada</p>
+                <p className="text-[10px] text-muted-foreground">
+                  O cliente não interagiu recentemente. O envio automático não é possível. Escolha uma opção:
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => doSendReceipt('confirmation')}
+                disabled={isBusy}
+                className="gap-1.5 justify-start"
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
+                Pedir confirmação ao cliente
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkPending}
+                disabled={isBusy}
+                className="gap-1.5 justify-start"
+              >
+                <Clock className="h-4 w-4" />
+                Marcar como pendente (envio manual)
+              </Button>
+            </div>
           </div>
         )}
 
@@ -304,7 +390,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <div className="flex flex-wrap gap-2 justify-end">
-            {/* Upload / Replace */}
             {canUpload && (
               <Button
                 variant="outline"
@@ -324,7 +409,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
               </Button>
             )}
 
-            {/* Download */}
             {hasReceipt && (
               <Button
                 variant="outline"
@@ -338,7 +422,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
               </Button>
             )}
 
-            {/* Delete */}
             {hasReceipt && (
               <Button
                 variant="outline"
@@ -352,7 +435,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
               </Button>
             )}
 
-            {/* Send to client */}
             {canSendReceipt && (
               <Button
                 size="sm"
@@ -361,7 +443,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
                 className="gap-1.5"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Enviar ao Ganhador
+                Enviar Comprovante
               </Button>
             )}
           </div>
@@ -372,7 +454,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
 }
 
 function extractStoragePath(url: string): string | null {
-  // If it's already a path (not a full URL), return as-is
   if (!url.startsWith('http')) return url;
   try {
     const u = new URL(url);

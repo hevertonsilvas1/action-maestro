@@ -493,6 +493,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          last_outbound_at: string | null
           last_pix_error: string | null
           last_pix_request_at: string | null
           last_pix_requested_by: string | null
@@ -529,6 +530,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          last_outbound_at?: string | null
           last_pix_error?: string | null
           last_pix_request_at?: string | null
           last_pix_requested_by?: string | null
@@ -565,6 +567,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          last_outbound_at?: string | null
           last_pix_error?: string | null
           last_pix_request_at?: string | null
           last_pix_requested_by?: string | null

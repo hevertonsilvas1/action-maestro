@@ -35,6 +35,8 @@ function mapWinner(row: any): Winner {
     pixValidatedAt: row.pix_validated_at ?? undefined,
     batchId: row.batch_id ?? undefined,
     paymentMethod: row.payment_method ?? undefined,
+    ultimaInteracaoWhatsapp: row.ultima_interacao_whatsapp ?? undefined,
+    lastOutboundAt: row.last_outbound_at ?? undefined,
     createdAt: row.created_at,
   };
 }
