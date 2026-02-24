@@ -32,7 +32,7 @@ export interface Winner {
   value: number;
   status: WinnerStatus;
   pixKey?: string;
-  pixType?: string;
+  pixType?: PixType;
   fullName?: string;
   receiptUrl?: string;
   cpf?: string;
@@ -41,8 +41,31 @@ export interface Winner {
   lastPixRequestAt?: string;
   lastPixError?: string;
   lastPixRequestedBy?: string;
+  pixHolderName?: string;
+  pixHolderDoc?: string;
+  pixObservation?: string;
+  pixRegisteredBy?: string;
+  pixRegisteredAt?: string;
+  pixValidatedBy?: string;
+  pixValidatedAt?: string;
   createdAt: string;
 }
+
+export type PixType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
+
+export const PIX_TYPE_LABELS: Record<PixType, string> = {
+  cpf: 'CPF',
+  cnpj: 'CNPJ',
+  email: 'Email',
+  phone: 'Telefone',
+  random: 'Chave Aleatória',
+};
+
+/** Status that require PIX data to transition to */
+export const PIX_REQUIRED_STATUSES: WinnerStatus[] = ['pix_received', 'sent_to_batch', 'receipt_attached', 'receipt_sent'];
+
+/** Status that block PIX editing (unless admin with reason) */
+export const PIX_LOCKED_STATUSES: WinnerStatus[] = ['receipt_attached', 'receipt_sent'];
 
 export type WinnerStatus =
   | 'imported'

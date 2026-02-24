@@ -456,8 +456,15 @@ export type Database = {
           last_pix_requested_by: string | null
           name: string
           phone: string | null
+          pix_holder_doc: string | null
+          pix_holder_name: string | null
           pix_key: string | null
+          pix_observation: string | null
+          pix_registered_at: string | null
+          pix_registered_by: string | null
           pix_type: Database["public"]["Enums"]["pix_type"] | null
+          pix_validated_at: string | null
+          pix_validated_by: string | null
           prize_datetime: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
@@ -477,8 +484,15 @@ export type Database = {
           last_pix_requested_by?: string | null
           name: string
           phone?: string | null
+          pix_holder_doc?: string | null
+          pix_holder_name?: string | null
           pix_key?: string | null
+          pix_observation?: string | null
+          pix_registered_at?: string | null
+          pix_registered_by?: string | null
           pix_type?: Database["public"]["Enums"]["pix_type"] | null
+          pix_validated_at?: string | null
+          pix_validated_by?: string | null
           prize_datetime?: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
@@ -498,8 +512,15 @@ export type Database = {
           last_pix_requested_by?: string | null
           name?: string
           phone?: string | null
+          pix_holder_doc?: string | null
+          pix_holder_name?: string | null
           pix_key?: string | null
+          pix_observation?: string | null
+          pix_registered_at?: string | null
+          pix_registered_by?: string | null
           pix_type?: Database["public"]["Enums"]["pix_type"] | null
+          pix_validated_at?: string | null
+          pix_validated_by?: string | null
           prize_datetime?: string | null
           prize_title?: string
           prize_type?: Database["public"]["Enums"]["prize_type"]

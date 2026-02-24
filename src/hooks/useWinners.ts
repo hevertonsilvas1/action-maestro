@@ -21,6 +21,13 @@ function mapWinner(row: any): Winner {
     lastPixRequestAt: row.last_pix_request_at ?? undefined,
     lastPixError: row.last_pix_error ?? undefined,
     lastPixRequestedBy: row.last_pix_requested_by ?? undefined,
+    pixHolderName: row.pix_holder_name ?? undefined,
+    pixHolderDoc: row.pix_holder_doc ?? undefined,
+    pixObservation: row.pix_observation ?? undefined,
+    pixRegisteredBy: row.pix_registered_by ?? undefined,
+    pixRegisteredAt: row.pix_registered_at ?? undefined,
+    pixValidatedBy: row.pix_validated_by ?? undefined,
+    pixValidatedAt: row.pix_validated_at ?? undefined,
     createdAt: row.created_at,
   };
 }
