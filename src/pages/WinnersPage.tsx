@@ -5,18 +5,18 @@ import { useActions } from '@/hooks/useActions';
 import { formatCurrency, formatPhone } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
 import { useRequestPixBatch } from '@/hooks/useRequestPixBatch';
-import { Search, Filter, Download, Loader2, Send } from 'lucide-react';
+import { WinnersFilters, useWinnersFilters, applyWinnersFilters } from '@/components/WinnersFilters';
+import { Download, Loader2, Send } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 
 export default function WinnersPage() {
-  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pixModalOpen, setPixModalOpen] = useState(false);
+  const { filters, setFilters } = useWinnersFilters();
   const { isAdmin } = useUserRole();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { data: actions = [], isLoading: loadingActions } = useActions();
@@ -36,11 +36,10 @@ export default function WinnersPage() {
     actionName: actionsMap[w.actionId] ?? '',
   })), [winners, actionsMap]);
 
-  const filtered = useMemo(() => allWinners.filter(
-    (w) =>
-      w.name.toLowerCase().includes(search.toLowerCase()) ||
-      w.actionName.toLowerCase().includes(search.toLowerCase())
-  ), [allWinners, search]);
+  const filtered = useMemo(
+    () => applyWinnersFilters(allWinners, filters),
+    [allWinners, filters]
+  );
 
   const toggleWinner = useCallback((id: string) => {
     setSelected((prev) => {
@@ -98,21 +97,12 @@ export default function WinnersPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar ganhadores..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
-            />
-          </div>
-          <Button variant="outline" size="sm" className="h-9">
-            <Filter className="h-3.5 w-3.5 mr-1.5" />
-            Filtrar
-          </Button>
-        </div>
+        <WinnersFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          actionsMap={actionsMap}
+          showValueFilter={isAdmin}
+        />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -120,7 +110,7 @@ export default function WinnersPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-sm text-muted-foreground">
-            {search ? 'Nenhum ganhador encontrado.' : 'Nenhum ganhador registrado ainda.'}
+            {filters.search ? 'Nenhum ganhador encontrado.' : 'Nenhum ganhador registrado ainda.'}
           </div>
         ) : (
           <>

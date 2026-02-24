@@ -28,6 +28,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
 import { useRequestPix } from '@/hooks/useRequestPix';
+import { WinnersFilters, useWinnersFilters, applyWinnersFilters } from '@/components/WinnersFilters';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -55,6 +56,7 @@ export default function ActionDetailPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
+  const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
@@ -100,6 +102,11 @@ export default function ActionDetailPage() {
 
   const { requestPix, isPending: isRequestingPix } = useRequestPix(id ?? '', action?.name ?? '');
 
+  const filteredWinners = useMemo(
+    () => applyWinnersFilters(winners, winnersFilters),
+    [winners, winnersFilters]
+  );
+
   const toggleWinner = useCallback((winnerId: string) => {
     setSelectedWinnerIds((prev) => {
       const next = new Set(prev);
@@ -110,12 +117,12 @@ export default function ActionDetailPage() {
   }, []);
 
   const toggleAllWinners = useCallback(() => {
-    if (selectedWinnerIds.size === winners.length) {
+    if (selectedWinnerIds.size === filteredWinners.length) {
       setSelectedWinnerIds(new Set());
     } else {
-      setSelectedWinnerIds(new Set(winners.map((w) => w.id)));
+      setSelectedWinnerIds(new Set(filteredWinners.map((w) => w.id)));
     }
-  }, [winners, selectedWinnerIds.size]);
+  }, [filteredWinners, selectedWinnerIds.size]);
 
   const selectedWinners = useMemo(
     () => winners.filter((w) => selectedWinnerIds.has(w.id)),
@@ -429,6 +436,12 @@ export default function ActionDetailPage() {
               </Button>
             </div>
 
+            <WinnersFilters
+              filters={winnersFilters}
+              onFiltersChange={setWinnersFilters}
+              showValueFilter={isAdmin}
+            />
+
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -436,7 +449,7 @@ export default function ActionDetailPage() {
                     <tr className="border-b bg-muted/40">
                       <th className="px-3 py-3 w-10">
                         <Checkbox
-                          checked={winners.length > 0 && selectedWinnerIds.size === winners.length}
+                          checked={filteredWinners.length > 0 && selectedWinnerIds.size === filteredWinners.length}
                           onCheckedChange={toggleAllWinners}
                           aria-label="Selecionar todos"
                         />
@@ -451,10 +464,10 @@ export default function ActionDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {winners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador registrado.</td></tr>
+                    {filteredWinners.length === 0 ? (
+                      <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
                     ) : (
-                      winners.map((w, i) => (
+                      filteredWinners.map((w, i) => (
                         <tr
                           key={w.id}
                           className={cn(
