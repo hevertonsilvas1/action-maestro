@@ -38,6 +38,9 @@ export interface Winner {
   cpf?: string;
   phone?: string;
   prizeDatetime?: string;
+  lastPixRequestAt?: string;
+  lastPixError?: string;
+  lastPixRequestedBy?: string;
   createdAt: string;
 }
 
@@ -50,7 +53,53 @@ export type WinnerStatus =
   | 'sent_to_batch'
   | 'awaiting_receipt'
   | 'paid'
-  | 'receipt_sent';
+  | 'receipt_sent'
+  | 'pix_refused'
+  | 'receipt_attached';
+
+export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
+  imported: 'Importado',
+  pix_requested: 'Pix Solicitado',
+  awaiting_pix: 'Aguardando Pix',
+  pix_received: 'Pix Recebido / Validado',
+  ready_to_pay: 'Pronto para Pagar',
+  sent_to_batch: 'Enviado para Lote',
+  awaiting_receipt: 'Aguardando Comprovante',
+  paid: 'Pago',
+  receipt_sent: 'Comprovante Enviado',
+  pix_refused: 'Pix Recusado',
+  receipt_attached: 'Comprovante Anexado',
+};
+
+export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
+  imported: 'bg-muted text-muted-foreground',
+  pix_requested: 'bg-info/15 text-info',
+  awaiting_pix: 'bg-warning/15 text-warning',
+  pix_received: 'bg-primary/15 text-primary',
+  ready_to_pay: 'bg-accent/15 text-accent',
+  sent_to_batch: 'bg-info/15 text-info',
+  awaiting_receipt: 'bg-warning/15 text-warning',
+  paid: 'bg-success/15 text-success',
+  receipt_sent: 'bg-success/15 text-success',
+  pix_refused: 'bg-destructive/15 text-destructive',
+  receipt_attached: 'bg-success/15 text-success',
+};
+
+export const ACTION_STATUS_LABELS: Record<Action['status'], string> = {
+  planning: 'Planejamento',
+  active: 'Ativa',
+  completed: 'Concluída',
+  cancelled: 'Cancelada',
+  archived: 'Arquivada',
+};
+
+export const ACTION_STATUS_COLORS: Record<Action['status'], string> = {
+  planning: 'bg-warning/15 text-warning',
+  active: 'bg-success/15 text-success',
+  completed: 'bg-primary/15 text-primary',
+  cancelled: 'bg-destructive/15 text-destructive',
+  archived: 'bg-muted text-muted-foreground',
+};
 
 export interface Prize {
   id: string;
@@ -76,43 +125,3 @@ export interface Cost {
 }
 
 export type UserRole = 'admin' | 'support';
-
-export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
-  imported: 'Importado',
-  pix_requested: 'Pix Solicitado',
-  awaiting_pix: 'Aguardando Pix',
-  pix_received: 'Pix Recebido',
-  ready_to_pay: 'Pronto para Pagar',
-  sent_to_batch: 'Enviado para Lote',
-  awaiting_receipt: 'Aguardando Comprovante',
-  paid: 'Pago',
-  receipt_sent: 'Comprovante Enviado',
-};
-
-export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
-  imported: 'bg-muted text-muted-foreground',
-  pix_requested: 'bg-info/15 text-info',
-  awaiting_pix: 'bg-warning/15 text-warning',
-  pix_received: 'bg-primary/15 text-primary',
-  ready_to_pay: 'bg-accent/15 text-accent',
-  sent_to_batch: 'bg-info/15 text-info',
-  awaiting_receipt: 'bg-warning/15 text-warning',
-  paid: 'bg-success/15 text-success',
-  receipt_sent: 'bg-success/15 text-success',
-};
-
-export const ACTION_STATUS_LABELS: Record<Action['status'], string> = {
-  planning: 'Planejamento',
-  active: 'Ativa',
-  completed: 'Concluída',
-  cancelled: 'Cancelada',
-  archived: 'Arquivada',
-};
-
-export const ACTION_STATUS_COLORS: Record<Action['status'], string> = {
-  planning: 'bg-warning/15 text-warning',
-  active: 'bg-success/15 text-success',
-  completed: 'bg-primary/15 text-primary',
-  cancelled: 'bg-destructive/15 text-destructive',
-  archived: 'bg-muted text-muted-foreground',
-};

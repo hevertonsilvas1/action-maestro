@@ -22,11 +22,11 @@ interface RequestPixModalProps {
   isAdmin: boolean;
 }
 
-const ALLOWED_STATUSES = ['imported', 'pix_requested'];
+const ALLOWED_STATUSES = ['imported', 'pix_refused'];
 
 const STATUS_LABELS: Record<string, string> = {
   imported: 'Importado',
-  pix_requested: 'Pix Solicitado (reenvio)',
+  pix_refused: 'Pix Recusado (reenvio)',
 };
 
 export function RequestPixModal({
@@ -43,7 +43,7 @@ export function RequestPixModal({
   const ready = eligible.filter((w) => w.phone && w.phone.replace(/\D/g, '').length >= 10);
 
   const totalValue = ready.reduce((s, w) => s + w.value, 0);
-  const resendCount = ready.filter((w) => w.status === 'pix_requested').length;
+  const resendCount = ready.filter((w) => w.status === 'pix_refused').length;
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -65,9 +65,9 @@ export function RequestPixModal({
                       Valor total: <span className="font-semibold text-foreground">{formatCurrency(totalValue)}</span>
                     </p>
                   )}
-                  {resendCount > 0 && (
+                   {resendCount > 0 && (
                     <p className="text-xs text-warning">
-                      ⚠️ {resendCount} já com status "Pix Solicitado" (será reenviado)
+                      ⚠️ {resendCount} com status "Pix Recusado" (será reenviado)
                     </p>
                   )}
                 </div>
@@ -93,7 +93,7 @@ export function RequestPixModal({
 
               {ready.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Isso irá enviar uma mensagem oficial no WhatsApp via n8n/UnniChat.
+                  Isso irá enviar uma mensagem oficial no WhatsApp via UnniChat.
                 </p>
               )}
 
