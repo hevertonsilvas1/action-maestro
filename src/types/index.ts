@@ -35,6 +35,11 @@ export interface Winner {
   pixType?: PixType;
   fullName?: string;
   receiptUrl?: string;
+  receiptFilename?: string;
+  receiptAttachedAt?: string;
+  receiptAttachedBy?: string;
+  receiptSentAt?: string;
+  receiptVersion: number;
   cpf?: string;
   phone?: string;
   prizeDatetime?: string;

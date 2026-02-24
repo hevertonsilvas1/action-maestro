@@ -16,8 +16,9 @@ import { NewWinnerModal } from '@/components/NewWinnerModal';
 import { DeleteWinnerDialog } from '@/components/DeleteWinnerDialog';
 import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
+import { ReceiptManager } from '@/components/ReceiptManager';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw, CreditCard, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, RefreshCw, CreditCard, ShieldCheck, AlertTriangle, Paperclip } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,6 +30,7 @@ export default function WinnersPage() {
   const [pixTarget, setPixTarget] = useState<Winner | null>(null);
   const [newWinnerOpen, setNewWinnerOpen] = useState(false);
   const [deleteWinner, setDeleteWinner] = useState<Winner | null>(null);
+  const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -180,6 +182,7 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Chave Pix</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Últ. Solicitação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Erro</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Comprovante</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                       {isAdmin && <th className="px-2 py-3 w-8"></th>}
                     </tr>
@@ -246,6 +249,18 @@ export default function WinnersPage() {
                           ) : (
                             <span className="text-[10px] text-muted-foreground">—</span>
                           )}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <button
+                            className="text-xs text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+                            onClick={(e) => { e.stopPropagation(); setReceiptTarget(w); }}
+                          >
+                            {w.receiptUrl ? (
+                              <><Paperclip className="h-3 w-3 text-success" />v{w.receiptVersion}</>
+                            ) : (
+                              <span className="text-[10px]">—</span>
+                            )}
+                          </button>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <StatusBadge status={w.status} />
@@ -362,6 +377,15 @@ export default function WinnersPage() {
         isAdmin={isAdmin}
         userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
         actionId={pixTarget?.actionId || ''}
+      />
+
+      <ReceiptManager
+        open={!!receiptTarget}
+        onOpenChange={(v) => { if (!v) setReceiptTarget(null); }}
+        winner={receiptTarget}
+        userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
+        actionId={receiptTarget?.actionId || ''}
+        actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''}
       />
     </AppLayout>
   );

@@ -36,14 +36,14 @@ export const mockActions: Action[] = [
 ];
 
 export const mockWinners: Winner[] = [
-  { id: 'w1', actionId: '1', name: 'Maria Silva', prizeType: 'spin', prizeTitle: 'Giro da Sorte', value: 250, status: 'paid', pixKey: '11999887766', pixType: 'phone', fullName: 'Maria da Silva Santos', createdAt: '2024-12-01' },
-  { id: 'w2', actionId: '1', name: 'João Pereira', prizeType: 'quota', prizeTitle: 'Cota Premiada #12', value: 1000, status: 'awaiting_receipt', pixKey: '12345678900', pixType: 'cpf', fullName: 'João Carlos Pereira', createdAt: '2024-12-02' },
-  { id: 'w3', actionId: '1', name: 'Ana Costa', prizeType: 'spin', prizeTitle: 'Giro da Sorte', value: 250, status: 'pix_requested', createdAt: '2024-12-03' },
-  { id: 'w4', actionId: '1', name: 'Carlos Souza', prizeType: 'blessed_hour', prizeTitle: 'Horário Abençoado', value: 500, status: 'ready_to_pay', pixKey: 'carlos@email.com', pixType: 'email', fullName: 'Carlos Eduardo Souza', createdAt: '2024-12-04' },
-  { id: 'w5', actionId: '1', name: 'Fernanda Lima', prizeType: 'main', prizeTitle: 'Prêmio Principal', value: 10000, status: 'imported', createdAt: '2024-12-05' },
-  { id: 'w6', actionId: '1', name: 'Roberto Alves', prizeType: 'spin', prizeTitle: 'Giro da Sorte', value: 250, status: 'sent_to_batch', pixKey: '98765432100', pixType: 'cpf', fullName: 'Roberto Alves Junior', createdAt: '2024-12-05' },
-  { id: 'w7', actionId: '1', name: 'Luciana Santos', prizeType: 'bonus', prizeTitle: 'Bônus Extra', value: 100, status: 'receipt_sent', pixKey: 'luciana@bank.com', pixType: 'email', fullName: 'Luciana Borges Santos', receiptUrl: '/receipt.pdf', createdAt: '2024-12-06' },
-  { id: 'w8', actionId: '1', name: 'Pedro Oliveira', prizeType: 'quota', prizeTitle: 'Cota Premiada #15', value: 1000, status: 'awaiting_pix', createdAt: '2024-12-07' },
+  { id: 'w1', actionId: '1', name: 'Maria Silva', prizeType: 'spin', prizeTitle: 'Giro da Sorte', value: 250, status: 'paid', pixKey: '11999887766', pixType: 'phone', fullName: 'Maria da Silva Santos', receiptVersion: 0, createdAt: '2024-12-01' },
+  { id: 'w2', actionId: '1', name: 'João Pereira', prizeType: 'quota', prizeTitle: 'Cota Premiada #12', value: 1000, status: 'awaiting_receipt', pixKey: '12345678900', pixType: 'cpf', fullName: 'João Carlos Pereira', receiptVersion: 0, createdAt: '2024-12-02' },
+  { id: 'w3', actionId: '1', name: 'Ana Costa', prizeType: 'spin', prizeTitle: 'Giro da Sorte', value: 250, status: 'pix_requested', receiptVersion: 0, createdAt: '2024-12-03' },
+  { id: 'w4', actionId: '1', name: 'Carlos Souza', prizeType: 'blessed_hour', prizeTitle: 'Horário Abençoado', value: 500, status: 'ready_to_pay', pixKey: 'carlos@email.com', pixType: 'email', fullName: 'Carlos Eduardo Souza', receiptVersion: 0, createdAt: '2024-12-04' },
+  { id: 'w5', actionId: '1', name: 'Fernanda Lima', prizeType: 'main', prizeTitle: 'Prêmio Principal', value: 10000, status: 'imported', receiptVersion: 0, createdAt: '2024-12-05' },
+  { id: 'w6', actionId: '1', name: 'Roberto Alves', prizeType: 'spin', prizeTitle: 'Giro da Sorte', value: 250, status: 'sent_to_batch', pixKey: '98765432100', pixType: 'cpf', fullName: 'Roberto Alves Junior', receiptVersion: 0, createdAt: '2024-12-05' },
+  { id: 'w7', actionId: '1', name: 'Luciana Santos', prizeType: 'bonus', prizeTitle: 'Bônus Extra', value: 100, status: 'receipt_sent', pixKey: 'luciana@bank.com', pixType: 'email', fullName: 'Luciana Borges Santos', receiptUrl: '/receipt.pdf', receiptVersion: 1, createdAt: '2024-12-06' },
+  { id: 'w8', actionId: '1', name: 'Pedro Oliveira', prizeType: 'quota', prizeTitle: 'Cota Premiada #15', value: 1000, status: 'awaiting_pix', receiptVersion: 0, createdAt: '2024-12-07' },
 ];
 
 export const mockPrizes: Prize[] = [
