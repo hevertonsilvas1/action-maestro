@@ -37,6 +37,9 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // Service client (bypasses RLS for audit logging + config reads)
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+
     // Read webhook URL from integration_configs table (manageable via UI)
     const { data: webhookConfig, error: configError } = await serviceClient
       .from("integration_configs")
@@ -57,9 +60,6 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-
-    // Service client (bypasses RLS for audit logging)
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -145,13 +145,14 @@ Deno.serve(async (req) => {
 
         if (!unnichatResponse.ok) {
           const errText = await unnichatResponse.text();
-          throw new Error(`UnniChat error [${unnichatResponse.status}]: ${errText}`);
+          const shortErr = `${unnichatResponse.status} ${unnichatResponse.statusText}`.substring(0, 100);
+          throw new Error(`UnniChat: ${shortErr}`);
         }
 
         // Consume response body
         await unnichatResponse.text();
 
-        // --- Update winner status + tracking fields ---
+        // --- Success: Update winner status + tracking fields + clear error ---
         const now = new Date().toISOString();
         const { error: updateError } = await serviceClient
           .from("winners")
@@ -160,7 +161,7 @@ Deno.serve(async (req) => {
             updated_at: now,
             last_pix_request_at: now,
             last_pix_requested_by: userName,
-            last_pix_error: null,
+            last_pix_error: null, // Clear previous error on success
           })
           .eq("id", w.winner_id);
 
@@ -193,11 +194,15 @@ Deno.serve(async (req) => {
         console.error(`Error processing winner ${w.winner_id}:`, err);
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
 
-        // Save error on winner record
+        // Save error on winner record (do NOT change status on failure)
         try {
           await serviceClient
             .from("winners")
-            .update({ last_pix_error: errorMsg })
+            .update({
+              last_pix_error: errorMsg,
+              last_pix_request_at: new Date().toISOString(),
+              last_pix_requested_by: userName,
+            })
             .eq("id", w.winner_id);
         } catch (_) { /* ignore */ }
 

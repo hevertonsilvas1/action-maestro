@@ -41,13 +41,13 @@ const Index = () => {
   });
 
   // Operational KPIs (same as support dashboard)
-  const pending = winners.filter(w => ['imported', 'pix_requested', 'awaiting_pix'].includes(w.status)).length;
-  const inProcess = winners.filter(w => ['pix_received', 'ready_to_pay', 'sent_to_batch'].includes(w.status)).length;
-  const awaitingReceipt = winners.filter(w => w.status === 'awaiting_receipt').length;
-  const completed = winners.filter(w => ['paid', 'receipt_sent'].includes(w.status)).length;
+  const pending = winners.filter(w => ['imported', 'pix_requested'].includes(w.status));
+  const inProcess = winners.filter(w => ['pix_received', 'sent_to_batch'].includes(w.status));
+  const refused = winners.filter(w => w.status === 'pix_refused');
+  const completed = winners.filter(w => ['receipt_attached', 'receipt_sent'].includes(w.status));
+  const withErrors = winners.filter(w => !!w.lastPixError);
   const today = new Date().toISOString().slice(0, 10);
-  const paidToday = winners.filter(w =>
-    (w.status === 'paid' || w.status === 'receipt_sent') &&
+  const paidToday = completed.filter(w =>
     w.createdAt?.slice(0, 10) === today
   ).length;
 
@@ -192,12 +192,12 @@ const Index = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-muted-foreground">Pagos</span>
                     <span className="text-xs font-semibold text-success">
-                      {winners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length}/{winners.length}
+                      {winners.filter(w => w.status === 'receipt_attached' || w.status === 'receipt_sent').length}/{winners.length}
                     </span>
                   </div>
                   <Progress
                     value={
-                      (winners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length / winners.length) * 100
+                      (winners.filter(w => w.status === 'receipt_attached' || w.status === 'receipt_sent').length / winners.length) * 100
                     }
                     className="h-2"
                   />
@@ -207,21 +207,21 @@ const Index = () => {
                   <div className="text-center p-2 rounded-lg bg-warning/5">
                     <Clock className="h-4 w-4 text-warning mx-auto mb-1" />
                     <p className="text-xs font-semibold">
-                      {winners.filter(w => ['imported', 'pix_requested', 'awaiting_pix'].includes(w.status)).length}
+                      {winners.filter(w => ['imported', 'pix_requested'].includes(w.status)).length}
                     </p>
                     <p className="text-[9px] text-muted-foreground">Pendente</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-info/5">
                     <AlertCircle className="h-4 w-4 text-info mx-auto mb-1" />
                     <p className="text-xs font-semibold">
-                      {winners.filter(w => ['pix_received', 'ready_to_pay', 'sent_to_batch'].includes(w.status)).length}
+                      {winners.filter(w => ['pix_received', 'sent_to_batch'].includes(w.status)).length}
                     </p>
                     <p className="text-[9px] text-muted-foreground">Em processo</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-success/5">
                     <CheckCircle2 className="h-4 w-4 text-success mx-auto mb-1" />
                     <p className="text-xs font-semibold">
-                      {winners.filter(w => ['paid', 'receipt_sent'].includes(w.status)).length}
+                      {winners.filter(w => ['receipt_attached', 'receipt_sent'].includes(w.status)).length}
                     </p>
                     <p className="text-[9px] text-muted-foreground">Concluído</p>
                   </div>
@@ -234,33 +234,41 @@ const Index = () => {
         {/* Operational Overview (macro view) */}
         <div className="rounded-xl border bg-card p-4 lg:p-5">
           <h2 className="text-sm font-semibold mb-4">Visão Operacional</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <StatsCard
               title="Pendentes"
-              value={String(pending)}
+              value={String(pending.length)}
               icon={Clock}
               variant="warning"
-              subtitle="Aguardando Pix ou importados"
+              subtitle={formatCurrency(pending.reduce((s, w) => s + w.value, 0))}
             />
             <StatsCard
               title="Em Processo"
-              value={String(inProcess)}
+              value={String(inProcess.length)}
               icon={AlertCircle}
               variant="accent"
-              subtitle="Pix recebido → Enviado p/ lote"
+              subtitle={formatCurrency(inProcess.reduce((s, w) => s + w.value, 0))}
             />
             <StatsCard
-              title="Aguardando Comprovante"
-              value={String(awaitingReceipt)}
-              icon={Users}
-              variant="primary"
+              title="Pix Recusado"
+              value={String(refused.length)}
+              icon={AlertCircle}
+              variant="destructive"
+              subtitle={formatCurrency(refused.reduce((s, w) => s + w.value, 0))}
             />
             <StatsCard
               title="Concluídos"
-              value={String(completed)}
+              value={String(completed.length)}
               icon={CheckCircle2}
               variant="success"
-              subtitle={`${paidToday} pagos hoje`}
+              subtitle={`${paidToday} hoje · ${formatCurrency(completed.reduce((s, w) => s + w.value, 0))}`}
+            />
+            <StatsCard
+              title="Com Erros"
+              value={String(withErrors.length)}
+              icon={AlertCircle}
+              variant="destructive"
+              subtitle="Falha no último envio"
             />
           </div>
         </div>
