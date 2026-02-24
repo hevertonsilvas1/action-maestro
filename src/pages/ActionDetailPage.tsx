@@ -29,6 +29,7 @@ import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
 import { useRequestPix } from '@/hooks/useRequestPix';
 import { WinnersFilters, useWinnersFilters, applyWinnersFilters } from '@/components/WinnersFilters';
+import { TablePagination, paginateArray } from '@/components/TablePagination';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,8 @@ export default function ActionDetailPage() {
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
+  const [winnersPage, setWinnersPage] = useState(1);
+  const [winnersPageSize, setWinnersPageSize] = useState(20);
   const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
@@ -107,6 +110,16 @@ export default function ActionDetailPage() {
     [winners, winnersFilters]
   );
 
+  const paginatedWinners = useMemo(
+    () => paginateArray(filteredWinners, winnersPage, winnersPageSize),
+    [filteredWinners, winnersPage, winnersPageSize]
+  );
+
+  const handleWinnersFiltersChange = useCallback((f: typeof winnersFilters) => {
+    setWinnersFilters(f);
+    setWinnersPage(1);
+  }, [setWinnersFilters]);
+
   const toggleWinner = useCallback((winnerId: string) => {
     setSelectedWinnerIds((prev) => {
       const next = new Set(prev);
@@ -117,12 +130,12 @@ export default function ActionDetailPage() {
   }, []);
 
   const toggleAllWinners = useCallback(() => {
-    if (selectedWinnerIds.size === filteredWinners.length) {
+    if (selectedWinnerIds.size === paginatedWinners.length) {
       setSelectedWinnerIds(new Set());
     } else {
-      setSelectedWinnerIds(new Set(filteredWinners.map((w) => w.id)));
+      setSelectedWinnerIds(new Set(paginatedWinners.map((w) => w.id)));
     }
-  }, [filteredWinners, selectedWinnerIds.size]);
+  }, [paginatedWinners, selectedWinnerIds.size]);
 
   const selectedWinners = useMemo(
     () => winners.filter((w) => selectedWinnerIds.has(w.id)),
@@ -438,7 +451,7 @@ export default function ActionDetailPage() {
 
             <WinnersFilters
               filters={winnersFilters}
-              onFiltersChange={setWinnersFilters}
+              onFiltersChange={handleWinnersFiltersChange}
               showValueFilter={isAdmin}
             />
 
@@ -449,7 +462,7 @@ export default function ActionDetailPage() {
                     <tr className="border-b bg-muted/40">
                       <th className="px-3 py-3 w-10">
                         <Checkbox
-                          checked={filteredWinners.length > 0 && selectedWinnerIds.size === filteredWinners.length}
+                          checked={paginatedWinners.length > 0 && paginatedWinners.every((w) => selectedWinnerIds.has(w.id))}
                           onCheckedChange={toggleAllWinners}
                           aria-label="Selecionar todos"
                         />
@@ -464,10 +477,10 @@ export default function ActionDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredWinners.length === 0 ? (
+                    {paginatedWinners.length === 0 ? (
                       <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
                     ) : (
-                      filteredWinners.map((w, i) => (
+                      paginatedWinners.map((w, i) => (
                         <tr
                           key={w.id}
                           className={cn(
@@ -508,6 +521,14 @@ export default function ActionDetailPage() {
                 </table>
               </div>
             </div>
+
+            <TablePagination
+              page={winnersPage}
+              pageSize={winnersPageSize}
+              totalItems={filteredWinners.length}
+              onPageChange={setWinnersPage}
+              onPageSizeChange={setWinnersPageSize}
+            />
           </TabsContent>
 
           <TabsContent value="prizes" className="space-y-3">
