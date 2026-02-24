@@ -37,13 +37,21 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const unnichatUrl = Deno.env.get("UNNICHAT_WEBHOOK_URL");
-    if (!unnichatUrl) {
+    // Read webhook URL from integration_configs table (manageable via UI)
+    const { data: webhookConfig, error: configError } = await serviceClient
+      .from("integration_configs")
+      .select("value")
+      .eq("key", "UNNICHAT_WEBHOOK_URL")
+      .maybeSingle();
+
+    if (configError || !webhookConfig?.value) {
       return new Response(
-        JSON.stringify({ error: "UNNICHAT_WEBHOOK_URL não configurada." }),
+        JSON.stringify({ error: "UNNICHAT_WEBHOOK_URL não configurada em Integrações." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const unnichatUrl = webhookConfig.value;
 
     // Auth client (respects RLS)
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
