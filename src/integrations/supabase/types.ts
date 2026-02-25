@@ -502,6 +502,7 @@ export type Database = {
           name: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           phone: string | null
+          phone_e164: string | null
           pix_holder_doc: string | null
           pix_holder_name: string | null
           pix_key: string | null
@@ -541,6 +542,7 @@ export type Database = {
           name: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           phone?: string | null
+          phone_e164?: string | null
           pix_holder_doc?: string | null
           pix_holder_name?: string | null
           pix_key?: string | null
@@ -580,6 +582,7 @@ export type Database = {
           name?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           phone?: string | null
+          phone_e164?: string | null
           pix_holder_doc?: string | null
           pix_holder_name?: string | null
           pix_key?: string | null

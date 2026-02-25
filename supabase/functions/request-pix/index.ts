@@ -161,7 +161,8 @@ Deno.serve(async (req) => {
             updated_at: now,
             last_pix_request_at: now,
             last_pix_requested_by: userName,
-            last_pix_error: null, // Clear previous error on success
+            last_pix_error: null,
+            last_outbound_at: now,
           })
           .eq("id", w.winner_id);
 

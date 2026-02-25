@@ -4,6 +4,7 @@ import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
 import { formatCurrency, formatPhone } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
+import { formatDate } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +21,9 @@ import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Download, Loader2, Send, PlusCircle, Trash2, AlertCircle,
+  Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, Info,
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
   XCircle, Phone, UserX,
 } from 'lucide-react';
@@ -353,16 +355,35 @@ export default function WinnersPage() {
                                 </TooltipTrigger>
                                 <TooltipContent>{w.receiptUrl ? 'Gerenciar Comprovante' : 'Anexar Comprovante'}</TooltipContent>
                               </Tooltip>
-                              {w.lastPixError && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="inline-flex items-center justify-center h-8 w-8 cursor-help">
-                                      <AlertCircle className="h-4 w-4 text-destructive" />
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="max-w-xs text-xs">{w.lastPixError}</TooltipContent>
-                                </Tooltip>
-                              )}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors">
+                                    <Info className={cn('h-4 w-4', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent side="left" className="w-72 text-xs space-y-2">
+                                  <p className="font-semibold text-sm">Debug — Último envio</p>
+                                  <div className="space-y-1.5">
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Última solicitação:</span>
+                                      <span className="font-mono">{w.lastPixRequestAt ? formatRelativeTime(w.lastPixRequestAt) : '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Último outbound:</span>
+                                      <span className="font-mono">{w.lastOutboundAt ? formatRelativeTime(w.lastOutboundAt) : '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Solicitado por:</span>
+                                      <span>{w.lastPixRequestedBy || '—'}</span>
+                                    </div>
+                                    {w.lastPixError && (
+                                      <div className="mt-1 p-2 rounded bg-destructive/10 text-destructive">
+                                        <span className="font-medium">Erro: </span>{w.lastPixError}
+                                      </div>
+                                    )}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                               {isAdmin && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -440,6 +461,13 @@ export default function WinnersPage() {
                         <div className="flex items-center gap-1 text-[11px] text-destructive">
                           <AlertCircle className="h-3 w-3 shrink-0" />
                           <span className="truncate">{w.lastPixError}</span>
+                        </div>
+                      )}
+                      {(w.lastPixRequestAt || w.lastOutboundAt) && (
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <Info className="h-3 w-3 shrink-0" />
+                          <span>Solic: {w.lastPixRequestAt ? formatRelativeTime(w.lastPixRequestAt) : '—'}</span>
+                          <span>· Out: {w.lastOutboundAt ? formatRelativeTime(w.lastOutboundAt) : '—'}</span>
                         </div>
                       )}
                     </div>
