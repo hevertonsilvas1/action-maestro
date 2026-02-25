@@ -361,16 +361,33 @@ export default function WinnersPage() {
                                     <Info className={cn('h-4 w-4', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
                                   </button>
                                 </PopoverTrigger>
-                                <PopoverContent side="left" className="w-72 text-xs space-y-2">
-                                  <p className="font-semibold text-sm">Debug — Último envio</p>
+                                <PopoverContent side="left" className="w-80 text-xs space-y-2">
+                                  <p className="font-semibold text-sm">Debug — Rastreio</p>
                                   <div className="space-y-1.5">
                                     <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Última solicitação:</span>
-                                      <span className="font-mono">{w.lastPixRequestAt ? formatRelativeTime(w.lastPixRequestAt) : '—'}</span>
+                                      <span className="text-muted-foreground">Winner ID:</span>
+                                      <span className="font-mono text-[10px] select-all">{w.id.slice(0, 8)}…</span>
                                     </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Action ID:</span>
+                                      <span className="font-mono text-[10px] select-all">{w.actionId.slice(0, 8)}…</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Phone E164:</span>
+                                      <span className="font-mono text-[10px]">{w.phoneE164 || '—'}</span>
+                                    </div>
+                                    <hr className="border-border" />
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Último outbound:</span>
                                       <span className="font-mono">{w.lastOutboundAt ? formatRelativeTime(w.lastOutboundAt) : '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Último inbound:</span>
+                                      <span className="font-mono">{w.ultimaInteracaoWhatsapp ? formatRelativeTime(w.ultimaInteracaoWhatsapp) : '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Última solicitação:</span>
+                                      <span className="font-mono">{w.lastPixRequestAt ? formatRelativeTime(w.lastPixRequestAt) : '—'}</span>
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Solicitado por:</span>
