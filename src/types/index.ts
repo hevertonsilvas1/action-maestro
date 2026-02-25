@@ -111,17 +111,17 @@ export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
 export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
   imported: 'bg-muted text-muted-foreground',
   pix_requested: 'bg-info/15 text-info',
-  awaiting_pix: 'bg-warning/15 text-warning',
-  pix_received: 'bg-primary/15 text-primary',
-  ready_to_pay: 'bg-accent/15 text-accent',
-  sent_to_batch: 'bg-info/15 text-info',
+  awaiting_pix: 'bg-info/15 text-info',
+  pix_received: 'bg-purple/15 text-purple',
+  ready_to_pay: 'bg-purple/15 text-purple',
+  sent_to_batch: 'bg-accent/15 text-accent',
   awaiting_receipt: 'bg-warning/15 text-warning',
   paid: 'bg-success/15 text-success',
   receipt_sent: 'bg-success/15 text-success',
   pix_refused: 'bg-destructive/15 text-destructive',
-  receipt_attached: 'bg-success/15 text-success',
+  receipt_attached: 'bg-warning/15 text-warning',
   numero_inexistente: 'bg-destructive/15 text-destructive',
-  cliente_nao_responde: 'bg-warning/15 text-warning',
+  cliente_nao_responde: 'bg-destructive/15 text-destructive',
 };
 
 export const ACTION_STATUS_LABELS: Record<Action['status'], string> = {

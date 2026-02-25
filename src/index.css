@@ -39,6 +39,9 @@
     --info: 205 85% 50%;
     --info-foreground: 0 0% 100%;
 
+    --purple: 262 60% 52%;
+    --purple-foreground: 0 0% 100%;
+
     --border: 220 15% 90%;
     --input: 220 15% 90%;
     --ring: 220 70% 45%;
@@ -98,6 +101,9 @@
 
     --info: 205 80% 52%;
     --info-foreground: 0 0% 100%;
+
+    --purple: 262 55% 58%;
+    --purple-foreground: 0 0% 100%;
 
     --border: 222 20% 20%;
     --input: 222 20% 20%;
