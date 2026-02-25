@@ -23,10 +23,11 @@ export function formatRelativeTime(dateStr: string | undefined | null): string {
 }
 
 /**
- * Check if a WhatsApp interaction is within the configured window (default 24h).
+ * Check if the WhatsApp inbound window is open (default 24h).
+ * Based exclusively on last_inbound_at (last message received from client).
  */
-export function isWindowOpen(lastInteraction: string | undefined | null, windowHours = 24): boolean {
-  if (!lastInteraction) return false;
-  const lastInbound = new Date(lastInteraction).getTime();
-  return (Date.now() - lastInbound) < windowHours * 60 * 60 * 1000;
+export function isWindowOpen(lastInboundAt: string | undefined | null, windowHours = 24): boolean {
+  if (!lastInboundAt) return false;
+  const ts = new Date(lastInboundAt).getTime();
+  return (Date.now() - ts) < windowHours * 60 * 60 * 1000;
 }

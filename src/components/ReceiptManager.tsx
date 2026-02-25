@@ -26,8 +26,8 @@ interface ReceiptManagerProps {
 }
 
 function isWindowOpen(winner: Winner, windowHours = 24): boolean {
-  if (!winner.ultimaInteracaoWhatsapp) return false;
-  const lastInbound = new Date(winner.ultimaInteracaoWhatsapp).getTime();
+  if (!winner.lastInboundAt) return false;
+  const lastInbound = new Date(winner.lastInboundAt).getTime();
   const now = Date.now();
   return (now - lastInbound) < windowHours * 60 * 60 * 1000;
 }

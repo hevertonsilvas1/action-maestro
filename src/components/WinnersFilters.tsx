@@ -248,7 +248,7 @@ export function WinnersFilters({
 }
 
 /** Apply filter values to a list of winners (with optional actionName) */
-export function applyWinnersFilters<T extends { name: string; status: string; actionId: string; value: number; prizeDatetime?: string; fullName?: string; actionName?: string; ultimaInteracaoWhatsapp?: string }>(
+export function applyWinnersFilters<T extends { name: string; status: string; actionId: string; value: number; prizeDatetime?: string; fullName?: string; actionName?: string; lastInboundAt?: string }>(
   winners: T[],
   filters: WinnersFilterValues,
   windowHours = 24
@@ -284,11 +284,11 @@ export function applyWinnersFilters<T extends { name: string; status: string; ac
 
     // WhatsApp Window
     if (filters.whatsappWindow !== 'all') {
-      const hasInteraction = !!w.ultimaInteracaoWhatsapp;
+      const hasInbound = !!w.lastInboundAt;
       if (filters.whatsappWindow === 'open') {
-        if (!hasInteraction || !isWindowOpen(w.ultimaInteracaoWhatsapp, windowHours)) return false;
+        if (!hasInbound || !isWindowOpen(w.lastInboundAt, windowHours)) return false;
       } else {
-        if (!hasInteraction || isWindowOpen(w.ultimaInteracaoWhatsapp, windowHours)) return false;
+        if (!hasInbound || isWindowOpen(w.lastInboundAt, windowHours)) return false;
       }
     }
 

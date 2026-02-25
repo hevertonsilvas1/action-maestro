@@ -271,7 +271,7 @@ export default function WinnersPage() {
                   </thead>
                   <tbody>
                     {paginated.map((w, i) => {
-                      const windowOpen = isWindowOpen(w.ultimaInteracaoWhatsapp);
+                       const windowOpen = isWindowOpen(w.lastInboundAt);
                       const canRequestPix = ['imported', 'pix_refused'].includes(w.status);
                       return (
                         <tr
@@ -424,7 +424,7 @@ export default function WinnersPage() {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3">
               {paginated.map((w, i) => {
-                const windowOpen = isWindowOpen(w.ultimaInteracaoWhatsapp);
+                const windowOpen = isWindowOpen(w.lastInboundAt);
                 const canRequestPix = ['imported', 'pix_refused'].includes(w.status);
                 return (
                   <div
