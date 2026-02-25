@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Winner } from '@/types';
 
@@ -38,11 +39,32 @@ function mapWinner(row: any): Winner {
     paymentMethod: row.payment_method ?? undefined,
     ultimaInteracaoWhatsapp: row.ultima_interacao_whatsapp ?? undefined,
     lastOutboundAt: row.last_outbound_at ?? undefined,
+    lastInboundAt: row.last_inbound_at ?? undefined,
     createdAt: row.created_at,
   };
 }
 
 export function useWinners(actionId?: string) {
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for winners table
+  useEffect(() => {
+    const channel = supabase
+      .channel('winners-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'winners' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['winners'] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ['winners', actionId ?? 'all'],
     queryFn: async () => {
