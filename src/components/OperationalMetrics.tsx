@@ -98,9 +98,9 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
     return acc;
   }, {} as Record<WinnerStatus, number>);
 
-  const windowOpenCount = winners.filter(w => isWindowOpen(w.ultimaInteracaoWhatsapp)).length;
+  const windowOpenCount = winners.filter(w => isWindowOpen(w.lastInboundAt)).length;
   const windowClosedCount = winners.filter(w =>
-    w.ultimaInteracaoWhatsapp && !isWindowOpen(w.ultimaInteracaoWhatsapp),
+    w.lastInboundAt && !isWindowOpen(w.lastInboundAt),
   ).length;
 
   const now = Date.now();
