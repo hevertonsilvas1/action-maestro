@@ -495,6 +495,7 @@ export type Database = {
           deleted_by: string | null
           full_name: string | null
           id: string
+          last_inbound_at: string | null
           last_outbound_at: string | null
           last_pix_error: string | null
           last_pix_request_at: string | null
@@ -535,6 +536,7 @@ export type Database = {
           deleted_by?: string | null
           full_name?: string | null
           id?: string
+          last_inbound_at?: string | null
           last_outbound_at?: string | null
           last_pix_error?: string | null
           last_pix_request_at?: string | null
@@ -575,6 +577,7 @@ export type Database = {
           deleted_by?: string | null
           full_name?: string | null
           id?: string
+          last_inbound_at?: string | null
           last_outbound_at?: string | null
           last_pix_error?: string | null
           last_pix_request_at?: string | null

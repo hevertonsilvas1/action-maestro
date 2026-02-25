@@ -383,7 +383,7 @@ export default function WinnersPage() {
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Último inbound:</span>
-                                      <span className="font-mono">{w.ultimaInteracaoWhatsapp ? formatRelativeTime(w.ultimaInteracaoWhatsapp) : '—'}</span>
+                                      <span className="font-mono">{w.lastInboundAt ? formatRelativeTime(w.lastInboundAt) : (w.ultimaInteracaoWhatsapp ? formatRelativeTime(w.ultimaInteracaoWhatsapp) : '—')}</span>
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Última solicitação:</span>

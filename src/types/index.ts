@@ -58,6 +58,7 @@ export interface Winner {
   paymentMethod?: PaymentMethod;
   ultimaInteracaoWhatsapp?: string;
   lastOutboundAt?: string;
+  lastInboundAt?: string;
   createdAt: string;
 }
 
