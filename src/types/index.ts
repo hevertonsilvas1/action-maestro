@@ -42,6 +42,7 @@ export interface Winner {
   receiptVersion: number;
   cpf?: string;
   phone?: string;
+  phoneE164?: string;
   prizeDatetime?: string;
   lastPixRequestAt?: string;
   lastPixError?: string;

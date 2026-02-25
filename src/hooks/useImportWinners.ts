@@ -244,18 +244,31 @@ export function useImportWinners(actionId: string, actionName: string) {
         return;
       }
 
-      const rows = newWinners.map((w) => ({
-        action_id: actionId,
-        name: w.name,
-        full_name: w.name,
-        cpf: normalizeCpf(w.cpf),
-        phone: normalizePhone(w.phone),
-        value: w.value,
-        prize_type: normalizePrizeType(w.prize_type) as any,
-        prize_title: w.title || w.prize_type,
-        prize_datetime: w.prize_datetime || null,
-        status: 'imported' as const,
-      }));
+      const rows = newWinners.map((w) => {
+        const normalizedPhone = normalizePhone(w.phone);
+        const digits = normalizedPhone ? normalizedPhone.replace(/\D/g, '') : null;
+        let phoneE164: string | null = null;
+        if (digits) {
+          if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+            phoneE164 = `+${digits}`;
+          } else if (digits.length === 10 || digits.length === 11) {
+            phoneE164 = `+55${digits}`;
+          }
+        }
+        return {
+          action_id: actionId,
+          name: w.name,
+          full_name: w.name,
+          cpf: normalizeCpf(w.cpf),
+          phone: normalizedPhone,
+          phone_e164: phoneE164,
+          value: w.value,
+          prize_type: normalizePrizeType(w.prize_type) as any,
+          prize_title: w.title || w.prize_type,
+          prize_datetime: w.prize_datetime || null,
+          status: 'imported' as const,
+        };
+      });
 
       // Insert in batches of 100
       const batchSize = 100;

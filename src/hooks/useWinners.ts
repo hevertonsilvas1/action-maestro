@@ -22,6 +22,7 @@ function mapWinner(row: any): Winner {
     receiptVersion: row.receipt_version ?? 0,
     cpf: row.cpf ?? undefined,
     phone: row.phone ?? undefined,
+    phoneE164: row.phone_e164 ?? undefined,
     prizeDatetime: row.prize_datetime ?? undefined,
     lastPixRequestAt: row.last_pix_request_at ?? undefined,
     lastPixError: row.last_pix_error ?? undefined,

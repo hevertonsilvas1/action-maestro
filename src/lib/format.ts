@@ -30,5 +30,30 @@ export function formatPhone(phone: string | null | undefined): string {
   if (digits.length === 10) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   }
+  // Handle +55 prefix
+  if (digits.length === 13 && digits.startsWith('55')) {
+    const local = digits.slice(2);
+    return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+  }
+  if (digits.length === 12 && digits.startsWith('55')) {
+    const local = digits.slice(2);
+    return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  }
   return phone;
+}
+
+/** Normalize phone to E.164 format: +55DDDNUMERO */
+export function normalizePhoneE164(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return null;
+  // Already has country code 55
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    return `+${digits}`;
+  }
+  // Local number (10 or 11 digits)
+  if (digits.length === 10 || digits.length === 11) {
+    return `+55${digits}`;
+  }
+  return null;
 }
