@@ -5,7 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Upload, Download, Trash2, RefreshCw, Send, FileText, Paperclip, MessageSquare, Clock, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, Download, Trash2, RefreshCw, Send, FileText, Paperclip, MessageSquare, Clock, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -32,6 +32,20 @@ function isWindowOpen(winner: Winner, windowHours = 24): boolean {
   return (now - lastInbound) < windowHours * 60 * 60 * 1000;
 }
 
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function getTimeSince(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const diff = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(diff / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+  if (hours > 0) return `há ${hours}h${minutes > 0 ? `${minutes}min` : ''}`;
+  return `há ${minutes}min`;
+}
+
 export function ReceiptManager({ open, onOpenChange, winner, userName, actionId, actionName }: ReceiptManagerProps) {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -46,6 +60,8 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
   const canUpload = RECEIPT_ELIGIBLE_STATUSES.includes(winner.status);
   const canSendReceipt = (winner.status === 'receipt_attached') && hasReceipt;
   const windowOpen = isWindowOpen(winner);
+  const receiptAlreadySent = !!winner.receiptSentAt;
+  const hasPendingTemplate = (winner.templateReopenCount || 0) > 0;
 
   const storagePath = `${actionId}/${winner.id}`;
 
@@ -54,7 +70,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
     if (!winner.phoneE164 || winner.receiptSentAt) return;
 
     if (isWindowOpen(winner)) {
-      // Window open → send receipt directly
       try {
         const { data, error } = await supabase.functions.invoke('send-receipt', {
           body: {
@@ -85,7 +100,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         console.error('Auto-send exception:', err);
       }
     } else {
-      // Window closed → send template to induce response
       try {
         const { data, error } = await supabase.functions.invoke('send-receipt', {
           body: {
@@ -271,7 +285,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
     }
   };
 
-  // --- Send Receipt (hybrid) ---
+  // --- Send Receipt ---
   const handleSendReceipt = async () => {
     if (!winner.receiptUrl) return;
 
@@ -291,7 +305,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         body: {
           winner_id: winner.id,
           winner_name: winner.name,
-          winner_phone: (winner.phone || '').replace(/\D/g, ''),
+          winner_phone: winner.phoneE164 || (winner.phone || '').replace(/\D/g, ''),
           action_id: actionId,
           action_name: actionName,
           prize_title: winner.prizeTitle,
@@ -312,6 +326,13 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           toast.success('Comprovante enviado ao ganhador com sucesso!');
         }
         onOpenChange(false);
+      } else if (data?.skipped) {
+        const reasons: Record<string, string> = {
+          receipt_already_sent: 'Comprovante já foi enviado anteriormente.',
+          max_templates_reached: 'Limite de templates de reabertura atingido (máx. 3).',
+          template_cooldown: 'Aguarde pelo menos 1h entre envios de template.',
+        };
+        toast.warning(reasons[data.reason] || 'Envio ignorado.');
       } else {
         toast.error(data?.error || 'Erro ao enviar.');
       }
@@ -336,7 +357,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         note: 'Marcado para envio manual na conversa (janela fechada)',
       },
     });
-    toast.info('Registrado como pendente para envio manual.');
+    toast.info('Registrado como pendente. O comprovante será enviado automaticamente quando o cliente responder.');
     onOpenChange(false);
   };
 
@@ -355,60 +376,94 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           </DialogDescription>
         </DialogHeader>
 
-        {/* Status */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {!hasReceipt ? (
-            <Badge variant="outline" className="text-muted-foreground gap-1">
-              Sem comprovante
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-success gap-1 border-success/30 bg-success/5">
-              <Paperclip className="h-3 w-3" />
-              Anexado
-            </Badge>
-          )}
-          {winner.receiptVersion > 0 && (
-            <Badge variant="outline" className="text-[10px]">
-              Versão {winner.receiptVersion}
-            </Badge>
-          )}
-          {/* Window indicator */}
-          {hasReceipt && (
-            <Badge variant="outline" className={`text-[10px] gap-1 ${windowOpen ? 'border-success/30 text-success' : 'border-warning/30 text-warning'}`}>
-              <Clock className="h-3 w-3" />
-              {windowOpen ? 'Janela aberta' : 'Janela fechada'}
-            </Badge>
-          )}
+        {/* ── Status Cards ── */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Window status */}
+          <div className={`rounded-lg border p-3 ${windowOpen ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'}`}>
+            <div className="flex items-center gap-1.5 mb-1">
+              {windowOpen ? <Wifi className="h-3.5 w-3.5 text-success" /> : <WifiOff className="h-3.5 w-3.5 text-warning" />}
+              <span className={`text-xs font-semibold ${windowOpen ? 'text-success' : 'text-warning'}`}>
+                {windowOpen ? 'Janela aberta' : 'Janela fechada'}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              {winner.lastInboundAt
+                ? `Última interação: ${getTimeSince(winner.lastInboundAt)}`
+                : 'Nenhuma interação registrada'}
+            </p>
+          </div>
+
+          {/* Receipt status */}
+          <div className={`rounded-lg border p-3 ${
+            receiptAlreadySent
+              ? 'border-success/30 bg-success/5'
+              : hasReceipt
+                ? 'border-primary/30 bg-primary/5'
+                : 'border-muted bg-muted/30'
+          }`}>
+            <div className="flex items-center gap-1.5 mb-1">
+              {receiptAlreadySent ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              ) : hasReceipt ? (
+                <Paperclip className="h-3.5 w-3.5 text-primary" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span className={`text-xs font-semibold ${
+                receiptAlreadySent ? 'text-success' : hasReceipt ? 'text-primary' : 'text-muted-foreground'
+              }`}>
+                {receiptAlreadySent ? 'Enviado' : hasReceipt ? 'Anexado (pendente)' : 'Sem comprovante'}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              {receiptAlreadySent
+                ? formatDateTime(winner.receiptSentAt)
+                : hasReceipt
+                  ? `Anexado: ${formatDateTime(winner.receiptAttachedAt)}`
+                  : 'Nenhum arquivo'}
+            </p>
+          </div>
         </div>
 
-        {/* Receipt details */}
+        {/* ── Receipt details ── */}
         {hasReceipt && (
-          <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-            <p className="text-xs font-medium">{winner.receiptFilename || 'Comprovante'}</p>
-            {winner.receiptAttachedAt && (
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium">{winner.receiptFilename || 'Comprovante'}</p>
+              {winner.receiptVersion > 0 && (
+                <Badge variant="outline" className="text-[10px] h-5">v{winner.receiptVersion}</Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
               <p className="text-[10px] text-muted-foreground">
-                Anexado em: {new Date(winner.receiptAttachedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                Anexado em: {formatDateTime(winner.receiptAttachedAt)}
               </p>
-            )}
-            {winner.receiptAttachedBy && (
               <p className="text-[10px] text-muted-foreground">
-                Anexado por: {winner.receiptAttachedBy}
+                Por: {winner.receiptAttachedBy || '—'}
               </p>
-            )}
-            {winner.receiptSentAt && (
               <p className="text-[10px] text-muted-foreground">
-                Enviado ao cliente em: {new Date(winner.receiptSentAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                Enviado em: {formatDateTime(winner.receiptSentAt)}
               </p>
-            )}
-            {winner.lastInboundAt && (
               <p className="text-[10px] text-muted-foreground">
-                Última interação: {new Date(winner.lastInboundAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                Última interação: {formatDateTime(winner.lastInboundAt)}
+              </p>
+              {winner.lastOutboundAt && (
+                <p className="text-[10px] text-muted-foreground col-span-2">
+                  Último outbound: {formatDateTime(winner.lastOutboundAt)}
+                </p>
+              )}
+            </div>
+            {hasPendingTemplate && (
+              <p className="text-[10px] text-muted-foreground">
+                Templates de reabertura enviados: {winner.templateReopenCount}/3
+                {winner.templateReopenSentAt && ` (último: ${formatDateTime(winner.templateReopenSentAt)})`}
               </p>
             )}
             {winner.lastPixError && (
-              <p className="text-[10px] text-destructive">
-                Último erro: {winner.lastPixError}
-              </p>
+              <div className="flex items-start gap-1.5 mt-1">
+                <AlertTriangle className="h-3 w-3 text-destructive mt-0.5 shrink-0" />
+                <p className="text-[10px] text-destructive leading-tight">{winner.lastPixError}</p>
+              </div>
             )}
           </div>
         )}
@@ -419,28 +474,49 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           </div>
         )}
 
-        {/* Manual options modal (window closed) */}
+        {/* ── Primary action: Send Receipt ── */}
+        {canSendReceipt && !showManualOptions && (
+          <Button
+            onClick={handleSendReceipt}
+            disabled={isBusy}
+            className="w-full gap-2"
+            size="default"
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : windowOpen ? (
+              <Send className="h-4 w-4" />
+            ) : (
+              <WifiOff className="h-4 w-4" />
+            )}
+            {windowOpen ? 'Enviar Comprovante' : 'Enviar Comprovante (janela fechada)'}
+          </Button>
+        )}
+
+        {/* ── Manual options (window closed) ── */}
         {showManualOptions && (
           <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-3">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+              <WifiOff className="h-4 w-4 text-warning mt-0.5 shrink-0" />
               <div className="space-y-1">
-                <p className="text-xs font-medium text-warning">Janela de envio fechada</p>
+                <p className="text-xs font-medium text-warning">Janela de atendimento fechada</p>
                 <p className="text-[10px] text-muted-foreground">
-                  O cliente não interagiu recentemente. O envio automático não é possível. Escolha uma opção:
+                  O cliente não interagiu nas últimas 24h. Escolha uma ação:
                 </p>
               </div>
             </div>
             <div className="flex flex-col gap-2">
               <Button
-                variant="outline"
-                size="sm"
                 onClick={() => doSendReceipt('confirmation')}
-                disabled={isBusy}
+                disabled={isBusy || (winner.templateReopenCount || 0) >= 3}
+                size="sm"
                 className="gap-1.5 justify-start"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
-                Pedir confirmação ao cliente
+                Enviar template de reabertura
+                {(winner.templateReopenCount || 0) > 0 && (
+                  <span className="text-[10px] opacity-70">({winner.templateReopenCount}/3)</span>
+                )}
               </Button>
               <Button
                 variant="outline"
@@ -450,7 +526,15 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
                 className="gap-1.5 justify-start"
               >
                 <Clock className="h-4 w-4" />
-                Marcar como pendente (envio manual)
+                Marcar como pendente (envio automático no inbound)
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowManualOptions(false)}
+                className="text-muted-foreground"
+              >
+                Cancelar
               </Button>
             </div>
           </div>
@@ -466,6 +550,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           onChange={handleFileSelect}
         />
 
+        {/* ── Secondary actions ── */}
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <div className="flex flex-wrap gap-2 justify-end">
             {canUpload && (
@@ -510,18 +595,6 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
               >
                 {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 Excluir
-              </Button>
-            )}
-
-            {canSendReceipt && (
-              <Button
-                size="sm"
-                onClick={handleSendReceipt}
-                disabled={isBusy}
-                className="gap-1.5"
-              >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Enviar Comprovante
               </Button>
             )}
           </div>
