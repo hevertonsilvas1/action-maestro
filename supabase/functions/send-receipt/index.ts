@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       }
 
       payloadBody = {
-        tel: winner_phone || w.phone_e164,
+        tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
         nome: winner_name,
         acao: action_name,
         tipo_premio: prize_title,

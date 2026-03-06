@@ -143,12 +143,15 @@ Deno.serve(async (req) => {
           }
         }
 
+        // --- Normalize phone to E.164 ---
+        const normalizedPhone = normalizePhoneE164(w.winner_phone) || w.winner_phone;
+
         // --- Send to UnniChat ---
         const unnichatResponse = await fetch(unnichatUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tel: w.winner_phone,
+            tel: normalizedPhone,
             nome: w.winner_name,
             acao: w.action_name,
             tipo_premio: w.prize_title,
