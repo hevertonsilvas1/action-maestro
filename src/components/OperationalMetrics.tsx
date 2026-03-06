@@ -104,6 +104,10 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
   ).length;
 
   const now = Date.now();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayMs = todayStart.getTime();
+
   const pixRequestedStale24h = winners.filter(w =>
     w.status === 'pix_requested' && w.lastPixRequestAt &&
     (now - new Date(w.lastPixRequestAt).getTime()) > 24 * 3600000,
@@ -116,6 +120,39 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
     w.status === 'receipt_attached' && w.receiptAttachedAt &&
     (now - new Date(w.receiptAttachedAt).getTime()) > 24 * 3600000,
   ).length;
+
+  // Inbound metrics
+  const inboundToday = winners.filter(w =>
+    w.lastInboundAt && new Date(w.lastInboundAt).getTime() >= todayMs,
+  ).length;
+
+  // Average response time: diff between last_outbound_at and last_inbound_at for winners with both
+  const responseTimes = winners
+    .filter(w => w.lastInboundAt && w.lastOutboundAt)
+    .map(w => {
+      const inbound = new Date(w.lastInboundAt!).getTime();
+      const outbound = new Date(w.lastOutboundAt!).getTime();
+      return Math.abs(outbound - inbound);
+    })
+    .filter(d => d > 0 && d < 7 * 24 * 3600000); // ignore outliers > 7d
+  const avgResponseMs = responseTimes.length > 0
+    ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+    : 0;
+  const avgResponseMinutes = Math.round(avgResponseMs / 60000);
+  const avgResponseLabel = avgResponseMinutes < 60
+    ? `${avgResponseMinutes}min`
+    : avgResponseMinutes < 1440
+      ? `${Math.round(avgResponseMinutes / 60)}h ${avgResponseMinutes % 60}min`
+      : `${Math.round(avgResponseMinutes / 1440)}d`;
+
+  // Auto-send receipt rate: receipt_sent vs total that had receipt_attached or receipt_sent
+  const receiptEligible = winners.filter(w =>
+    ['receipt_attached', 'receipt_sent'].includes(w.status) || w.receiptSentAt,
+  ).length;
+  const receiptAutoSent = winners.filter(w => w.receiptSentAt).length;
+  const autoSendRate = receiptEligible > 0
+    ? Math.round((receiptAutoSent / receiptEligible) * 100)
+    : 0;
 
   const criticalCount =
     (statusCounts.pix_refused || 0) +
