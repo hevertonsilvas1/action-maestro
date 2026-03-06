@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       fallbackUsed = true;
       const { data: fallbackMatched } = await serviceClient
         .from("winners")
-        .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, created_at, last_outbound_at")
+        .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
         .eq("phone_e164", phoneE164)
         .is("deleted_at", null)
         .in("status", FALLBACK_STATUSES)
