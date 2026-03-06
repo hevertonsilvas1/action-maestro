@@ -151,11 +151,11 @@ Deno.serve(async (req) => {
         .from("integration_configs").select("value").eq("key", "RECEIPT_CONFIRMATION_TEMPLATE").maybeSingle();
       const template = templateConfig?.value || "Olá! Temos seu comprovante de pagamento. Responda esta mensagem para recebê-lo.";
       payloadBody = {
-        tel: winner_phone || w.phone_e164,
-        nome: winner_name,
-        acao: action_name,
-        mensagem: template,
-        row_number: 0,
+      tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
+      nome: winner_name,
+      acao: action_name,
+      mensagem: template,
+      row_number: 0,
       };
     } else {
       // Generate signed URL
