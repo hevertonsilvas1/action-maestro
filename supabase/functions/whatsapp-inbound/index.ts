@@ -337,7 +337,7 @@ Deno.serve(async (req) => {
       await serviceClient
         .from("winners")
         .update({
-          last_pix_error: `Erro auto-envio inbound: ${resp.status} ${resp.statusText}`.substring(0, 200),
+          last_pix_error: `AUTO_SEND_RECEIPT_FAILED (inbound): ${resp.status} ${resp.statusText}`.substring(0, 200),
         })
         .eq("id", target.id);
     }
