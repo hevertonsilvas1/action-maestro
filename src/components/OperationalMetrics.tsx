@@ -104,6 +104,10 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
   ).length;
 
   const now = Date.now();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayMs = todayStart.getTime();
+
   const pixRequestedStale24h = winners.filter(w =>
     w.status === 'pix_requested' && w.lastPixRequestAt &&
     (now - new Date(w.lastPixRequestAt).getTime()) > 24 * 3600000,
@@ -116,6 +120,39 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
     w.status === 'receipt_attached' && w.receiptAttachedAt &&
     (now - new Date(w.receiptAttachedAt).getTime()) > 24 * 3600000,
   ).length;
+
+  // Inbound metrics
+  const inboundToday = winners.filter(w =>
+    w.lastInboundAt && new Date(w.lastInboundAt).getTime() >= todayMs,
+  ).length;
+
+  // Average response time: diff between last_outbound_at and last_inbound_at for winners with both
+  const responseTimes = winners
+    .filter(w => w.lastInboundAt && w.lastOutboundAt)
+    .map(w => {
+      const inbound = new Date(w.lastInboundAt!).getTime();
+      const outbound = new Date(w.lastOutboundAt!).getTime();
+      return Math.abs(outbound - inbound);
+    })
+    .filter(d => d > 0 && d < 7 * 24 * 3600000); // ignore outliers > 7d
+  const avgResponseMs = responseTimes.length > 0
+    ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+    : 0;
+  const avgResponseMinutes = Math.round(avgResponseMs / 60000);
+  const avgResponseLabel = avgResponseMinutes < 60
+    ? `${avgResponseMinutes}min`
+    : avgResponseMinutes < 1440
+      ? `${Math.round(avgResponseMinutes / 60)}h ${avgResponseMinutes % 60}min`
+      : `${Math.round(avgResponseMinutes / 1440)}d`;
+
+  // Auto-send receipt rate: receipt_sent vs total that had receipt_attached or receipt_sent
+  const receiptEligible = winners.filter(w =>
+    ['receipt_attached', 'receipt_sent'].includes(w.status) || w.receiptSentAt,
+  ).length;
+  const receiptAutoSent = winners.filter(w => w.receiptSentAt).length;
+  const autoSendRate = receiptEligible > 0
+    ? Math.round((receiptAutoSent / receiptEligible) * 100)
+    : 0;
 
   const criticalCount =
     (statusCounts.pix_refused || 0) +
@@ -164,6 +201,37 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
           <MetricCard label="Janela Fechada" value={windowClosedCount} icon={MessageSquare} variant="destructive" />
           <MetricCard label="Pix Sol. >24h" value={pixRequestedStale24h} icon={Clock} variant="warning" subtitle={`${pixRequestedStale48h} há +48h`} />
           <MetricCard label="Comp. Pend. >24h" value={receiptPendingStale} icon={Paperclip} variant="warning" />
+        </div>
+      </div>
+
+      {/* Inbound Metrics */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Phone className="h-4 w-4 text-primary" />
+          Métricas de Inbound
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <MetricCard
+            label="Mensagens Hoje"
+            value={inboundToday}
+            icon={MessageSquare}
+            variant="success"
+            subtitle="Recebidas hoje"
+          />
+          <MetricCard
+            label="Tempo Médio Resposta"
+            value={avgResponseMinutes}
+            icon={Clock}
+            variant={avgResponseMinutes > 120 ? 'warning' : 'success'}
+            subtitle={avgResponseLabel}
+          />
+          <MetricCard
+            label="Taxa Auto-Envio"
+            value={autoSendRate}
+            icon={Send}
+            variant={autoSendRate >= 70 ? 'success' : autoSendRate >= 40 ? 'warning' : 'destructive'}
+            subtitle={`${receiptAutoSent}/${receiptEligible} comprovantes`}
+          />
         </div>
       </div>
     </div>
