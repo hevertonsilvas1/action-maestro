@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
         action_name: action?.name || null,
         table_name: "winners",
         record_id: target.id,
-        operation: "comprovante_enviado_auto",
+        operation: "AUTO_SEND_RECEIPT",
         user_id: null,
         user_name: "Sistema (Inbound WhatsApp)",
         user_role: null,
