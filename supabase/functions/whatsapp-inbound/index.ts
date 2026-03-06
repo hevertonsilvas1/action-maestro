@@ -18,16 +18,6 @@ function normalizePhoneE164(raw: string): string | null {
   return null;
 }
 
-const OPERATIONAL_STATUSES = [
-  "pix_requested",
-  "cliente_nao_responde",
-  "numero_inexistente",
-  "receipt_attached",
-  "imported",
-  "pix_received",
-  "sent_to_batch",
-];
-
 const FALLBACK_STATUSES = [
   "pix_requested",
   "cliente_nao_responde",
@@ -47,40 +37,80 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── 1. LOG: Request received ──
+    console.log("[INBOUND] ✅ Request received", {
+      method: req.method,
+      url: req.url,
+      timestamp: new Date().toISOString(),
+    });
+
+    // ── 2. Secret validation ──
     const secret = req.headers.get("x-webhook-secret");
     const expectedSecret = Deno.env.get("UNNICHAT_INBOUND_SECRET");
 
+    console.log("[INBOUND] 🔑 Secret check", {
+      secret_present: !!secret,
+      secret_length: secret?.length ?? 0,
+      expected_present: !!expectedSecret,
+      expected_length: expectedSecret?.length ?? 0,
+      match: secret === expectedSecret,
+    });
+
     if (!expectedSecret || secret !== expectedSecret) {
+      console.error("[INBOUND] ❌ AUTH FAILED", {
+        received: secret ? `${secret.substring(0, 4)}...` : "(null)",
+        expected: expectedSecret ? `${expectedSecret.substring(0, 4)}...` : "(null)",
+        reason: !expectedSecret
+          ? "UNNICHAT_INBOUND_SECRET not configured"
+          : "Secret mismatch",
+      });
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const body = await req.json();
+    console.log("[INBOUND] ✅ Auth OK");
 
-    // 1️⃣ Read phone from multiple payload shapes
+    // ── 3. Parse payload ──
+    const body = await req.json();
+    console.log("[INBOUND] 📦 Payload received", {
+      keys: Object.keys(body),
+      has_data: !!body.data,
+      data_keys: body.data ? Object.keys(body.data) : [],
+    });
+
     const phoneRaw: string | undefined =
       body.phone ?? body.data?.phoneNumber ?? body.data?.phone;
     const message: string | null =
       body.message ?? body.data?.lastMessage ?? body.data?.message ?? null;
     const actionId: string | undefined = body.action_id;
 
+    console.log("[INBOUND] 📞 Extracted fields", {
+      phoneRaw,
+      message_preview: message?.substring(0, 80) ?? null,
+      action_id: actionId ?? null,
+    });
+
     if (!phoneRaw) {
+      console.error("[INBOUND] ❌ No phone found in payload", { received_keys: Object.keys(body) });
       return new Response(
         JSON.stringify({ error: "phone is required", received_keys: Object.keys(body) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 2️⃣ Normalize to E.164
+    // ── 4. Normalize phone ──
     const phoneE164 = normalizePhoneE164(phoneRaw);
     if (!phoneE164) {
+      console.error("[INBOUND] ❌ Invalid phone format", { raw: phoneRaw });
       return new Response(
         JSON.stringify({ error: "Invalid phone format", raw: phoneRaw }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    console.log("[INBOUND] ✅ Phone normalized", { raw: phoneRaw, e164: phoneE164 });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -89,7 +119,7 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     let fallbackUsed = false;
 
-    // 3️⃣ Matching: primary query by phone_e164 + optional action_id
+    // ── 5. Match winners ──
     let query = serviceClient
       .from("winners")
       .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, created_at, last_outbound_at")
@@ -103,7 +133,7 @@ Deno.serve(async (req) => {
     const { data: matched, error: findErr } = await query;
 
     if (findErr) {
-      console.error("Error finding winners:", findErr);
+      console.error("[INBOUND] ❌ DB error finding winners", findErr);
       return new Response(JSON.stringify({ error: "DB error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,8 +141,14 @@ Deno.serve(async (req) => {
     }
 
     let winners = matched ?? [];
+    console.log("[INBOUND] 🔍 Primary query result", {
+      phone_e164: phoneE164,
+      action_id: actionId ?? "none",
+      matched_count: winners.length,
+      matched_ids: winners.map((w) => w.id),
+    });
 
-    // Fallback: if no results (or action_id was provided but no match), try without action_id with operational statuses
+    // Fallback
     if (winners.length === 0) {
       fallbackUsed = true;
       const { data: fallbackMatched } = await serviceClient
@@ -125,9 +161,14 @@ Deno.serve(async (req) => {
         .limit(1);
 
       winners = fallbackMatched ?? [];
+      console.log("[INBOUND] 🔄 Fallback query", {
+        matched_count: winners.length,
+        matched_ids: winners.map((w) => w.id),
+      });
     }
 
     if (winners.length === 0) {
+      console.log("[INBOUND] ⚠️ No winners found for phone", { phone_e164: phoneE164 });
       return jsonResponse({
         ok: true,
         matched: 0,
@@ -138,7 +179,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4️⃣ Update all matched: last_inbound_at + ultima_interacao_whatsapp
+    // ── 6. Update inbound timestamps ──
     for (const winner of winners) {
       await serviceClient
         .from("winners")
@@ -150,7 +191,12 @@ Deno.serve(async (req) => {
         .eq("id", winner.id);
     }
 
-    // 5️⃣ Check auto-send config
+    console.log("[INBOUND] ✅ Updated last_inbound_at for", {
+      winner_ids: winners.map((w) => w.id),
+      timestamp: now,
+    });
+
+    // ── 7. Check auto-send config ──
     const { data: autoSendConfig } = await serviceClient
       .from("integration_configs")
       .select("value")
@@ -159,18 +205,10 @@ Deno.serve(async (req) => {
 
     const autoSendEnabled = autoSendConfig?.value !== "false";
 
-    // Check inbound window
-    const { data: windowConfig } = await serviceClient
-      .from("integration_configs")
-      .select("value")
-      .eq("key", "INBOUND_WINDOW_HOURS")
-      .maybeSingle();
-
-    const windowHours = parseInt(windowConfig?.value || "24", 10);
     const primaryWinner = winners[0];
-    const inboundWindowOpen = true; // they just messaged, window is open by definition
 
     if (!autoSendEnabled) {
+      console.log("[INBOUND] ℹ️ Auto-send disabled, skipping receipt delivery");
       return jsonResponse({
         ok: true,
         matched: winners.length,
@@ -180,14 +218,20 @@ Deno.serve(async (req) => {
         winner_id: primaryWinner.id,
         action_id_resolved: primaryWinner.action_id,
         fallback_used: fallbackUsed,
-        inbound_window_open: inboundWindowOpen,
+        inbound_window_open: true,
       });
     }
 
-    // Filter candidates for auto-send: receipt_attached and not yet sent
+    // ── 8. Filter candidates for auto-send ──
     const candidates = winners
       .filter((w) => w.status === "receipt_attached" && !w.receipt_sent_at && w.receipt_url)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    console.log("[INBOUND] 📋 Auto-send candidates", {
+      total_winners: winners.length,
+      eligible_candidates: candidates.length,
+      candidate_ids: candidates.map((c) => c.id),
+    });
 
     if (candidates.length > 1) {
       for (let i = 1; i < candidates.length; i++) {
@@ -202,6 +246,7 @@ Deno.serve(async (req) => {
 
     const target = candidates[0];
     if (!target) {
+      console.log("[INBOUND] ℹ️ No eligible candidates for auto-send (no receipt_attached without receipt_sent_at)");
       return jsonResponse({
         ok: true,
         matched: winners.length,
@@ -210,12 +255,14 @@ Deno.serve(async (req) => {
         winner_id: primaryWinner.id,
         action_id_resolved: primaryWinner.action_id,
         fallback_used: fallbackUsed,
-        inbound_window_open: inboundWindowOpen,
+        inbound_window_open: true,
       });
     }
 
+    // ── 9. Extract receipt path ──
     const receiptPath = extractStoragePath(target.receipt_url || "");
     if (!receiptPath) {
+      console.error("[INBOUND] ❌ Could not extract receipt path", { receipt_url: target.receipt_url });
       return jsonResponse({
         ok: true,
         matched: winners.length,
@@ -225,10 +272,11 @@ Deno.serve(async (req) => {
         winner_id: target.id,
         action_id_resolved: target.action_id,
         fallback_used: fallbackUsed,
-        inbound_window_open: inboundWindowOpen,
+        inbound_window_open: true,
       });
     }
 
+    // ── 10. Get action name and webhook URL ──
     const { data: action } = await serviceClient
       .from("actions")
       .select("name")
@@ -252,6 +300,7 @@ Deno.serve(async (req) => {
     }
 
     if (!unnichatUrl) {
+      console.error("[INBOUND] ❌ No webhook URL configured (UNNICHAT_COMPROVANTE / UNNICHAT_PIX)");
       return jsonResponse({
         ok: true,
         matched: winners.length,
@@ -261,15 +310,17 @@ Deno.serve(async (req) => {
         winner_id: target.id,
         action_id_resolved: target.action_id,
         fallback_used: fallbackUsed,
-        inbound_window_open: inboundWindowOpen,
+        inbound_window_open: true,
       });
     }
 
+    // ── 11. Generate signed URL ──
     const { data: signedUrlData, error: signedErr } = await serviceClient.storage
       .from("receipts")
       .createSignedUrl(receiptPath, 7 * 24 * 60 * 60);
 
     if (signedErr || !signedUrlData?.signedUrl) {
+      console.error("[INBOUND] ❌ Signed URL failed", { error: signedErr, path: receiptPath });
       return jsonResponse({
         ok: true,
         matched: winners.length,
@@ -279,22 +330,32 @@ Deno.serve(async (req) => {
         winner_id: target.id,
         action_id_resolved: target.action_id,
         fallback_used: fallbackUsed,
-        inbound_window_open: inboundWindowOpen,
+        inbound_window_open: true,
       });
     }
+
+    // ── 12. Send receipt via webhook ──
+    const payload = {
+      tel: target.phone,
+      nome: target.name,
+      acao: action?.name || "",
+      tipo_premio: target.prize_title,
+      valor: String(target.value),
+      comprovante_url: signedUrlData.signedUrl,
+      row_number: 0,
+    };
+
+    console.log("[INBOUND] 🚀 Sending receipt to UnniChat", {
+      webhook_url: unnichatUrl.substring(0, 60) + "...",
+      winner_id: target.id,
+      winner_name: target.name,
+      phone: target.phone,
+    });
 
     const resp = await fetch(unnichatUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tel: target.phone,
-        nome: target.name,
-        acao: action?.name || "",
-        tipo_premio: target.prize_title,
-        valor: String(target.value),
-        comprovante_url: signedUrlData.signedUrl,
-        row_number: 0,
-      }),
+      body: JSON.stringify(payload),
     });
 
     let receiptsSent = 0;
@@ -332,8 +393,18 @@ Deno.serve(async (req) => {
       });
 
       receiptsSent++;
+      console.log("[INBOUND] ✅ Receipt sent successfully", {
+        winner_id: target.id,
+        status_changed: "receipt_attached → receipt_sent",
+      });
     } else {
       const errText = await resp.text();
+      console.error("[INBOUND] ❌ Receipt send FAILED", {
+        status: resp.status,
+        statusText: resp.statusText,
+        response: errText.substring(0, 200),
+        winner_id: target.id,
+      });
       await serviceClient
         .from("winners")
         .update({
@@ -341,6 +412,12 @@ Deno.serve(async (req) => {
         })
         .eq("id", target.id);
     }
+
+    console.log("[INBOUND] 🏁 Processing complete", {
+      matched: winners.length,
+      receipts_sent: receiptsSent,
+      fallback_used: fallbackUsed,
+    });
 
     return jsonResponse({
       ok: true,
@@ -350,10 +427,10 @@ Deno.serve(async (req) => {
       winner_id: target.id,
       action_id_resolved: target.action_id,
       fallback_used: fallbackUsed,
-      inbound_window_open: inboundWindowOpen,
+      inbound_window_open: true,
     });
   } catch (err) {
-    console.error("Inbound error:", err);
+    console.error("[INBOUND] 💥 Unhandled error:", err);
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
