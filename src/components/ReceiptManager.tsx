@@ -49,6 +49,48 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
 
   const storagePath = `${actionId}/${winner.id}`;
 
+  // --- Auto-send attempt after attach ---
+  const tryAutoSend = async (receiptPath: string) => {
+    // Conditions: window open, phone valid, not yet sent
+    if (!isWindowOpen(winner) || !winner.phoneE164 || winner.receiptSentAt) {
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-receipt', {
+        body: {
+          winner_id: winner.id,
+          winner_name: winner.name,
+          winner_phone: winner.phoneE164,
+          action_id: actionId,
+          action_name: actionName,
+          prize_title: winner.prizeTitle,
+          prize_value: winner.value,
+          receipt_path: receiptPath,
+          trigger: 'auto_attach',
+        },
+      });
+
+      if (error) {
+        console.error('Auto-send error:', error);
+        return;
+      }
+
+      if (data?.success) {
+        await queryClient.invalidateQueries({ queryKey: ['winners'] });
+        toast.success('Comprovante enviado automaticamente ao ganhador!');
+      } else if (data?.skipped) {
+        // Silently skipped (window closed, no phone, etc.) — already logged server-side
+        console.log('Auto-send skipped:', data.reason);
+      } else if (data?.error) {
+        toast.warning(`Comprovante anexado, mas envio automático falhou: ${data.error}`);
+      }
+    } catch (err) {
+      console.error('Auto-send exception:', err);
+      // Don't block the attach flow — receipt is already attached
+    }
+  };
+
   // --- Upload ---
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,6 +138,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           receipt_version: newVersion,
           status: 'receipt_attached' as any,
           payment_method: paymentMethod as any,
+          last_pix_error: null,
           updated_at: now,
         } as any)
         .eq('id', winner.id);
@@ -117,6 +160,10 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
       toast.success(isReplace ? 'Comprovante substituído com sucesso!' : 'Comprovante anexado com sucesso!');
+
+      // Attempt auto-send (non-blocking)
+      tryAutoSend(fullPath);
+
       onOpenChange(false);
     } catch (err) {
       console.error('Upload receipt error:', err);
@@ -221,6 +268,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           prize_value: winner.value,
           receipt_path: winner.receiptUrl,
           mode,
+          trigger: 'manual',
         },
       });
 
@@ -322,9 +370,9 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
                 Enviado ao cliente em: {new Date(winner.receiptSentAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
               </p>
             )}
-            {winner.ultimaInteracaoWhatsapp && (
+            {winner.lastInboundAt && (
               <p className="text-[10px] text-muted-foreground">
-                Última interação: {new Date(winner.ultimaInteracaoWhatsapp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                Última interação: {new Date(winner.lastInboundAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
               </p>
             )}
             {winner.lastPixError && (
