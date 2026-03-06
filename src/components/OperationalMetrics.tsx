@@ -203,6 +203,37 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
           <MetricCard label="Comp. Pend. >24h" value={receiptPendingStale} icon={Paperclip} variant="warning" />
         </div>
       </div>
+
+      {/* Inbound Metrics */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Phone className="h-4 w-4 text-primary" />
+          Métricas de Inbound
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <MetricCard
+            label="Mensagens Hoje"
+            value={inboundToday}
+            icon={MessageSquare}
+            variant="success"
+            subtitle="Recebidas hoje"
+          />
+          <MetricCard
+            label="Tempo Médio Resposta"
+            value={avgResponseMinutes}
+            icon={Clock}
+            variant={avgResponseMinutes > 120 ? 'warning' : 'success'}
+            subtitle={avgResponseLabel}
+          />
+          <MetricCard
+            label="Taxa Auto-Envio"
+            value={autoSendRate}
+            icon={Send}
+            variant={autoSendRate >= 70 ? 'success' : autoSendRate >= 40 ? 'warning' : 'destructive'}
+            subtitle={`${receiptAutoSent}/${receiptEligible} comprovantes`}
+          />
+        </div>
+      </div>
     </div>
   );
 }
