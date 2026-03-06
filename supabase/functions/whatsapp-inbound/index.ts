@@ -352,7 +352,7 @@ Deno.serve(async (req) => {
 
     // ── 12. Send receipt via webhook ──
     const payload = {
-      tel: target.phone,
+      tel: target.phone_e164 || normalizePhoneE164(target.phone || "") || target.phone,
       nome: target.name,
       acao: action?.name || "",
       tipo_premio: target.prize_title,

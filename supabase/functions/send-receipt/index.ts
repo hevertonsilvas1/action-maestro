@@ -6,6 +6,20 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Normalize any phone to E.164: +55DDDNUMERO */
+function normalizePhoneE164(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return `+${digits}`;
+  }
+  if (digits.length === 10 || digits.length === 11) {
+    return `+55${digits}`;
+  }
+  if (digits.length >= 12) return `+${digits}`;
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -137,11 +151,11 @@ Deno.serve(async (req) => {
         .from("integration_configs").select("value").eq("key", "RECEIPT_CONFIRMATION_TEMPLATE").maybeSingle();
       const template = templateConfig?.value || "Olá! Temos seu comprovante de pagamento. Responda esta mensagem para recebê-lo.";
       payloadBody = {
-        tel: winner_phone || w.phone_e164,
-        nome: winner_name,
-        acao: action_name,
-        mensagem: template,
-        row_number: 0,
+      tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
+      nome: winner_name,
+      acao: action_name,
+      mensagem: template,
+      row_number: 0,
       };
     } else {
       // Generate signed URL
@@ -155,7 +169,7 @@ Deno.serve(async (req) => {
       }
 
       payloadBody = {
-        tel: winner_phone || w.phone_e164,
+        tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
         nome: winner_name,
         acao: action_name,
         tipo_premio: prize_title,

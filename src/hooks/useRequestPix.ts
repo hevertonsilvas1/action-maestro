@@ -20,7 +20,7 @@ export function useRequestPix(actionId: string, actionName: string) {
       const payload = winners.map((w) => ({
         winner_id: w.id,
         winner_name: w.name,
-        winner_phone: (w.phone || '').replace(/\D/g, ''),
+        winner_phone: w.phoneE164 || (w.phone || '').replace(/\D/g, ''),
         action_id: actionId,
         action_name: actionName,
         prize_type: w.prizeType,
