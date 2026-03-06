@@ -44,15 +44,33 @@ Deno.serve(async (req) => {
       timestamp: new Date().toISOString(),
     });
 
-    // ── 2. Secret validation ──
+    // ── 2. Secret validation (reads from integration_configs first, env fallback) ──
     const secret = req.headers.get("x-webhook-secret");
-    const expectedSecret = Deno.env.get("UNNICHAT_INBOUND_SECRET");
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Try to load secret from integration_configs table
+    let expectedSecret: string | undefined;
+    const { data: secretRow } = await adminClient
+      .from("integration_configs")
+      .select("value")
+      .eq("key", "UNNICHAT_INBOUND_SECRET")
+      .maybeSingle();
+
+    if (secretRow?.value) {
+      expectedSecret = secretRow.value;
+    } else {
+      expectedSecret = Deno.env.get("UNNICHAT_INBOUND_SECRET");
+    }
 
     console.log("[INBOUND] 🔑 Secret check", {
       secret_present: !!secret,
       secret_length: secret?.length ?? 0,
       expected_present: !!expectedSecret,
       expected_length: expectedSecret?.length ?? 0,
+      source: secretRow?.value ? "integration_configs" : "env",
       match: secret === expectedSecret,
     });
 
@@ -112,9 +130,7 @@ Deno.serve(async (req) => {
 
     console.log("[INBOUND] ✅ Phone normalized", { raw: phoneRaw, e164: phoneE164 });
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+    const serviceClient = adminClient;
 
     const now = new Date().toISOString();
     let fallbackUsed = false;
