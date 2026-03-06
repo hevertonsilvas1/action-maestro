@@ -59,6 +59,8 @@ export interface Winner {
   ultimaInteracaoWhatsapp?: string;
   lastOutboundAt?: string;
   lastInboundAt?: string;
+  templateReopenSentAt?: string;
+  templateReopenCount?: number;
   createdAt: string;
 }
 

@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
     // ── 5. Match winners ──
     let query = serviceClient
       .from("winners")
-      .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, created_at, last_outbound_at")
+      .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
       .eq("phone_e164", phoneE164)
       .is("deleted_at", null);
 
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       fallbackUsed = true;
       const { data: fallbackMatched } = await serviceClient
         .from("winners")
-        .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, created_at, last_outbound_at")
+        .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
         .eq("phone_e164", phoneE164)
         .is("deleted_at", null)
         .in("status", FALLBACK_STATUSES)
@@ -385,6 +385,8 @@ Deno.serve(async (req) => {
           receipt_sent_at: now,
           last_outbound_at: now,
           last_pix_error: null,
+          template_reopen_sent_at: null,
+          template_reopen_count: 0,
           updated_at: now,
         })
         .eq("id", target.id);

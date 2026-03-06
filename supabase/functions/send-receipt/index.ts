@@ -14,199 +14,148 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonRes({ error: "Unauthorized" }, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+    const svc = createClient(supabaseUrl, serviceRoleKey);
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
     // Auth
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (userError || !user) return jsonRes({ error: "Unauthorized" }, 401);
 
-    // User profile
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("signature, display_name")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // User info
+    const [{ data: profile }, { data: roleData }] = await Promise.all([
+      svc.from("profiles").select("signature, display_name").eq("user_id", user.id).maybeSingle(),
+      svc.from("user_roles").select("role").eq("user_id", user.id).maybeSingle(),
+    ]);
     const userName = profile?.signature || profile?.display_name || user.email || "Sistema";
-
-    const { data: roleData } = await serviceClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .maybeSingle();
     const userRole = roleData?.role || null;
 
     const body = await req.json();
     const {
       winner_id, winner_name, winner_phone, action_id, action_name,
       prize_title, prize_value, receipt_path, mode,
-      trigger: triggerSource, // 'manual' | 'auto_attach'
+      trigger: triggerSource,
     } = body;
 
-    const isAuto = triggerSource === "auto_attach";
+    const isAuto = triggerSource === "auto_attach" || triggerSource === "auto_attach_template";
     const isConfirmation = mode === "confirmation";
 
     if (!winner_id || !receipt_path) {
-      return new Response(
-        JSON.stringify({ error: "Dados incompletos." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return jsonRes({ error: "Dados incompletos." }, 400);
     }
 
-    // Verify winner status & conditions
-    const { data: currentWinner, error: fetchErr } = await serviceClient
+    // Fetch winner
+    const { data: w, error: fetchErr } = await svc
       .from("winners")
-      .select("status, receipt_url, receipt_sent_at, last_inbound_at, phone_e164")
+      .select("status, receipt_url, receipt_sent_at, last_inbound_at, phone_e164, template_reopen_sent_at, template_reopen_count")
       .eq("id", winner_id)
       .maybeSingle();
 
-    if (fetchErr || !currentWinner) {
-      return new Response(
-        JSON.stringify({ error: "Ganhador não encontrado." }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    if (fetchErr || !w) return jsonRes({ error: "Ganhador não encontrado." }, 404);
+
+    if (w.status !== "receipt_attached") {
+      return jsonRes({ error: `Status "${w.status}" não permite enviar comprovante. Necessário: "receipt_attached".` }, 400);
     }
 
-    if (currentWinner.status !== "receipt_attached") {
-      return new Response(
-        JSON.stringify({ error: `Status "${currentWinner.status}" não permite enviar comprovante. Necessário: "receipt_attached".` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    // ── Duplicate prevention for receipt sends ──
+    if (!isConfirmation && w.receipt_sent_at) {
+      return jsonRes({ success: false, skipped: true, reason: "receipt_already_sent" });
     }
 
-    // For auto-send: validate additional conditions
-    if (isAuto) {
-      // Already sent?
-      if (currentWinner.receipt_sent_at) {
-        return new Response(
-          JSON.stringify({ success: false, skipped: true, reason: "receipt_already_sent" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+    // ── Template duplicate prevention: max 3 templates, min 1h between sends ──
+    if (isConfirmation) {
+      const MAX_TEMPLATES = 3;
+      const MIN_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+      if ((w.template_reopen_count || 0) >= MAX_TEMPLATES) {
+        return jsonRes({ success: false, skipped: true, reason: "max_templates_reached" });
       }
 
-      // Phone valid?
-      if (!currentWinner.phone_e164) {
-        await saveError(serviceClient, winner_id, "Auto-envio bloqueado: telefone E.164 não cadastrado.");
-        return new Response(
-          JSON.stringify({ success: false, skipped: true, reason: "no_phone_e164" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+      if (w.template_reopen_sent_at) {
+        const elapsed = Date.now() - new Date(w.template_reopen_sent_at).getTime();
+        if (elapsed < MIN_INTERVAL_MS) {
+          return jsonRes({ success: false, skipped: true, reason: "template_cooldown" });
+        }
+      }
+    }
+
+    // For auto receipt sends: validate conditions
+    if (isAuto && !isConfirmation) {
+      if (!w.phone_e164) {
+        await saveError(svc, winner_id, "Auto-envio bloqueado: telefone E.164 não cadastrado.");
+        return jsonRes({ success: false, skipped: true, reason: "no_phone_e164" });
       }
 
-      // Window open?
-      const { data: windowConfig } = await serviceClient
-        .from("integration_configs")
-        .select("value")
-        .eq("key", "INBOUND_WINDOW_HOURS")
-        .maybeSingle();
+      // Window check
+      const { data: windowConfig } = await svc
+        .from("integration_configs").select("value").eq("key", "INBOUND_WINDOW_HOURS").maybeSingle();
       const windowHours = parseInt(windowConfig?.value || "24", 10);
 
-      if (!currentWinner.last_inbound_at) {
-        await saveError(serviceClient, winner_id, "Auto-envio bloqueado: sem interação inbound registrada.");
-        return new Response(
-          JSON.stringify({ success: false, skipped: true, reason: "no_inbound" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+      if (!w.last_inbound_at) {
+        await saveError(svc, winner_id, "Auto-envio bloqueado: sem interação inbound registrada.");
+        return jsonRes({ success: false, skipped: true, reason: "no_inbound" });
       }
 
-      const inboundAge = Date.now() - new Date(currentWinner.last_inbound_at).getTime();
+      const inboundAge = Date.now() - new Date(w.last_inbound_at).getTime();
       if (inboundAge > windowHours * 3600000) {
-        await saveError(serviceClient, winner_id, `Auto-envio bloqueado: janela fechada (última interação há ${Math.round(inboundAge / 3600000)}h).`);
-        return new Response(
-          JSON.stringify({ success: false, skipped: true, reason: "window_closed" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        await saveError(svc, winner_id, `Auto-envio bloqueado: janela fechada (última interação há ${Math.round(inboundAge / 3600000)}h).`);
+        return jsonRes({ success: false, skipped: true, reason: "window_closed" });
       }
     }
 
     // Webhook URL
-    const { data: webhookConfig } = await serviceClient
-      .from("integration_configs")
-      .select("value")
-      .eq("key", "UNNICHAT_COMPROVANTE")
-      .maybeSingle();
-
+    const { data: webhookConfig } = await svc
+      .from("integration_configs").select("value").eq("key", "UNNICHAT_COMPROVANTE").maybeSingle();
     let unnichatUrl = webhookConfig?.value;
     if (!unnichatUrl) {
-      const { data: fallback } = await serviceClient
-        .from("integration_configs")
-        .select("value")
-        .eq("key", "UNNICHAT_PIX")
-        .maybeSingle();
+      const { data: fallback } = await svc
+        .from("integration_configs").select("value").eq("key", "UNNICHAT_PIX").maybeSingle();
       unnichatUrl = fallback?.value;
     }
 
     if (!unnichatUrl) {
       const errMsg = "Webhook de envio de comprovante não configurado em Integrações.";
       if (isAuto) {
-        await saveError(serviceClient, winner_id, `Auto-envio bloqueado: ${errMsg}`);
-        return new Response(
-          JSON.stringify({ success: false, skipped: true, reason: "no_webhook" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        await saveError(svc, winner_id, `Auto-envio bloqueado: ${errMsg}`);
+        return jsonRes({ success: false, skipped: true, reason: "no_webhook" });
       }
-      return new Response(
-        JSON.stringify({ error: errMsg }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // Generate signed URL for the receipt
-    const { data: signedUrlData, error: signedUrlError } = await serviceClient.storage
-      .from("receipts")
-      .createSignedUrl(receipt_path, 7 * 24 * 60 * 60);
-
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      const errMsg = "Erro ao gerar URL do comprovante.";
-      if (isAuto) {
-        await saveError(serviceClient, winner_id, errMsg);
-        return new Response(
-          JSON.stringify({ success: false, error: errMsg }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(
-        JSON.stringify({ error: errMsg }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return jsonRes({ error: errMsg }, 500);
     }
 
     // Build payload
     let payloadBody: Record<string, unknown>;
     if (isConfirmation) {
-      const { data: templateConfig } = await serviceClient
-        .from("integration_configs")
-        .select("value")
-        .eq("key", "RECEIPT_CONFIRMATION_TEMPLATE")
-        .maybeSingle();
+      const { data: templateConfig } = await svc
+        .from("integration_configs").select("value").eq("key", "RECEIPT_CONFIRMATION_TEMPLATE").maybeSingle();
       const template = templateConfig?.value || "Olá! Temos seu comprovante de pagamento. Responda esta mensagem para recebê-lo.";
       payloadBody = {
-        tel: winner_phone || currentWinner.phone_e164,
+        tel: winner_phone || w.phone_e164,
         nome: winner_name,
         acao: action_name,
         mensagem: template,
         row_number: 0,
       };
     } else {
+      // Generate signed URL
+      const { data: signedUrlData, error: signedUrlError } = await svc.storage
+        .from("receipts").createSignedUrl(receipt_path, 7 * 24 * 60 * 60);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        const errMsg = "Erro ao gerar URL do comprovante.";
+        if (isAuto) { await saveError(svc, winner_id, errMsg); return jsonRes({ success: false, error: errMsg }); }
+        return jsonRes({ error: errMsg }, 500);
+      }
+
       payloadBody = {
-        tel: winner_phone || currentWinner.phone_e164,
+        tel: winner_phone || w.phone_e164,
         nome: winner_name,
         acao: action_name,
         tipo_premio: prize_title,
@@ -217,98 +166,85 @@ Deno.serve(async (req) => {
     }
 
     // Send to UnniChat
-    const unnichatResponse = await fetch(unnichatUrl, {
+    const resp = await fetch(unnichatUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payloadBody),
     });
 
-    // Determine audit operation names
     const opSuccess = isConfirmation
-      ? "confirmacao_enviada"
-      : isAuto
-        ? "AUTO_SEND_RECEIPT"
-        : "MANUAL_SEND_RECEIPT";
+      ? "template_reopen_enviado"
+      : isAuto ? "AUTO_SEND_RECEIPT" : "MANUAL_SEND_RECEIPT";
     const opFail = isAuto ? "AUTO_SEND_RECEIPT_FAILED" : "MANUAL_SEND_RECEIPT_FAILED";
 
-    if (!unnichatResponse.ok) {
-      const errText = await unnichatResponse.text();
-      const errorMsg = `UnniChat: ${unnichatResponse.status} ${unnichatResponse.statusText}`.substring(0, 200);
+    if (!resp.ok) {
+      const errText = await resp.text();
+      const errorMsg = `UnniChat: ${resp.status} ${resp.statusText}`.substring(0, 200);
 
-      // Log failure
-      await serviceClient.from("action_audit_log").insert({
-        action_id,
-        action_name,
-        table_name: "winners",
-        record_id: winner_id,
-        operation: opFail,
-        user_id: user.id,
-        user_name: isAuto ? `${userName} (auto)` : userName,
-        user_role: userRole,
+      await svc.from("action_audit_log").insert({
+        action_id, action_name, table_name: "winners", record_id: winner_id,
+        operation: isConfirmation ? "template_reopen_falha" : opFail,
+        user_id: user.id, user_name: isAuto ? `${userName} (auto)` : userName, user_role: userRole,
         changes: { winner_name, error: errorMsg, trigger: triggerSource || "manual" },
       });
-
-      // Save error on winner
-      await saveError(serviceClient, winner_id, `Erro envio comprovante: ${errorMsg}`);
-
-      return new Response(
-        JSON.stringify({ success: false, error: errorMsg }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      await saveError(svc, winner_id, `Erro envio: ${errorMsg}`);
+      return jsonRes({ success: false, error: errorMsg });
     }
 
-    await unnichatResponse.text();
-
-    // Success: update status
+    await resp.text();
     const now = new Date().toISOString();
-    await serviceClient
-      .from("winners")
-      .update({
-        status: isConfirmation ? "receipt_attached" : "receipt_sent",
-        receipt_sent_at: isConfirmation ? undefined : now,
+
+    if (isConfirmation) {
+      // Template sent: update tracking, keep status as receipt_attached (pending)
+      await svc.from("winners").update({
+        template_reopen_sent_at: now,
+        template_reopen_count: (w.template_reopen_count || 0) + 1,
         last_outbound_at: now,
         last_pix_error: null,
         updated_at: now,
-      })
-      .eq("id", winner_id);
+      }).eq("id", winner_id);
+    } else {
+      // Receipt sent: update status
+      await svc.from("winners").update({
+        status: "receipt_sent",
+        receipt_sent_at: now,
+        last_outbound_at: now,
+        last_pix_error: null,
+        template_reopen_sent_at: null,
+        template_reopen_count: 0,
+        updated_at: now,
+      }).eq("id", winner_id);
+    }
 
     // Audit
-    await serviceClient.from("action_audit_log").insert({
-      action_id,
-      action_name,
-      table_name: "winners",
-      record_id: winner_id,
+    await svc.from("action_audit_log").insert({
+      action_id, action_name, table_name: "winners", record_id: winner_id,
       operation: opSuccess,
-      user_id: user.id,
-      user_name: isAuto ? `${userName} (auto)` : userName,
-      user_role: userRole,
+      user_id: user.id, user_name: isAuto ? `${userName} (auto)` : userName, user_role: userRole,
       changes: {
-        winner_name,
-        prize_title,
-        prize_value,
+        winner_name, prize_title, prize_value,
         channel: "UnniChat",
         trigger: triggerSource || "manual",
-        mode: isConfirmation ? "confirmation" : "receipt",
+        mode: isConfirmation ? "template_reopen" : "receipt",
+        template_count: isConfirmation ? (w.template_reopen_count || 0) + 1 : undefined,
         status: { before: "receipt_attached", after: isConfirmation ? "receipt_attached" : "receipt_sent" },
       },
     });
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return jsonRes({ success: true });
   } catch (err) {
     console.error("Send receipt error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return jsonRes({ error: err instanceof Error ? err.message : "Unknown error" }, 500);
   }
 });
 
+function jsonRes(data: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 async function saveError(client: any, winnerId: string, error: string) {
-  await client
-    .from("winners")
-    .update({ last_pix_error: error.substring(0, 500) })
-    .eq("id", winnerId);
+  await client.from("winners").update({ last_pix_error: error.substring(0, 500) }).eq("id", winnerId);
 }

@@ -51,43 +51,73 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
 
   // --- Auto-send attempt after attach ---
   const tryAutoSend = async (receiptPath: string) => {
-    // Conditions: window open, phone valid, not yet sent
-    if (!isWindowOpen(winner) || !winner.phoneE164 || winner.receiptSentAt) {
-      return;
-    }
+    if (!winner.phoneE164 || winner.receiptSentAt) return;
 
-    try {
-      const { data, error } = await supabase.functions.invoke('send-receipt', {
-        body: {
-          winner_id: winner.id,
-          winner_name: winner.name,
-          winner_phone: winner.phoneE164,
-          action_id: actionId,
-          action_name: actionName,
-          prize_title: winner.prizeTitle,
-          prize_value: winner.value,
-          receipt_path: receiptPath,
-          trigger: 'auto_attach',
-        },
-      });
+    if (isWindowOpen(winner)) {
+      // Window open → send receipt directly
+      try {
+        const { data, error } = await supabase.functions.invoke('send-receipt', {
+          body: {
+            winner_id: winner.id,
+            winner_name: winner.name,
+            winner_phone: winner.phoneE164,
+            action_id: actionId,
+            action_name: actionName,
+            prize_title: winner.prizeTitle,
+            prize_value: winner.value,
+            receipt_path: receiptPath,
+            trigger: 'auto_attach',
+          },
+        });
 
-      if (error) {
-        console.error('Auto-send error:', error);
-        return;
+        if (error) {
+          console.error('Auto-send error:', error);
+          return;
+        }
+
+        if (data?.success) {
+          await queryClient.invalidateQueries({ queryKey: ['winners'] });
+          toast.success('Comprovante enviado automaticamente ao ganhador!');
+        } else if (data?.error) {
+          toast.warning(`Comprovante anexado, mas envio automático falhou: ${data.error}`);
+        }
+      } catch (err) {
+        console.error('Auto-send exception:', err);
       }
+    } else {
+      // Window closed → send template to induce response
+      try {
+        const { data, error } = await supabase.functions.invoke('send-receipt', {
+          body: {
+            winner_id: winner.id,
+            winner_name: winner.name,
+            winner_phone: winner.phoneE164,
+            action_id: actionId,
+            action_name: actionName,
+            prize_title: winner.prizeTitle,
+            prize_value: winner.value,
+            receipt_path: receiptPath,
+            mode: 'confirmation',
+            trigger: 'auto_attach_template',
+          },
+        });
 
-      if (data?.success) {
-        await queryClient.invalidateQueries({ queryKey: ['winners'] });
-        toast.success('Comprovante enviado automaticamente ao ganhador!');
-      } else if (data?.skipped) {
-        // Silently skipped (window closed, no phone, etc.) — already logged server-side
-        console.log('Auto-send skipped:', data.reason);
-      } else if (data?.error) {
-        toast.warning(`Comprovante anexado, mas envio automático falhou: ${data.error}`);
+        if (error) {
+          console.error('Auto-template error:', error);
+          return;
+        }
+
+        if (data?.success) {
+          await queryClient.invalidateQueries({ queryKey: ['winners'] });
+          toast.info('Janela fechada. Template de confirmação enviado ao cliente para reabrir a conversa.');
+        } else if (data?.skipped) {
+          toast.info('Comprovante anexado. Aguardando interação do cliente para envio automático.');
+        } else if (data?.error) {
+          toast.warning(`Template não enviado: ${data.error}`);
+        }
+      } catch (err) {
+        console.error('Auto-template exception:', err);
       }
-    } catch (err) {
-      console.error('Auto-send exception:', err);
-      // Don't block the attach flow — receipt is already attached
     }
   };
 

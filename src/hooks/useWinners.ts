@@ -40,6 +40,8 @@ function mapWinner(row: any): Winner {
     ultimaInteracaoWhatsapp: row.ultima_interacao_whatsapp ?? undefined,
     lastOutboundAt: row.last_outbound_at ?? undefined,
     lastInboundAt: row.last_inbound_at ?? undefined,
+    templateReopenSentAt: row.template_reopen_sent_at ?? undefined,
+    templateReopenCount: row.template_reopen_count ?? 0,
     createdAt: row.created_at,
   };
 }
