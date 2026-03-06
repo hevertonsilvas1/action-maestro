@@ -6,5 +6,8 @@ verify_jwt = false
 [functions.send-receipt]
 verify_jwt = false
 
+[functions.download-receipt]
+verify_jwt = false
+
 [functions.whatsapp-inbound]
 verify_jwt = false

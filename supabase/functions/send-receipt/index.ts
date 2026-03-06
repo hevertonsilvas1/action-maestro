@@ -158,15 +158,8 @@ Deno.serve(async (req) => {
       row_number: 0,
       };
     } else {
-      // Generate signed URL
-      const { data: signedUrlData, error: signedUrlError } = await svc.storage
-        .from("receipts").createSignedUrl(receipt_path, 7 * 24 * 60 * 60);
-
-      if (signedUrlError || !signedUrlData?.signedUrl) {
-        const errMsg = "Erro ao gerar URL do comprovante.";
-        if (isAuto) { await saveError(svc, winner_id, errMsg); return jsonRes({ success: false, error: errMsg }); }
-        return jsonRes({ error: errMsg }, 500);
-      }
+      // Use short proxy URL instead of long signed URL
+      const proxyUrl = `${supabaseUrl}/functions/v1/download-receipt?id=${winner_id}`;
 
       payloadBody = {
         tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
@@ -174,7 +167,7 @@ Deno.serve(async (req) => {
         acao: action_name,
         tipo_premio: prize_title,
         valor: String(prize_value),
-        comprovante_url: signedUrlData.signedUrl,
+        comprovante_url: proxyUrl,
         row_number: 0,
       };
     }
