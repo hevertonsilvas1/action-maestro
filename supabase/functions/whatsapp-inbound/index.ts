@@ -385,6 +385,8 @@ Deno.serve(async (req) => {
           receipt_sent_at: now,
           last_outbound_at: now,
           last_pix_error: null,
+          template_reopen_sent_at: null,
+          template_reopen_count: 0,
           updated_at: now,
         })
         .eq("id", target.id);
