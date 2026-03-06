@@ -130,9 +130,7 @@ Deno.serve(async (req) => {
 
     console.log("[INBOUND] ✅ Phone normalized", { raw: phoneRaw, e164: phoneE164 });
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+    const serviceClient = adminClient;
 
     const now = new Date().toISOString();
     let fallbackUsed = false;
