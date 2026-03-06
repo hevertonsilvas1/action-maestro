@@ -640,6 +640,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_authenticated_user: { Args: never; Returns: boolean }
+      normalize_phone_e164: { Args: { raw: string }; Returns: string }
     }
     Enums: {
       action_status:
