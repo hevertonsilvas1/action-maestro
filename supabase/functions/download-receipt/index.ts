@@ -23,15 +23,26 @@ Deno.serve(async (req) => {
     return new Response("Not found", { status: 404 });
   }
 
-  const downloadName = winner.receipt_filename || winner.receipt_url.split("/").pop() || "comprovante.pdf";
-
-  const { data: signed, error } = await svc.storage
+  // Download the file from storage
+  const { data: fileData, error } = await svc.storage
     .from("receipts")
-    .createSignedUrl(winner.receipt_url, 7 * 24 * 60 * 60, { download: downloadName });
+    .download(winner.receipt_url);
 
-  if (error || !signed?.signedUrl) {
-    return new Response("Error generating URL", { status: 500 });
+  if (error || !fileData) {
+    return new Response("Error downloading file", { status: 500 });
   }
 
-  return Response.redirect(signed.signedUrl, 302);
+  // Determine filename and content type
+  const filename = winner.receipt_filename || winner.receipt_url.split("/").pop() || "comprovante.pdf";
+  const contentType = fileData.type || "application/octet-stream";
+
+  // Serve the file directly with proper Content-Disposition
+  return new Response(fileData, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Content-Disposition": `inline; filename="${filename}"`,
+      "Cache-Control": "public, max-age=604800",
+    },
+  });
 });
