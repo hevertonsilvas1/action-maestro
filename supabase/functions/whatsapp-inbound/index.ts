@@ -9,11 +9,27 @@ const corsHeaders = {
 function normalizePhoneE164(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;
-  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
-    return `+${digits}`;
+  // Already has country code 55
+  if (digits.startsWith("55")) {
+    if (digits.length === 13) {
+      return `+${digits}`;
+    }
+    // 12 digits = 55 + DDD(2) + 8-digit number → insert 9 after DDD
+    if (digits.length === 12) {
+      const ddd = digits.substring(2, 4);
+      const number = digits.substring(4);
+      return `+55${ddd}9${number}`;
+    }
   }
-  if (digits.length === 10 || digits.length === 11) {
+  // Local: DDD + number
+  if (digits.length === 11) {
     return `+55${digits}`;
+  }
+  // 10 digits = DDD(2) + 8-digit number → insert 9
+  if (digits.length === 10) {
+    const ddd = digits.substring(0, 2);
+    const number = digits.substring(2);
+    return `+55${ddd}9${number}`;
   }
   return null;
 }
