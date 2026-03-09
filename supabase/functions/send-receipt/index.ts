@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     // Fetch winner
     const { data: w, error: fetchErr } = await svc
       .from("winners")
-      .select("status, receipt_url, receipt_sent_at, last_inbound_at, phone_e164, template_reopen_sent_at, template_reopen_count")
+      .select("status, receipt_url, receipt_filename, receipt_sent_at, last_inbound_at, phone_e164, template_reopen_sent_at, template_reopen_count")
       .eq("id", winner_id)
       .maybeSingle();
 
