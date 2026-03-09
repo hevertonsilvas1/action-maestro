@@ -347,17 +347,9 @@ Deno.serve(async (req) => {
     }
 
     // ── 11. Generate signed URL for receipt ──
-    const { data: signedData, error: signError } = await serviceClient.storage
-      .from("receipts")
-      .createSignedUrl(target.receipt_url!, 60 * 60); // 1 hour
-
-    if (signError || !signedData?.signedUrl) {
-      console.error("[INBOUND] ❌ Failed to generate signed URL:", signError?.message);
-      await serviceClient.from("winners").update({
-        last_pix_error: `Erro ao gerar URL do comprovante: ${signError?.message || "falha"}`.substring(0, 500),
-      }).eq("id", target.id);
-      return jsonResponse({ ok: false, error: "Failed to generate signed URL" });
-    }
+    // ── 11. Build short proxy URL for receipt ──
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt?id=${target.id}`;
 
     // ── 12. Send receipt via webhook ──
     const payload = {
@@ -366,7 +358,7 @@ Deno.serve(async (req) => {
       acao: action?.name || "",
       tipo_premio: target.prize_title,
       valor: String(target.value),
-      comprovante_url: signedData.signedUrl,
+      comprovante_url: shortUrl,
       row_number: 0,
     };
 
