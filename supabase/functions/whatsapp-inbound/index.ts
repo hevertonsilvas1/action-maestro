@@ -346,31 +346,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── 11. Download receipt from storage and encode as base64 ──
-    const { data: fileData, error: fileError } = await svc.storage
+    // ── 11. Generate signed URL for receipt ──
+    const { data: signedData, error: signError } = await serviceClient.storage
       .from("receipts")
-      .download(target.receipt_url!);
+      .createSignedUrl(target.receipt_url!, 60 * 60); // 1 hour
 
-    if (fileError || !fileData) {
-      console.error("[INBOUND] ❌ Failed to download receipt from storage:", fileError?.message);
-      await svc.from("winners").update({
-        last_pix_error: `Erro ao baixar comprovante: ${fileError?.message || "não encontrado"}`.substring(0, 500),
+    if (signError || !signedData?.signedUrl) {
+      console.error("[INBOUND] ❌ Failed to generate signed URL:", signError?.message);
+      await serviceClient.from("winners").update({
+        last_pix_error: `Erro ao gerar URL do comprovante: ${signError?.message || "falha"}`.substring(0, 500),
       }).eq("id", target.id);
-      return jsonResponse({ ok: false, error: "Failed to download receipt from storage" });
+      return jsonResponse({ ok: false, error: "Failed to generate signed URL" });
     }
-
-    const arrayBuf = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuf);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64Content = btoa(binary);
-
-    const ext = (target.receipt_url || "").split(".").pop()?.toLowerCase() || "pdf";
-    const mimeMap: Record<string, string> = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png" };
-    const mimeType = mimeMap[ext] || "application/octet-stream";
-    const filename = (target.receipt_url || "").split("/").pop() || `comprovante.${ext}`;
 
     // ── 12. Send receipt via webhook ──
     const payload = {
@@ -379,9 +366,7 @@ Deno.serve(async (req) => {
       acao: action?.name || "",
       tipo_premio: target.prize_title,
       valor: String(target.value),
-      comprovante_base64: base64Content,
-      comprovante_mime: mimeType,
-      comprovante_filename: filename,
+      comprovante_url: signedData.signedUrl,
       row_number: 0,
     };
 
