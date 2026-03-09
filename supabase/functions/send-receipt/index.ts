@@ -176,6 +176,7 @@ Deno.serve(async (req) => {
         tipo_premio: prize_title,
         valor: String(prize_value),
         comprovante_url: shortUrl,
+        comprovante_filename: receiptName,
         row_number: 0,
       };
     }
