@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     // Fetch winner
     const { data: w, error: fetchErr } = await svc
       .from("winners")
-      .select("status, receipt_url, receipt_sent_at, last_inbound_at, phone_e164, template_reopen_sent_at, template_reopen_count")
+      .select("status, receipt_url, receipt_filename, receipt_sent_at, last_inbound_at, phone_e164, template_reopen_sent_at, template_reopen_count")
       .eq("id", winner_id)
       .maybeSingle();
 
@@ -165,8 +165,9 @@ Deno.serve(async (req) => {
       row_number: 0,
       };
     } else {
-      // Use short proxy URL via download-receipt function
-      const shortUrl = `${supabaseUrl}/functions/v1/download-receipt?id=${winner_id}`;
+      // Use short proxy URL via download-receipt function with filename in path
+      const receiptName = w.receipt_filename || "comprovante.pdf";
+      const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${winner_id}`;
 
       payloadBody = {
         tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,

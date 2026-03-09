@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     // ── 5. Match winners ──
     let query = serviceClient
       .from("winners")
-      .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
+      .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_filename, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
       .eq("phone_e164", phoneE164)
       .is("deleted_at", null);
 
@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
       fallbackUsed = true;
       const { data: fallbackMatched } = await serviceClient
         .from("winners")
-        .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
+        .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_filename, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
         .eq("phone_e164", phoneE164)
         .is("deleted_at", null)
         .in("status", FALLBACK_STATUSES)
@@ -346,10 +346,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── 11. Generate signed URL for receipt ──
-    // ── 11. Build short proxy URL for receipt ──
+    // ── 11. Build short proxy URL for receipt with filename ──
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt?id=${target.id}`;
+    const receiptName = target.receipt_filename || "comprovante.pdf";
+    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${target.id}`;
 
     // ── 12. Send receipt via webhook ──
     const payload = {
