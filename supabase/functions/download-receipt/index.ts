@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
   const { data: winner } = await svc
     .from("winners")
-    .select("receipt_url")
+    .select("receipt_url, receipt_filename")
     .eq("id", winnerId)
     .maybeSingle();
 
@@ -23,9 +23,11 @@ Deno.serve(async (req) => {
     return new Response("Not found", { status: 404 });
   }
 
+  const downloadName = winner.receipt_filename || winner.receipt_url.split("/").pop() || "comprovante.pdf";
+
   const { data: signed, error } = await svc.storage
     .from("receipts")
-    .createSignedUrl(winner.receipt_url, 7 * 24 * 60 * 60);
+    .createSignedUrl(winner.receipt_url, 7 * 24 * 60 * 60, { download: downloadName });
 
   if (error || !signed?.signedUrl) {
     return new Response("Error generating URL", { status: 500 });
