@@ -10,13 +10,20 @@ const corsHeaders = {
 function normalizePhoneE164(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;
-  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
-    return `+${digits}`;
+  if (digits.startsWith("55")) {
+    if (digits.length === 13) return `+${digits}`;
+    if (digits.length === 12) {
+      const ddd = digits.substring(2, 4);
+      const number = digits.substring(4);
+      return `+55${ddd}9${number}`;
+    }
   }
-  if (digits.length === 10 || digits.length === 11) {
-    return `+55${digits}`;
+  if (digits.length === 11) return `+55${digits}`;
+  if (digits.length === 10) {
+    const ddd = digits.substring(0, 2);
+    const number = digits.substring(2);
+    return `+55${ddd}9${number}`;
   }
-  if (digits.length >= 12) return `+${digits}`;
   return null;
 }
 
