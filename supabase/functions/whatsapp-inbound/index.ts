@@ -346,10 +346,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── 11. Generate signed URL for receipt ──
-    // ── 11. Build short proxy URL for receipt ──
+    // ── 11. Build short proxy URL for receipt with filename ──
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt?id=${target.id}`;
+    const receiptName = target.receipt_filename || "comprovante.pdf";
+    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${target.id}`;
 
     // ── 12. Send receipt via webhook ──
     const payload = {
