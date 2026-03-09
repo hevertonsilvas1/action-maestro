@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
     }
 
     // ── 11. Build short proxy URL for receipt with filename ──
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseUrlForReceipt = Deno.env.get("SUPABASE_URL")!;
     const receiptName = target.receipt_filename || "comprovante.pdf";
     const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${target.id}`;
 
