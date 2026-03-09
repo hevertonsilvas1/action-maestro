@@ -165,30 +165,16 @@ Deno.serve(async (req) => {
       row_number: 0,
       };
     } else {
-      // Download receipt from storage and encode as base64
-      const { data: fileData, error: fileError } = await svc.storage
+      // Generate signed URL for the receipt
+      const { data: signedData, error: signError } = await svc.storage
         .from("receipts")
-        .download(receipt_path);
+        .createSignedUrl(receipt_path, 60 * 60); // 1 hour
 
-      if (fileError || !fileData) {
-        const errMsg = `Erro ao baixar comprovante do storage: ${fileError?.message || "arquivo não encontrado"}`;
+      if (signError || !signedData?.signedUrl) {
+        const errMsg = `Erro ao gerar URL do comprovante: ${signError?.message || "falha desconhecida"}`;
         await saveError(svc, winner_id, errMsg);
         return jsonRes({ error: errMsg }, 500);
       }
-
-      const arrayBuf = await fileData.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuf);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64Content = btoa(binary);
-
-      // Detect mime type from filename
-      const ext = (receipt_path || "").split(".").pop()?.toLowerCase() || "pdf";
-      const mimeMap: Record<string, string> = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png" };
-      const mimeType = mimeMap[ext] || "application/octet-stream";
-      const filename = receipt_path.split("/").pop() || `comprovante.${ext}`;
 
       payloadBody = {
         tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
@@ -196,9 +182,7 @@ Deno.serve(async (req) => {
         acao: action_name,
         tipo_premio: prize_title,
         valor: String(prize_value),
-        comprovante_base64: base64Content,
-        comprovante_mime: mimeType,
-        comprovante_filename: filename,
+        comprovante_url: signedData.signedUrl,
         row_number: 0,
       };
     }
