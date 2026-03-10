@@ -116,6 +116,9 @@ export function OperationalDashboard() {
           open={!!receiptWinner}
           onOpenChange={(open) => !open && setReceiptWinner(null)}
           winner={receiptWinner}
+          userName=""
+          actionId={receiptWinner.actionId}
+          actionName={actionsMap[receiptWinner.actionId]?.name || ''}
         />
       )}
     </div>
