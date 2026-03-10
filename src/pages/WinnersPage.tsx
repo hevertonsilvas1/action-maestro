@@ -343,13 +343,21 @@ export default function WinnersPage() {
                               <span className="text-[10px] text-muted-foreground">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-2.5">
-                            <div className="flex items-center justify-center gap-0.5">
+                          {/* Time in Status */}
+                          <td className="px-3 py-2.5 text-center">
+                            <TimeInStatusBadge
+                              ms={liveTimeInStatus[w.id]}
+                              warningMinutes={warningMin}
+                              criticalMinutes={criticalMin}
+                            />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center justify-center gap-1">
                               {canRequestPix && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); handleSingleRequestPix(w); }}>
-                                      <Send className="h-4 w-4 text-info" />
+                                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); handleSingleRequestPix(w); }}>
+                                      <Send className="h-[18px] w-[18px] text-info" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Solicitar Pix</TooltipContent>
@@ -357,24 +365,24 @@ export default function WinnersPage() {
                               )}
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setPixTarget(w); }}>
-                                    <CreditCard className={cn('h-4 w-4', w.pixKey ? 'text-purple' : 'text-muted-foreground')} />
+                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setPixTarget(w); }}>
+                                    <CreditCard className={cn('h-[18px] w-[18px]', w.pixKey ? 'text-purple' : 'text-muted-foreground')} />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{w.pixKey ? 'Editar Pix' : 'Cadastrar Pix'}</TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setReceiptTarget(w); }}>
-                                    <Paperclip className={cn('h-4 w-4', w.receiptUrl ? 'text-success' : 'text-muted-foreground')} />
+                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setReceiptTarget(w); }}>
+                                    <Paperclip className={cn('h-[18px] w-[18px]', w.receiptUrl ? 'text-success' : 'text-muted-foreground')} />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{w.receiptUrl ? 'Gerenciar Comprovante' : 'Anexar Comprovante'}</TooltipContent>
                               </Tooltip>
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <button className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors">
-                                    <Info className={cn('h-4 w-4', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
+                                  <button className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-muted transition-colors">
+                                    <Info className={cn('h-[18px] w-[18px]', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent side="left" className="w-80 text-xs space-y-2">
@@ -419,8 +427,8 @@ export default function WinnersPage() {
                               </Popover>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
-                                    <History className="h-4 w-4 text-muted-foreground" />
+                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
+                                    <History className="h-[18px] w-[18px] text-muted-foreground" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Histórico de Status</TooltipContent>
@@ -428,8 +436,8 @@ export default function WinnersPage() {
                               {isAdmin && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
-                                      <Trash2 className="h-4 w-4" />
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
+                                      <Trash2 className="h-[18px] w-[18px]" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Excluir</TooltipContent>
