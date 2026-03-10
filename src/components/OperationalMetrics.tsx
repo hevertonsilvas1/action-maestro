@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Winner, WinnerStatus, WINNER_STATUS_LABELS, WINNER_STATUS_COLORS } from '@/types';
+import { Winner } from '@/types';
+import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { isWindowOpen } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import {
@@ -19,28 +20,23 @@ const STATUS_ICONS: Record<string, LucideIcon> = {
   receipt_sent: CheckCircle2,
 };
 
-const DISPLAY_STATUSES: WinnerStatus[] = [
-  'imported', 'pix_requested', 'pix_received', 'sent_to_batch',
-  'pix_refused', 'numero_inexistente', 'cliente_nao_responde',
-  'receipt_attached', 'receipt_sent',
-];
-
-function StatusCard({ status, count }: { status: WinnerStatus; count: number }) {
-  const Icon = STATUS_ICONS[status] || FileText;
-  const label = WINNER_STATUS_LABELS[status];
-  const colorClass = WINNER_STATUS_COLORS[status];
+function StatusCard({ slug, name, color, count }: { slug: string; name: string; color: string; count: number }) {
+  const Icon = STATUS_ICONS[slug] || FileText;
 
   return (
     <Link
-      to={`/winners?status=${status}`}
+      to={`/winners?status=${slug}`}
       className="rounded-xl border bg-card p-3 lg:p-4 transition-all hover:shadow-card-hover hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3"
     >
-      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', colorClass)}>
-        <Icon className="h-5 w-5" />
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white"
+        style={{ backgroundColor: `${color}25` }}
+      >
+        <Icon className="h-5 w-5" style={{ color }} />
       </div>
       <div className="min-w-0">
         <p className="text-xl lg:text-2xl font-bold leading-none">{count}</p>
-        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{label}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{name}</p>
       </div>
     </Link>
   );
@@ -93,10 +89,13 @@ function MetricCard({ label, value, icon: Icon, variant, subtitle }: {
 }
 
 export function OperationalMetrics({ winners }: { winners: Winner[] }) {
-  const statusCounts = DISPLAY_STATUSES.reduce((acc, s) => {
-    acc[s] = winners.filter(w => w.status === s).length;
-    return acc;
-  }, {} as Record<WinnerStatus, number>);
+  const { activeOrdered, getLabel } = useWinnerStatusMap();
+
+  // Count by slug
+  const statusCounts: Record<string, number> = {};
+  winners.forEach(w => {
+    statusCounts[w.status] = (statusCounts[w.status] || 0) + 1;
+  });
 
   const windowOpenCount = winners.filter(w => isWindowOpen(w.lastInboundAt)).length;
   const windowClosedCount = winners.filter(w =>
@@ -121,12 +120,10 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
     (now - new Date(w.receiptAttachedAt).getTime()) > 24 * 3600000,
   ).length;
 
-  // Inbound metrics
   const inboundToday = winners.filter(w =>
     w.lastInboundAt && new Date(w.lastInboundAt).getTime() >= todayMs,
   ).length;
 
-  // Average response time: diff between last_outbound_at and last_inbound_at for winners with both
   const responseTimes = winners
     .filter(w => w.lastInboundAt && w.lastOutboundAt)
     .map(w => {
@@ -134,7 +131,7 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
       const outbound = new Date(w.lastOutboundAt!).getTime();
       return Math.abs(outbound - inbound);
     })
-    .filter(d => d > 0 && d < 7 * 24 * 3600000); // ignore outliers > 7d
+    .filter(d => d > 0 && d < 7 * 24 * 3600000);
   const avgResponseMs = responseTimes.length > 0
     ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
     : 0;
@@ -145,7 +142,6 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
       ? `${Math.round(avgResponseMinutes / 60)}h ${avgResponseMinutes % 60}min`
       : `${Math.round(avgResponseMinutes / 1440)}d`;
 
-  // Auto-send receipt rate: receipt_sent vs total that had receipt_attached or receipt_sent
   const receiptEligible = winners.filter(w =>
     ['receipt_attached', 'receipt_sent'].includes(w.status) || w.receiptSentAt,
   ).length;
@@ -155,20 +151,26 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
     : 0;
 
   const criticalCount =
-    (statusCounts.pix_refused || 0) +
-    (statusCounts.numero_inexistente || 0) +
-    (statusCounts.cliente_nao_responde || 0) +
-    (statusCounts.receipt_attached || 0) +
+    (statusCounts['pix_refused'] || 0) +
+    (statusCounts['numero_inexistente'] || 0) +
+    (statusCounts['cliente_nao_responde'] || 0) +
+    (statusCounts['receipt_attached'] || 0) +
     windowClosedCount;
 
   return (
     <div className="space-y-6">
-      {/* Status Cards */}
+      {/* Status Cards - dynamic from DB */}
       <div>
         <h2 className="text-sm font-semibold mb-3">Fila por Status</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {DISPLAY_STATUSES.map(s => (
-            <StatusCard key={s} status={s} count={statusCounts[s] || 0} />
+          {activeOrdered.map(s => (
+            <StatusCard
+              key={s.slug}
+              slug={s.slug}
+              name={s.name}
+              color={s.color}
+              count={statusCounts[s.slug] || 0}
+            />
           ))}
         </div>
       </div>
@@ -185,10 +187,10 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
           )}
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <CriticalCard label="Pix Recusado" count={statusCounts.pix_refused || 0} icon={XCircle} href="/winners?status=pix_refused" variant="destructive" />
-          <CriticalCard label="Nº Inexistente" count={statusCounts.numero_inexistente || 0} icon={Phone} href="/winners?status=numero_inexistente" variant="destructive" />
-          <CriticalCard label="Não Responde" count={statusCounts.cliente_nao_responde || 0} icon={UserX} href="/winners?status=cliente_nao_responde" variant="destructive" />
-          <CriticalCard label="Comp. Pendente" count={statusCounts.receipt_attached || 0} icon={Paperclip} href="/winners?status=receipt_attached" variant="warning" />
+          <CriticalCard label={getLabel('pix_refused')} count={statusCounts['pix_refused'] || 0} icon={XCircle} href="/winners?status=pix_refused" variant="destructive" />
+          <CriticalCard label={getLabel('numero_inexistente')} count={statusCounts['numero_inexistente'] || 0} icon={Phone} href="/winners?status=numero_inexistente" variant="destructive" />
+          <CriticalCard label={getLabel('cliente_nao_responde')} count={statusCounts['cliente_nao_responde'] || 0} icon={UserX} href="/winners?status=cliente_nao_responde" variant="destructive" />
+          <CriticalCard label={getLabel('receipt_attached')} count={statusCounts['receipt_attached'] || 0} icon={Paperclip} href="/winners?status=receipt_attached" variant="warning" />
           <CriticalCard label="Janela Fechada" count={windowClosedCount} icon={MessageSquare} href="/winners?whatsappWindow=closed" variant="destructive" />
         </div>
       </div>
@@ -211,13 +213,7 @@ export function OperationalMetrics({ winners }: { winners: Winner[] }) {
           Métricas de Inbound
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <MetricCard
-            label="Mensagens Hoje"
-            value={inboundToday}
-            icon={MessageSquare}
-            variant="success"
-            subtitle="Recebidas hoje"
-          />
+          <MetricCard label="Mensagens Hoje" value={inboundToday} icon={MessageSquare} variant="success" subtitle="Recebidas hoje" />
           <MetricCard
             label="Tempo Médio Resposta"
             value={avgResponseMinutes}
