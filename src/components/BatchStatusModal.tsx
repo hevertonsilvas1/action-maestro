@@ -4,8 +4,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Loader2, Info } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -15,14 +15,45 @@ interface BatchStatusModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   winnerIds: string[];
+  /** Current status slugs of selected winners – used to filter allowed transitions */
+  currentStatuses?: string[];
   onDone: () => void;
 }
 
-export function BatchStatusModal({ open, onOpenChange, winnerIds, onDone }: BatchStatusModalProps) {
+export function BatchStatusModal({ open, onOpenChange, winnerIds, currentStatuses = [], onDone }: BatchStatusModalProps) {
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
-  const { activeOrdered, getLabel } = useWinnerStatusMap();
+  const { activeOrdered, getAllowedTransitions } = useWinnerStatusMap();
+
+  // Compute allowed target statuses based on current statuses of selected winners
+  const availableStatuses = useMemo(() => {
+    const uniqueStatuses = [...new Set(currentStatuses)];
+
+    if (uniqueStatuses.length === 0) {
+      // No info about current statuses – show all
+      return activeOrdered;
+    }
+
+    if (uniqueStatuses.length === 1) {
+      // All selected winners share the same status – filter by allowed transitions
+      return getAllowedTransitions(uniqueStatuses[0]);
+    }
+
+    // Mixed statuses – compute intersection of allowed transitions
+    const transitionSets = uniqueStatuses.map(s =>
+      new Set(getAllowedTransitions(s).map(t => t.slug))
+    );
+    const intersection = transitionSets.reduce((acc, set) => {
+      return new Set([...acc].filter(slug => set.has(slug)));
+    });
+
+    // Also exclude any status that is currently held by any selected winner
+    const currentSet = new Set(uniqueStatuses);
+    return activeOrdered.filter(s => intersection.has(s.slug) && !currentSet.has(s.slug));
+  }, [currentStatuses, activeOrdered, getAllowedTransitions]);
+
+  const isMixed = new Set(currentStatuses).size > 1;
 
   const handleSave = async () => {
     if (!status || winnerIds.length === 0) return;
@@ -58,12 +89,18 @@ export function BatchStatusModal({ open, onOpenChange, winnerIds, onDone }: Batc
               <p className="text-sm">
                 Alterar status de <strong>{winnerIds.length}</strong> ganhador(es) selecionados.
               </p>
+              {isMixed && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="h-3.5 w-3.5 shrink-0" />
+                  Seleção com status diferentes — exibindo apenas transições em comum.
+                </p>
+              )}
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Selecione o novo status..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeOrdered.map((s) => (
+                  {availableStatuses.map((s) => (
                     <SelectItem key={s.slug} value={s.slug}>
                       <div className="flex items-center gap-2">
                         <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
@@ -71,6 +108,11 @@ export function BatchStatusModal({ open, onOpenChange, winnerIds, onDone }: Batc
                       </div>
                     </SelectItem>
                   ))}
+                  {availableStatuses.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                      Nenhuma transição permitida para este status.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
