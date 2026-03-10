@@ -16,6 +16,7 @@ import TeamPage from "./pages/TeamPage";
 import SettingsPage from "./pages/SettingsPage";
 
 import AuthPage from "./pages/AuthPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DeletedWinnersPage from "./pages/DeletedWinnersPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -84,6 +85,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
     <Route path="/actions" element={<AdminRoute><ActionsPage /></AdminRoute>} />
     <Route path="/actions/new" element={<AdminRoute><NewActionPage /></AdminRoute>} />
