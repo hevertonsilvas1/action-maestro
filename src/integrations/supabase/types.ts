@@ -485,6 +485,42 @@ export type Database = {
         }
         Relationships: []
       }
+      winner_status_transitions: {
+        Row: {
+          created_at: string | null
+          from_status_id: string
+          id: string
+          to_status_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          from_status_id: string
+          id?: string
+          to_status_id: string
+        }
+        Update: {
+          created_at?: string | null
+          from_status_id?: string
+          id?: string
+          to_status_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "winner_status_transitions_from_status_id_fkey"
+            columns: ["from_status_id"]
+            isOneToOne: false
+            referencedRelation: "winner_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winner_status_transitions_to_status_id_fkey"
+            columns: ["to_status_id"]
+            isOneToOne: false
+            referencedRelation: "winner_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       winner_statuses: {
         Row: {
           color: string
@@ -705,6 +741,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_authenticated_user: { Args: never; Returns: boolean }
+      is_valid_status_transition: {
+        Args: { _from_status_slug: string; _to_status_slug: string }
+        Returns: boolean
+      }
       normalize_phone_e164: { Args: { raw: string }; Returns: string }
     }
     Enums: {
