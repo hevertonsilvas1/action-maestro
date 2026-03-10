@@ -1,11 +1,12 @@
 import { AppLayout } from '@/components/AppLayout';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings2, User, Webhook, Tags } from 'lucide-react';
+import { Settings2, User, Webhook, Tags, Clock } from 'lucide-react';
 import { GeneralTab } from '@/components/settings/GeneralTab';
 import { UserTab } from '@/components/settings/UserTab';
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab';
 import { WinnerStatusesTab } from '@/components/settings/WinnerStatusesTab';
+import { TimeConfigTab } from '@/components/settings/TimeConfigTab';
 import { useSearchParams } from 'react-router-dom';
 
 export default function SettingsPage() {
@@ -49,6 +50,12 @@ export default function SettingsPage() {
                 Status
               </TabsTrigger>
             )}
+            {isAdmin && (
+              <TabsTrigger value="time" className="gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                Tempo
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {isAdmin && (
@@ -70,6 +77,12 @@ export default function SettingsPage() {
           {isAdmin && (
             <TabsContent value="statuses">
               <WinnerStatusesTab />
+            </TabsContent>
+          )}
+
+          {isAdmin && (
+            <TabsContent value="time">
+              <TimeConfigTab />
             </TabsContent>
           )}
         </Tabs>
