@@ -77,6 +77,7 @@ export default function ActionDetailPage() {
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [winnersPage, setWinnersPage] = useState(1);
   const [winnersPageSize, setWinnersPageSize] = useState(20);
