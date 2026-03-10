@@ -494,6 +494,7 @@ export type Database = {
           from_status_id: string | null
           id: string
           notes: string | null
+          status_version_id: string | null
           to_status_id: string
           trigger_event: string | null
           winner_id: string
@@ -506,6 +507,7 @@ export type Database = {
           from_status_id?: string | null
           id?: string
           notes?: string | null
+          status_version_id?: string | null
           to_status_id: string
           trigger_event?: string | null
           winner_id: string
@@ -518,6 +520,7 @@ export type Database = {
           from_status_id?: string | null
           id?: string
           notes?: string | null
+          status_version_id?: string | null
           to_status_id?: string
           trigger_event?: string | null
           winner_id?: string
@@ -528,6 +531,13 @@ export type Database = {
             columns: ["from_status_id"]
             isOneToOne: false
             referencedRelation: "winner_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winner_status_history_status_version_id_fkey"
+            columns: ["status_version_id"]
+            isOneToOne: false
+            referencedRelation: "winner_status_versions"
             referencedColumns: ["id"]
           },
           {
@@ -576,6 +586,44 @@ export type Database = {
           {
             foreignKeyName: "winner_status_transitions_to_status_id_fkey"
             columns: ["to_status_id"]
+            isOneToOne: false
+            referencedRelation: "winner_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      winner_status_versions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          status_id: string
+          trigger_event: string | null
+          update_mode: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          status_id: string
+          trigger_event?: string | null
+          update_mode?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          status_id?: string
+          trigger_event?: string | null
+          update_mode?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "winner_status_versions_status_id_fkey"
+            columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "winner_statuses"
             referencedColumns: ["id"]
@@ -792,6 +840,10 @@ export type Database = {
       apply_automatic_status_transition: {
         Args: { _trigger_event: string; _winner_id: string }
         Returns: Json
+      }
+      get_active_status_version: {
+        Args: { _status_id: string }
+        Returns: string
       }
       has_role: {
         Args: {
