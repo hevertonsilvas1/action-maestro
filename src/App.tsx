@@ -85,6 +85,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
     <Route path="/actions" element={<AdminRoute><ActionsPage /></AdminRoute>} />
     <Route path="/actions/new" element={<AdminRoute><NewActionPage /></AdminRoute>} />
