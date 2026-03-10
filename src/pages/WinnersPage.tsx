@@ -6,6 +6,7 @@ import { formatCurrency, formatPhone } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { formatDate } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
+import { TimeInStatusBadge } from '@/components/TimeInStatusBadge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,12 +22,14 @@ import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { StatusHistorySheet } from '@/components/StatusHistorySheet';
+import { useTimeInStatus, useLiveTimeInStatus } from '@/hooks/useTimeInStatus';
+import { useStatusTimeConfig } from '@/hooks/useStatusTimeConfig';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, Info,
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
-  XCircle, Phone, UserX, History,
+  XCircle, Phone, UserX, History, Clock,
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
