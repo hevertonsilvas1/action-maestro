@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { StatusWorkflowDiagram } from './StatusWorkflowDiagram';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -440,7 +441,19 @@ export function WinnerStatusesTab() {
         </CardContent>
       </Card>
 
-      {/* Create/Edit Dialog */}
+      {/* Workflow Diagram */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Diagrama do Workflow</CardTitle>
+          <CardDescription>
+            Visualização das transições configuradas entre os status. Passe o mouse sobre um status para destacar suas conexões.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StatusWorkflowDiagram statuses={sorted} transitions={transitions || []} />
+        </CardContent>
+      </Card>
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
