@@ -569,7 +569,7 @@ export default function WinnersPage() {
 
       {/* Modals */}
       <RequestPixModal open={pixModalOpen} onOpenChange={setPixModalOpen} winners={selectedWinners} onConfirm={handleRequestPix} isPending={isPending} isAdmin={isAdmin} />
-      <NewWinnerModal open={newWinnerOpen} onOpenChange={setNewWinnerOpen} actionsMap={actionsMap} />
+      <NewWinnerModal open={newWinnerOpen} onOpenChange={setNewWinnerOpen} actionsMap={operationalActionsMap} />
       <DeleteWinnerDialog open={!!deleteWinner} onOpenChange={v => { if (!v) setDeleteWinner(null); }} winner={deleteWinner} actionName={deleteWinner ? (actionsMap[deleteWinner.actionId] || '') : ''} />
       <BulkDeleteWinnersDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen} winners={selectedWinners} actionsMap={actionsMap} onDone={() => setSelected(new Set())} />
       <BatchStatusModal open={batchStatusOpen} onOpenChange={setBatchStatusOpen} winnerIds={Array.from(selected)} currentStatuses={selectedWinners.map(w => w.status)} onDone={() => setSelected(new Set())} />
