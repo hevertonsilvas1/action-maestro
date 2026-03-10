@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -6,12 +7,19 @@ import { supabase } from '@/integrations/supabase/client';
  * Based on the most recent entry in winner_status_history per winner.
  */
 export function useTimeInStatus(winnerIds: string[]) {
+  const [tick, setTick] = useState(0);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return useQuery({
     queryKey: ['time_in_status', winnerIds.sort().join(',')],
     queryFn: async () => {
       if (winnerIds.length === 0) return {} as Record<string, number>;
 
-      // Fetch latest history entry per winner
       const { data, error } = await supabase
         .from('winner_status_history' as any)
         .select('winner_id, created_at')
@@ -23,7 +31,6 @@ export function useTimeInStatus(winnerIds: string[]) {
       const now = Date.now();
       const result: Record<string, number> = {};
 
-      // Get the most recent entry per winner
       (data || []).forEach((row: any) => {
         if (!result[row.winner_id]) {
           result[row.winner_id] = now - new Date(row.created_at).getTime();
@@ -33,8 +40,36 @@ export function useTimeInStatus(winnerIds: string[]) {
       return result;
     },
     enabled: winnerIds.length > 0,
-    refetchInterval: 60000, // refresh every minute
+    refetchInterval: 30000,
   });
+}
+
+/**
+ * Client-side live timer that recalculates durations every 30s
+ * without refetching from the DB. Takes the base timestamps
+ * and keeps them fresh.
+ */
+export function useLiveTimeInStatus(baseTimeMap: Record<string, number>) {
+  const [liveMap, setLiveMap] = useState(baseTimeMap);
+
+  useEffect(() => {
+    setLiveMap(baseTimeMap);
+  }, [baseTimeMap]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveMap(prev => {
+        const updated: Record<string, number> = {};
+        for (const [k, v] of Object.entries(prev)) {
+          updated[k] = v + 30000;
+        }
+        return updated;
+      });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return liveMap;
 }
 
 export function formatDuration(ms: number): string {
@@ -49,9 +84,11 @@ export function formatDuration(ms: number): string {
   return `${days}d`;
 }
 
-export function getDurationVariant(ms: number): 'normal' | 'warning' | 'critical' {
-  const hours = ms / 3600000;
-  if (hours > 48) return 'critical';
-  if (hours > 24) return 'warning';
+export type DurationVariant = 'normal' | 'warning' | 'critical';
+
+export function getDurationVariant(ms: number, warningMinutes = 10, criticalMinutes = 30): DurationVariant {
+  const minutes = ms / 60000;
+  if (minutes >= criticalMinutes) return 'critical';
+  if (minutes >= warningMinutes) return 'warning';
   return 'normal';
 }
