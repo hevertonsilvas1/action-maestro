@@ -25,6 +25,7 @@ interface ImportStats {
   totalNew: number;
   totalDuplicates: number;
   totalInvalid: number;
+  totalOverLimit: number;
 }
 
 // Map prize type text to DB enum
