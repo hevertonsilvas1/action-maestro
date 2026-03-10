@@ -318,11 +318,48 @@ export default function ActionDetailPage() {
                 Excluir
               </Button>
             )}
-            <StatusBadge
-              status={action.status}
-              labels={ACTION_STATUS_LABELS}
-              colors={ACTION_STATUS_COLORS}
-            />
+            {isAdmin && !isArchived ? (
+              <Select
+                value={action.status}
+                onValueChange={async (newStatus) => {
+                  if (newStatus === action.status) return;
+                  setChangingStatus(true);
+                  try {
+                    const { error } = await supabase
+                      .from('actions')
+                      .update({ status: newStatus as any, previous_status: action.status as any })
+                      .eq('id', id!);
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ['actions'] });
+                    queryClient.invalidateQueries({ queryKey: ['actions', id] });
+                    toast.success(`Status alterado para "${ACTION_STATUS_LABELS[newStatus as Action['status']] || newStatus}"`);
+                  } catch (err: any) {
+                    console.error(err);
+                    toast.error('Erro ao alterar status da ação.');
+                  } finally {
+                    setChangingStatus(false);
+                  }
+                }}
+                disabled={changingStatus}
+              >
+                <SelectTrigger className="h-8 w-[160px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(['planning', 'active', 'completed', 'cancelled'] as Action['status'][]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {ACTION_STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <StatusBadge
+                status={action.status}
+                labels={ACTION_STATUS_LABELS}
+                colors={ACTION_STATUS_COLORS}
+              />
+            )}
           </div>
         }
       />
