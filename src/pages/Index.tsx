@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
-import { OperationalMetrics } from '@/components/OperationalMetrics';
+import { OperationalDashboard } from '@/components/operational/OperationalDashboard';
 import { useActions } from '@/hooks/useActions';
 import { useWinners } from '@/hooks/useWinners';
 import { useUserRole } from '@/hooks/useUserRole';
