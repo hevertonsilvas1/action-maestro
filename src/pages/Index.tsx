@@ -67,7 +67,7 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatsCard title="Receita Total" value={formatCurrency(totalRevenue)} icon={DollarSign} variant="primary" />
+              <StatsCard title="Receita Realizada" value={formatCurrency(totalRevenue)} icon={DollarSign} variant="primary" subtitle={plannedRevenue > 0 ? `${formatCurrency(plannedRevenue)} em planejamento` : undefined} />
               <StatsCard
                 title="Lucro Bruto"
                 value={formatCurrency(totalProfit)}
@@ -82,7 +82,7 @@ const Index = () => {
                 variant="accent"
                 subtitle={`${totalPaid} pagos · ${totalWinners - totalPaid} pendentes`}
               />
-              <StatsCard title="Ações Ativas" value={String(activeActions)} icon={Megaphone} variant="warning" subtitle={`${operationalActions.length} total`} />
+              <StatsCard title="Ações Ativas" value={String(activeActions)} icon={Megaphone} variant="warning" subtitle={`${planningActions.length} em planejamento · ${operationalActions.length} total`} />
             </div>
 
             {/* Recent Actions */}
