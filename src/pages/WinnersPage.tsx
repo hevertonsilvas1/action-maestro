@@ -352,12 +352,12 @@ export default function WinnersPage() {
                             />
                           </td>
                           <td className="px-3 py-2.5">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-1.5">
                               {canRequestPix && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); handleSingleRequestPix(w); }}>
-                                      <Send className="h-[18px] w-[18px] text-info" />
+                                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={e => { e.stopPropagation(); handleSingleRequestPix(w); }}>
+                                      <Send className="h-5 w-5 text-info" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Solicitar Pix</TooltipContent>
@@ -365,24 +365,24 @@ export default function WinnersPage() {
                               )}
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setPixTarget(w); }}>
-                                    <CreditCard className={cn('h-[18px] w-[18px]', w.pixKey ? 'text-purple' : 'text-muted-foreground')} />
+                                  <Button variant="ghost" size="icon" className="h-10 w-10" onClick={e => { e.stopPropagation(); setPixTarget(w); }}>
+                                    <CreditCard className={cn('h-5 w-5', w.pixKey ? 'text-purple' : 'text-muted-foreground')} />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{w.pixKey ? 'Editar Pix' : 'Cadastrar Pix'}</TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setReceiptTarget(w); }}>
-                                    <Paperclip className={cn('h-[18px] w-[18px]', w.receiptUrl ? 'text-success' : 'text-muted-foreground')} />
+                                  <Button variant="ghost" size="icon" className="h-10 w-10" onClick={e => { e.stopPropagation(); setReceiptTarget(w); }}>
+                                    <Paperclip className={cn('h-5 w-5', w.receiptUrl ? 'text-success' : 'text-muted-foreground')} />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{w.receiptUrl ? 'Gerenciar Comprovante' : 'Anexar Comprovante'}</TooltipContent>
                               </Tooltip>
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <button className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-muted transition-colors">
-                                    <Info className={cn('h-[18px] w-[18px]', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
+                                  <button className="inline-flex items-center justify-center h-10 w-10 rounded-md hover:bg-muted transition-colors">
+                                    <Info className={cn('h-5 w-5', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent side="left" className="w-80 text-xs space-y-2">
@@ -427,8 +427,8 @@ export default function WinnersPage() {
                               </Popover>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
-                                    <History className="h-[18px] w-[18px] text-muted-foreground" />
+                                  <Button variant="ghost" size="icon" className="h-10 w-10" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
+                                    <History className="h-5 w-5 text-muted-foreground" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Histórico de Status</TooltipContent>
@@ -436,8 +436,8 @@ export default function WinnersPage() {
                               {isAdmin && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
-                                      <Trash2 className="h-[18px] w-[18px]" />
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
+                                      <Trash2 className="h-5 w-5" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Excluir</TooltipContent>
