@@ -20,6 +20,7 @@ import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
+import { StatusHistorySheet } from '@/components/StatusHistorySheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
