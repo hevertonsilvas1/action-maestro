@@ -564,6 +564,9 @@ export type Database = {
           is_active: boolean
           name: string
           notes: string | null
+          priority: number
+          scope: string
+          scope_value: string | null
           trigger_rule: string | null
           type: string
           unnichat_trigger_url: string
@@ -579,6 +582,9 @@ export type Database = {
           is_active?: boolean
           name: string
           notes?: string | null
+          priority?: number
+          scope?: string
+          scope_value?: string | null
           trigger_rule?: string | null
           type: string
           unnichat_trigger_url: string
@@ -594,6 +600,9 @@ export type Database = {
           is_active?: boolean
           name?: string
           notes?: string | null
+          priority?: number
+          scope?: string
+          scope_value?: string | null
           trigger_rule?: string | null
           type?: string
           unnichat_trigger_url?: string
