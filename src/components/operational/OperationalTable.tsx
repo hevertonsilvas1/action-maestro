@@ -21,8 +21,10 @@ interface Props {
   onViewReceipt: (w: Winner) => void;
 }
 
-export function OperationalTable({ winners, actionsMap, timeInStatus, onViewDetails, onViewHistory, onViewReceipt }: Props) {
+export function OperationalTable({ winners, actionsMap, timeInStatus, warningMinutes = 10, criticalMinutes = 30, onViewDetails, onViewHistory, onViewReceipt }: Props) {
   const { getLabel, getColor } = useWinnerStatusMap();
+
+  const durationVariant = (ms: number) => getDurationVariant(ms, warningMinutes, criticalMinutes);
 
   const durationClass = (variant: 'normal' | 'warning' | 'critical') => {
     if (variant === 'critical') return 'text-destructive font-semibold';
