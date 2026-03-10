@@ -171,49 +171,18 @@ export default function ActionDetailPage() {
     setSelectedWinnerIds(new Set());
   };
 
-  const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
-
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!action) {
-    return (
-      <AppLayout>
-        <div className="flex-1 flex flex-col items-center justify-center gap-4">
-          <p className="text-muted-foreground">Ação não encontrada.</p>
-          <Link to="/actions">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-3.5 w-3.5 mr-1" />
-              Voltar
-            </Button>
-          </Link>
-        </div>
-      </AppLayout>
-    );
-  }
-
   // === PLANNING LAYER ===
   const totalPlannedPrizes = prizes.reduce((s, p) => s + p.totalValue, 0);
   const totalCosts = costs.reduce((s, c) => s + c.value, 0);
 
   // === EXECUTION / REALIZED LAYER (derived from winners) ===
   const paidStatuses: WinnerStatus[] = ['paid', 'receipt_sent'];
-  const receiptSentStatuses: WinnerStatus[] = ['receipt_sent'];
-  const receiptAttachedStatuses: WinnerStatus[] = ['receipt_attached', 'receipt_sent'];
 
   const winnersWithPaid = winners.filter((w) => paidStatuses.includes(w.status));
   const totalPaidValue = winnersWithPaid.reduce((s, w) => s + w.value, 0);
   const totalPendingValue = winners.reduce((s, w) => s + w.value, 0) - totalPaidValue;
-  const totalWinnersValue = winners.reduce((s, w) => s + w.value, 0);
-  const receiptSentCount = winners.filter(w => receiptSentStatuses.includes(w.status)).length;
-  const receiptAttachedCount = winners.filter(w => receiptAttachedStatuses.includes(w.status)).length;
+  const receiptSentCount = winners.filter(w => w.status === 'receipt_sent').length;
+  const receiptAttachedCount = winners.filter(w => w.status === 'receipt_attached' || w.status === 'receipt_sent').length;
 
   // Prize consumption: group winners by prize title to track planned vs processed
   const prizeConsumption = useMemo(() => {
@@ -245,8 +214,36 @@ export default function ActionDetailPage() {
     : 0;
 
   // Realized financials
-  const realizedCost = totalPaidValue + totalCosts + action.totalTaxes;
-  const realizedProfit = action.expectedRevenue - realizedCost;
+  const realizedCost = totalPaidValue + totalCosts + action?.totalTaxes ?? 0;
+  const realizedProfit = (action?.expectedRevenue ?? 0) - realizedCost;
+
+  const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!action) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <p className="text-muted-foreground">Ação não encontrada.</p>
+          <Link to="/actions">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+              Voltar
+            </Button>
+          </Link>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const isArchived = action.status === 'archived';
 
