@@ -1,12 +1,13 @@
 import { AppLayout } from '@/components/AppLayout';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings2, User, Webhook, Tags, Clock } from 'lucide-react';
+import { Settings2, User, Webhook, Tags, Clock, MessageSquare } from 'lucide-react';
 import { GeneralTab } from '@/components/settings/GeneralTab';
 import { UserTab } from '@/components/settings/UserTab';
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab';
 import { WinnerStatusesTab } from '@/components/settings/WinnerStatusesTab';
 import { TimeConfigTab } from '@/components/settings/TimeConfigTab';
+import { WindowMessagesTab } from '@/components/settings/WindowMessagesTab';
 import { useSearchParams } from 'react-router-dom';
 
 export default function SettingsPage() {
