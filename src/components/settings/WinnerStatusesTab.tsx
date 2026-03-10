@@ -1,19 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Plus, Pencil, GripVertical, Zap, Hand } from 'lucide-react';
+import { Loader2, Plus, Pencil, GripVertical, Zap, Hand, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useWinnerStatuses,
   useCreateWinnerStatus,
   useUpdateWinnerStatus,
+  useStatusTransitions,
+  useSaveTransitions,
   type WinnerStatusConfig,
 } from '@/hooks/useWinnerStatuses';
 import {
@@ -72,11 +75,13 @@ const emptyForm: FormData = {
 // Sortable row component
 function SortableStatusRow({
   status,
+  transitionCount,
   onEdit,
   onToggleActive,
   onSetDefault,
 }: {
   status: WinnerStatusConfig;
+  transitionCount: number;
   onEdit: (s: WinnerStatusConfig) => void;
   onToggleActive: (s: WinnerStatusConfig) => void;
   onSetDefault: (s: WinnerStatusConfig) => void;
@@ -156,6 +161,16 @@ function SortableStatusRow({
         )}
       </TableCell>
       <TableCell className="text-center">
+        {transitionCount > 0 ? (
+          <Badge variant="outline" className="text-[10px] gap-1">
+            <ArrowRight className="h-3 w-3" />
+            {transitionCount}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      <TableCell className="text-center">
         <Switch
           checked={status.is_active}
           onCheckedChange={() => onToggleActive(status)}
@@ -184,13 +199,16 @@ function SortableStatusRow({
 
 export function WinnerStatusesTab() {
   const { data: statuses, isLoading } = useWinnerStatuses();
+  const { data: transitions } = useStatusTransitions();
   const createMutation = useCreateWinnerStatus();
   const updateMutation = useUpdateWinnerStatus();
+  const saveTransitionsMutation = useSaveTransitions();
   const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
+  const [selectedTransitions, setSelectedTransitions] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -198,6 +216,15 @@ export function WinnerStatusesTab() {
   );
 
   const sorted = statuses ? [...statuses].sort((a, b) => a.sort_order - b.sort_order) : [];
+
+  // Map: from_status_id -> count of allowed transitions
+  const transitionCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    (transitions || []).forEach(t => {
+      map[t.from_status_id] = (map[t.from_status_id] || 0) + 1;
+    });
+    return map;
+  }, [transitions]);
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -209,9 +236,8 @@ export function WinnerStatusesTab() {
 
     const reordered = arrayMove(sorted, oldIndex, newIndex);
 
-    // Batch update sort_order
     try {
-      const updates = reordered.map((s, i) => 
+      const updates = reordered.map((s, i) =>
         updateMutation.mutateAsync({ id: s.id, sort_order: i })
       );
       await Promise.all(updates);
@@ -225,6 +251,7 @@ export function WinnerStatusesTab() {
     const nextOrder = statuses ? Math.max(...statuses.map(s => s.sort_order), -1) + 1 : 0;
     setForm({ ...emptyForm, sort_order: nextOrder });
     setEditingId(null);
+    setSelectedTransitions([]);
     setDialogOpen(true);
   };
 
@@ -241,6 +268,11 @@ export function WinnerStatusesTab() {
       trigger_event: status.trigger_event || '',
     });
     setEditingId(status.id);
+    // Load current transitions
+    const current = (transitions || [])
+      .filter(t => t.from_status_id === status.id)
+      .map(t => t.to_status_id);
+    setSelectedTransitions(current);
     setDialogOpen(true);
   };
 
@@ -259,6 +291,14 @@ export function WinnerStatusesTab() {
       name,
       ...(editingId ? {} : { slug: generateSlug(name) }),
     }));
+  };
+
+  const toggleTransition = (toStatusId: string) => {
+    setSelectedTransitions(prev =>
+      prev.includes(toStatusId)
+        ? prev.filter(id => id !== toStatusId)
+        : [...prev, toStatusId]
+    );
   };
 
   const handleSave = async () => {
@@ -280,13 +320,24 @@ export function WinnerStatusesTab() {
         trigger_event: form.update_mode === 'automatic' ? (form.trigger_event || null) : null,
       };
 
+      let statusId = editingId;
+
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, ...payload });
-        toast({ title: 'Status atualizado!' });
       } else {
-        await createMutation.mutateAsync(payload);
-        toast({ title: 'Status criado!' });
+        const created = await createMutation.mutateAsync(payload);
+        statusId = created.id;
       }
+
+      // Save transitions
+      if (statusId) {
+        await saveTransitionsMutation.mutateAsync({
+          fromStatusId: statusId,
+          toStatusIds: selectedTransitions,
+        });
+      }
+
+      toast({ title: editingId ? 'Status atualizado!' : 'Status criado!' });
       setDialogOpen(false);
     } catch (err: any) {
       toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
@@ -315,7 +366,10 @@ export function WinnerStatusesTab() {
     }
   };
 
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isSaving = createMutation.isPending || updateMutation.isPending || saveTransitionsMutation.isPending;
+
+  // Other statuses for transition selection (exclude self)
+  const otherStatuses = sorted.filter(s => s.id !== editingId);
 
   if (isLoading) {
     return (
@@ -343,7 +397,7 @@ export function WinnerStatusesTab() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -352,6 +406,7 @@ export function WinnerStatusesTab() {
                   <TableHead>Cor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Evento gatilho</TableHead>
+                  <TableHead className="text-center">Transições</TableHead>
                   <TableHead className="text-center">Ativo</TableHead>
                   <TableHead className="w-20">Ações</TableHead>
                 </TableRow>
@@ -364,6 +419,7 @@ export function WinnerStatusesTab() {
                         <SortableStatusRow
                           key={status.id}
                           status={status}
+                          transitionCount={transitionCountMap[status.id] || 0}
                           onEdit={openEdit}
                           onToggleActive={handleToggleActive}
                           onSetDefault={handleSetDefault}
@@ -371,7 +427,7 @@ export function WinnerStatusesTab() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                        <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
                           Nenhum status cadastrado.
                         </TableCell>
                       </TableRow>
@@ -386,7 +442,7 @@ export function WinnerStatusesTab() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar status' : 'Novo status'}</DialogTitle>
             <DialogDescription>
@@ -395,6 +451,7 @@ export function WinnerStatusesTab() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* Name & Slug */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">Nome</Label>
@@ -418,6 +475,7 @@ export function WinnerStatusesTab() {
               </div>
             </div>
 
+            {/* Color & Order */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">Cor</Label>
@@ -448,6 +506,7 @@ export function WinnerStatusesTab() {
               </div>
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
               <Label className="text-xs">Descrição (opcional)</Label>
               <Input
@@ -457,6 +516,7 @@ export function WinnerStatusesTab() {
               />
             </div>
 
+            {/* Update mode & Trigger */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">Modo de atualização</Label>
@@ -506,6 +566,7 @@ export function WinnerStatusesTab() {
               )}
             </div>
 
+            {/* Switches */}
             <div className="flex items-center gap-6 pt-2">
               <div className="flex items-center gap-2">
                 <Switch
@@ -521,6 +582,58 @@ export function WinnerStatusesTab() {
                 />
                 <Label className="text-xs">Status padrão</Label>
               </div>
+            </div>
+
+            {/* Allowed Transitions */}
+            <div className="space-y-3 pt-2 border-t">
+              <div>
+                <Label className="text-sm font-medium">Próximos status permitidos</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Selecione para quais status este pode evoluir. Se nenhum for selecionado, todas as transições serão permitidas.
+                </p>
+              </div>
+              {otherStatuses.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                  {otherStatuses.map(s => (
+                    <label
+                      key={s.id}
+                      className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedTransitions.includes(s.id)}
+                        onCheckedChange={() => toggleTransition(s.id)}
+                      />
+                      <span
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: s.color }}
+                      >
+                        {s.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  {editingId ? 'Salve primeiro para configurar transições.' : 'Crie o status primeiro para configurar transições.'}
+                </p>
+              )}
+              {selectedTransitions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-xs text-muted-foreground mr-1">Pode ir para:</span>
+                  {selectedTransitions.map(id => {
+                    const s = sorted.find(x => x.id === id);
+                    return s ? (
+                      <span
+                        key={id}
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: s.color }}
+                      >
+                        {s.name}
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Preview */}
