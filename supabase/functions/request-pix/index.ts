@@ -113,6 +113,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate that all referenced actions are not in planning status
+    const actionIds = [...new Set(winners.map((w) => w.action_id))];
+    for (const actionId of actionIds) {
+      const { data: actionData } = await serviceClient
+        .from("actions")
+        .select("status")
+        .eq("id", actionId)
+        .maybeSingle();
+
+      if (actionData?.status === "planning") {
+        return new Response(
+          JSON.stringify({ error: `Ação "${winners.find(w => w.action_id === actionId)?.action_name || actionId}" está em Planejamento. Não é possível solicitar PIX.` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const results: { winner_id: string; success: boolean; error?: string }[] = [];
 
     for (const w of winners) {
