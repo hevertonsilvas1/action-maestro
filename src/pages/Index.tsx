@@ -144,7 +144,7 @@ const Index = () => {
             <Users className="h-4 w-4 text-accent-foreground" />
             <h2 className="text-sm font-bold uppercase tracking-wider text-accent-foreground">Painel Operacional</h2>
           </div>
-          <OperationalMetrics winners={winners} />
+          <OperationalDashboard />
         </section>
       </div>
     </AppLayout>
