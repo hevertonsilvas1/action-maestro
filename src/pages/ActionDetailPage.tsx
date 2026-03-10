@@ -171,6 +171,52 @@ export default function ActionDetailPage() {
     setSelectedWinnerIds(new Set());
   };
 
+  // === PLANNING LAYER ===
+  const totalPlannedPrizes = prizes.reduce((s, p) => s + p.totalValue, 0);
+  const totalCosts = costs.reduce((s, c) => s + c.value, 0);
+
+  // === EXECUTION / REALIZED LAYER (derived from winners) ===
+  const paidStatuses: WinnerStatus[] = ['paid', 'receipt_sent'];
+
+  const winnersWithPaid = winners.filter((w) => paidStatuses.includes(w.status));
+  const totalPaidValue = winnersWithPaid.reduce((s, w) => s + w.value, 0);
+  const totalPendingValue = winners.reduce((s, w) => s + w.value, 0) - totalPaidValue;
+  const receiptSentCount = winners.filter(w => w.status === 'receipt_sent').length;
+  const receiptAttachedCount = winners.filter(w => w.status === 'receipt_attached' || w.status === 'receipt_sent').length;
+
+  // Prize consumption: group winners by prize title to track planned vs processed
+  const prizeConsumption = useMemo(() => {
+    if (!prizes.length) return [];
+    return prizes.map(prize => {
+      const matchingWinners = winners.filter(w => w.prizeTitle === prize.title);
+      const processedCount = matchingWinners.length;
+      const paidCount = matchingWinners.filter(w => paidStatuses.includes(w.status)).length;
+      const paidValue = matchingWinners.filter(w => paidStatuses.includes(w.status)).reduce((s, w) => s + w.value, 0);
+      return {
+        ...prize,
+        processedCount,
+        remainingCount: Math.max(0, prize.quantity - processedCount),
+        paidCount,
+        paidValue,
+        pendingValue: matchingWinners.reduce((s, w) => s + w.value, 0) - paidValue,
+        progress: prize.quantity > 0 ? (processedCount / prize.quantity) * 100 : 0,
+      };
+    });
+  }, [prizes, winners]);
+
+  const statusCounts: Record<string, number> = {};
+  winners.forEach((w) => {
+    statusCounts[w.status] = (statusCounts[w.status] || 0) + 1;
+  });
+
+  const paidProgress = winners.length > 0
+    ? (winnersWithPaid.length / winners.length) * 100
+    : 0;
+
+  // Realized financials
+  const realizedCost = totalPaidValue + totalCosts + (action?.totalTaxes || 0);
+  const realizedProfit = (action?.expectedRevenue || 0) - realizedCost;
+
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
   if (isLoading) {
@@ -198,21 +244,6 @@ export default function ActionDetailPage() {
       </AppLayout>
     );
   }
-
-  const totalPlannedPrizes = prizes.reduce((s, p) => s + p.totalValue, 0);
-  const totalPaidPrizes = winners
-    .filter((w) => w.status === 'paid' || w.status === 'receipt_sent')
-    .reduce((s, w) => s + w.value, 0);
-  const totalCosts = costs.reduce((s, c) => s + c.value, 0);
-
-  const statusCounts: Record<string, number> = {};
-  winners.forEach((w) => {
-    statusCounts[w.status] = (statusCounts[w.status] || 0) + 1;
-  });
-
-  const paidProgress = winners.length > 0
-    ? (winners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length / winners.length) * 100
-    : 0;
 
   const isArchived = action.status === 'archived';
 
@@ -295,18 +326,18 @@ export default function ActionDetailPage() {
         {/* KPIs - Admin only */}
         {isAdmin && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-            <StatsCard title="Receita Esperada" value={formatCurrency(action.expectedRevenue)} icon={DollarSign} variant="primary" />
-            <StatsCard title="Lucro Bruto" value={formatCurrency(action.grossProfit)} icon={TrendingUp} variant="success" subtitle={`${formatPercent(action.marginPercent)} margem`} />
-            <StatsCard title="Total Pago" value={formatCurrency(action.realPaid)} icon={CheckCircle2} variant="accent" />
-            <StatsCard title="Ganhadores" value={String(action.winnersCount)} icon={Users} subtitle={`${action.paidCount} pagos`} />
+            <StatsCard title="Receita Esperada" value={formatCurrency(action.expectedRevenue)} icon={DollarSign} variant="primary" subtitle={action.status === 'planning' ? 'Planejamento' : undefined} />
+            <StatsCard title="Lucro Planejado" value={formatCurrency(action.grossProfit)} icon={TrendingUp} variant={action.grossProfit >= 0 ? 'success' : 'warning'} subtitle={`${formatPercent(action.marginPercent)} margem`} />
+            <StatsCard title="Total Pago (Real)" value={formatCurrency(totalPaidValue)} icon={CheckCircle2} variant="accent" subtitle={`${formatCurrency(totalPendingValue)} pendente`} />
+            <StatsCard title="Ganhadores" value={String(winners.length)} icon={Users} subtitle={`${winnersWithPaid.length} pagos · ${receiptSentCount} comp. enviados`} />
           </div>
         )}
 
         {/* Support sees only winner count KPI */}
         {!isAdmin && (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
-            <StatsCard title="Ganhadores" value={String(action.winnersCount)} icon={Users} subtitle={`${action.paidCount} pagos`} />
-            <StatsCard title="Pendentes" value={String(action.winnersCount - action.paidCount)} icon={Clock} variant="warning" />
+            <StatsCard title="Ganhadores" value={String(winners.length)} icon={Users} subtitle={`${winnersWithPaid.length} pagos`} />
+            <StatsCard title="Pendentes" value={String(winners.length - winnersWithPaid.length)} icon={Clock} variant="warning" />
             <StatsCard title="Progresso" value={`${paidProgress.toFixed(0)}%`} icon={CheckCircle2} variant="success" />
           </div>
         )}
@@ -323,21 +354,25 @@ export default function ActionDetailPage() {
                 <div>
                   <div className="flex justify-between text-xs mb-1.5">
                     <span className="text-muted-foreground">Prêmios pagos</span>
-                    <span className="font-medium">{formatCurrency(totalPaidPrizes)} / {formatCurrency(totalPlannedPrizes)}</span>
+                    <span className="font-medium">{formatCurrency(totalPaidValue)} / {formatCurrency(totalPlannedPrizes)}</span>
                   </div>
-                  <Progress value={totalPlannedPrizes > 0 ? (totalPaidPrizes / totalPlannedPrizes) * 100 : 0} className="h-2" />
+                  <Progress value={totalPlannedPrizes > 0 ? (totalPaidValue / totalPlannedPrizes) * 100 : 0} className="h-2" />
                 </div>
-                <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t">
                   <div className="text-center">
                     <p className="text-lg font-bold">{formatCurrency(action.totalCost)}</p>
-                    <p className="text-[10px] text-muted-foreground">Custo Total</p>
+                    <p className="text-[10px] text-muted-foreground">Custo Planejado</p>
                   </div>
                   <div className="text-center">
                     <p className="text-lg font-bold text-success">{formatCurrency(action.grossProfit)}</p>
-                    <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+                    <p className="text-[10px] text-muted-foreground">Lucro Planejado</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold">{formatCurrency(totalPlannedPrizes - totalPaidPrizes)}</p>
+                    <p className="text-lg font-bold">{formatCurrency(totalPaidValue)}</p>
+                    <p className="text-[10px] text-muted-foreground">Já Pago</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-warning">{formatCurrency(totalPlannedPrizes - totalPaidValue)}</p>
                     <p className="text-[10px] text-muted-foreground">Falta Pagar</p>
                   </div>
                 </div>
@@ -632,9 +667,11 @@ export default function ActionDetailPage() {
 
           <TabsContent value="prizes" className="space-y-3">
             <div className="flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">
-                Total planejado: <span className="font-semibold text-foreground">{formatCurrency(totalPlannedPrizes)}</span>
-              </p>
+              <div className="flex gap-4 text-xs text-muted-foreground">
+                <span>Planejado: <span className="font-semibold text-foreground">{formatCurrency(totalPlannedPrizes)}</span></span>
+                <span>Pago: <span className="font-semibold text-success">{formatCurrency(totalPaidValue)}</span></span>
+                <span>Pendente: <span className="font-semibold text-warning">{formatCurrency(totalPlannedPrizes - totalPaidValue)}</span></span>
+              </div>
               <Button size="sm" variant="outline" className="h-8 text-xs">
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Adicionar Prêmio
@@ -644,7 +681,7 @@ export default function ActionDetailPage() {
               <p className="text-sm text-muted-foreground py-8 text-center">Nenhum prêmio cadastrado.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {prizes.map((p, i) => (
+                {prizeConsumption.map((p, i) => (
                   <div
                     key={p.id}
                     className="rounded-xl border bg-card p-4 transition-all duration-200 hover:shadow-card-hover animate-fade-in"
@@ -657,9 +694,31 @@ export default function ActionDetailPage() {
                       </div>
                       <p className="text-sm font-bold">{formatCurrency(p.totalValue)}</p>
                     </div>
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>{p.quantity}x</span>
-                      <span>{formatCurrency(p.unitValue)}/un</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Processados</span>
+                        <span className="font-medium">{p.processedCount} / {p.quantity}</span>
+                      </div>
+                      <Progress value={p.progress} className="h-1.5" />
+                      <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground pt-1">
+                        <div>
+                          <p className="font-semibold text-foreground">{p.processedCount}</p>
+                          <p>Processados</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-success">{p.paidCount}</p>
+                          <p>Pagos</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-warning">{p.remainingCount}</p>
+                          <p>Restantes</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 text-[10px] text-muted-foreground pt-1 border-t">
+                        <span>Pago: {formatCurrency(p.paidValue)}</span>
+                        <span>Pendente: {formatCurrency(p.pendingValue)}</span>
+                        <span>{formatCurrency(p.unitValue)}/un</span>
+                      </div>
                     </div>
                   </div>
                 ))}

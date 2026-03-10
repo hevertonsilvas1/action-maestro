@@ -20,11 +20,15 @@ const Index = () => {
   const isLoading = loadingActions || loadingRole;
 
   const operationalActions = actions.filter(a => a.status !== 'archived');
-  const totalRevenue = operationalActions.reduce((s, a) => s + a.expectedRevenue, 0);
-  const totalProfit = operationalActions.reduce((s, a) => s + a.grossProfit, 0);
-  const totalWinners = operationalActions.reduce((s, a) => s + a.winnersCount, 0);
-  const totalPaid = operationalActions.reduce((s, a) => s + a.paidCount, 0);
+  // Financial totals: exclude planning actions (only realized/active/completed)
+  const financialActions = operationalActions.filter(a => a.status !== 'planning');
+  const totalRevenue = financialActions.reduce((s, a) => s + a.expectedRevenue, 0);
+  const totalProfit = financialActions.reduce((s, a) => s + a.grossProfit, 0);
+  const totalWinners = financialActions.reduce((s, a) => s + a.winnersCount, 0);
+  const totalPaid = financialActions.reduce((s, a) => s + a.paidCount, 0);
   const activeActions = operationalActions.filter(a => a.status === 'active').length;
+  const planningActions = operationalActions.filter(a => a.status === 'planning');
+  const plannedRevenue = planningActions.reduce((s, a) => s + a.expectedRevenue, 0);
 
   if (isLoading) {
     return (
@@ -63,7 +67,7 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatsCard title="Receita Total" value={formatCurrency(totalRevenue)} icon={DollarSign} variant="primary" />
+              <StatsCard title="Receita Realizada" value={formatCurrency(totalRevenue)} icon={DollarSign} variant="primary" subtitle={plannedRevenue > 0 ? `${formatCurrency(plannedRevenue)} em planejamento` : undefined} />
               <StatsCard
                 title="Lucro Bruto"
                 value={formatCurrency(totalProfit)}
@@ -78,7 +82,7 @@ const Index = () => {
                 variant="accent"
                 subtitle={`${totalPaid} pagos · ${totalWinners - totalPaid} pendentes`}
               />
-              <StatsCard title="Ações Ativas" value={String(activeActions)} icon={Megaphone} variant="warning" subtitle={`${operationalActions.length} total`} />
+              <StatsCard title="Ações Ativas" value={String(activeActions)} icon={Megaphone} variant="warning" subtitle={`${planningActions.length} em planejamento · ${operationalActions.length} total`} />
             </div>
 
             {/* Recent Actions */}
