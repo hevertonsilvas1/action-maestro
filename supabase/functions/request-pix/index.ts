@@ -171,10 +171,19 @@ Deno.serve(async (req) => {
 
         // --- Success: Update winner status + tracking fields + clear error ---
         const now = new Date().toISOString();
+        
+        // Try automatic status transition first
+        const { data: transitionResult } = await serviceClient.rpc(
+          "apply_automatic_status_transition",
+          { _winner_id: w.winner_id, _trigger_event: "pix_request_sent" }
+        );
+        
+        const newStatus = transitionResult?.changed ? transitionResult.to : "pix_requested";
+        
         const { error: updateError } = await serviceClient
           .from("winners")
           .update({
-            status: "pix_requested",
+            status: newStatus,
             updated_at: now,
             last_pix_request_at: now,
             last_pix_requested_by: userName,

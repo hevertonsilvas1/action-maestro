@@ -220,9 +220,16 @@ Deno.serve(async (req) => {
         updated_at: now,
       }).eq("id", winner_id);
     } else {
-      // Receipt sent: update status
+      // Receipt sent: try automatic status transition, fallback to direct update
+      const { data: transitionResult } = await svc.rpc(
+        "apply_automatic_status_transition",
+        { _winner_id: winner_id, _trigger_event: "receipt_sent" }
+      );
+      
+      const resolvedStatus = transitionResult?.changed ? transitionResult.to : "receipt_sent";
+      
       await svc.from("winners").update({
-        status: "receipt_sent",
+        status: resolvedStatus,
         receipt_sent_at: now,
         last_outbound_at: now,
         last_pix_error: null,

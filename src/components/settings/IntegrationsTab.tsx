@@ -19,6 +19,9 @@ interface IntegrationConfig {
   updated_at: string;
 }
 
+// Keys that belong to the General tab, not Integrations
+const GENERAL_PARAM_KEYS = ['INBOUND_WINDOW_HOURS', 'AUTO_SEND_RECEIPT_ON_INBOUND'];
+
 export function IntegrationsTab() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -42,9 +45,11 @@ export function IntegrationsTab() {
     if (error) {
       toast({ title: 'Erro ao carregar', description: error.message, variant: 'destructive' });
     } else {
-      setConfigs(data || []);
+      // Filter out general params
+      const integrationOnly = (data || []).filter(c => !GENERAL_PARAM_KEYS.includes(c.key));
+      setConfigs(integrationOnly);
       const values: Record<string, string> = {};
-      (data || []).forEach((c: IntegrationConfig) => { values[c.id] = c.value; });
+      integrationOnly.forEach((c: IntegrationConfig) => { values[c.id] = c.value; });
       setEditValues(values);
     }
     setLoading(false);
