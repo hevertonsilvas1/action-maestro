@@ -554,6 +554,54 @@ export type Database = {
         }
         Relationships: []
       }
+      window_messages: {
+        Row: {
+          allow_variables: boolean
+          auto_use: boolean
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          trigger_rule: string | null
+          type: string
+          unnichat_trigger_url: string
+          updated_at: string
+          usage_condition: string | null
+        }
+        Insert: {
+          allow_variables?: boolean
+          auto_use?: boolean
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          trigger_rule?: string | null
+          type: string
+          unnichat_trigger_url: string
+          updated_at?: string
+          usage_condition?: string | null
+        }
+        Update: {
+          allow_variables?: boolean
+          auto_use?: boolean
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          trigger_rule?: string | null
+          type?: string
+          unnichat_trigger_url?: string
+          updated_at?: string
+          usage_condition?: string | null
+        }
+        Relationships: []
+      }
       winner_status_history: {
         Row: {
           change_type: string
