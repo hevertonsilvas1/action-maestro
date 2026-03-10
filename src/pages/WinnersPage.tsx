@@ -546,6 +546,7 @@ export default function WinnersPage() {
       <PixDataModal open={!!pixTarget} onOpenChange={v => { if (!v) setPixTarget(null); }} winner={pixTarget} isAdmin={isAdmin} userName={userName} actionId={pixTarget?.actionId || ''} />
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
       <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} />
+      <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
     </AppLayout>
   );
 }
