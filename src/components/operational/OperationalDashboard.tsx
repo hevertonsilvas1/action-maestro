@@ -94,6 +94,8 @@ export function OperationalDashboard() {
         winners={paginated}
         actionsMap={actionsMap}
         timeInStatus={timeInStatus}
+        warningMinutes={warningMin}
+        criticalMinutes={criticalMin}
         onViewDetails={(w) => setHistoryWinner(w)}
         onViewHistory={(w) => setHistoryWinner(w)}
         onViewReceipt={(w) => setReceiptWinner(w)}
