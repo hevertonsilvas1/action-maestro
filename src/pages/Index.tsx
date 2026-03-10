@@ -4,7 +4,6 @@ import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OperationalDashboard } from '@/components/operational/OperationalDashboard';
 import { useActions } from '@/hooks/useActions';
-import { useWinners } from '@/hooks/useWinners';
 import { useUserRole } from '@/hooks/useUserRole';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
 import {
