@@ -692,6 +692,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_automatic_status_transition: {
+        Args: { _trigger_event: string; _winner_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
