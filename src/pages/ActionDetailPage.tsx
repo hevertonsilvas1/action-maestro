@@ -217,6 +217,7 @@ export default function ActionDetailPage() {
 
   // Prize consumption: group winners by prize title to track planned vs processed
   const prizeConsumption = useMemo(() => {
+    if (!prizes.length) return [];
     return prizes.map(prize => {
       const matchingWinners = winners.filter(w => w.prizeTitle === prize.title);
       const processedCount = matchingWinners.length;
