@@ -354,21 +354,25 @@ export default function ActionDetailPage() {
                 <div>
                   <div className="flex justify-between text-xs mb-1.5">
                     <span className="text-muted-foreground">Prêmios pagos</span>
-                    <span className="font-medium">{formatCurrency(totalPaidPrizes)} / {formatCurrency(totalPlannedPrizes)}</span>
+                    <span className="font-medium">{formatCurrency(totalPaidValue)} / {formatCurrency(totalPlannedPrizes)}</span>
                   </div>
-                  <Progress value={totalPlannedPrizes > 0 ? (totalPaidPrizes / totalPlannedPrizes) * 100 : 0} className="h-2" />
+                  <Progress value={totalPlannedPrizes > 0 ? (totalPaidValue / totalPlannedPrizes) * 100 : 0} className="h-2" />
                 </div>
-                <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t">
                   <div className="text-center">
                     <p className="text-lg font-bold">{formatCurrency(action.totalCost)}</p>
-                    <p className="text-[10px] text-muted-foreground">Custo Total</p>
+                    <p className="text-[10px] text-muted-foreground">Custo Planejado</p>
                   </div>
                   <div className="text-center">
                     <p className="text-lg font-bold text-success">{formatCurrency(action.grossProfit)}</p>
-                    <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+                    <p className="text-[10px] text-muted-foreground">Lucro Planejado</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold">{formatCurrency(totalPlannedPrizes - totalPaidPrizes)}</p>
+                    <p className="text-lg font-bold">{formatCurrency(totalPaidValue)}</p>
+                    <p className="text-[10px] text-muted-foreground">Já Pago</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-warning">{formatCurrency(totalPlannedPrizes - totalPaidValue)}</p>
                     <p className="text-[10px] text-muted-foreground">Falta Pagar</p>
                   </div>
                 </div>
