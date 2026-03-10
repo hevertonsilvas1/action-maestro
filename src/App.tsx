@@ -93,7 +93,6 @@ const AppRoutes = () => (
     <Route path="/winners/deleted" element={<AdminRoute><DeletedWinnersPage /></AdminRoute>} />
     <Route path="/team" element={<AdminRoute><TeamPage /></AdminRoute>} />
     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-    <Route path="/settings/integrations" element={<AdminRoute><IntegrationsPage /></AdminRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
