@@ -1159,6 +1159,7 @@ export default function ActionDetailPage() {
         open={batchStatusOpen}
         onOpenChange={setBatchStatusOpen}
         winnerIds={Array.from(selectedWinnerIds)}
+        currentStatuses={selectedWinners.map(w => w.status)}
         onDone={() => setSelectedWinnerIds(new Set())}
       />
 
