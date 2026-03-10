@@ -314,7 +314,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
         {step === 'preview' && stats && (
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
             {/* Stats summary */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className={`grid gap-3 ${stats.totalOverLimit > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
               <div className="rounded-lg border p-3 text-center">
                 <Users className="h-4 w-4 text-primary mx-auto mb-1" />
                 <p className="text-lg font-bold">{stats.totalFound}</p>
@@ -335,6 +335,13 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                 <p className="text-lg font-bold text-destructive">{stats.totalInvalid}</p>
                 <p className="text-[10px] text-muted-foreground">Inválidos</p>
               </div>
+              {stats.totalOverLimit > 0 && (
+                <div className="rounded-lg border border-destructive/30 p-3 text-center">
+                  <AlertTriangle className="h-4 w-4 text-destructive mx-auto mb-1" />
+                  <p className="text-lg font-bold text-destructive">{stats.totalOverLimit}</p>
+                  <p className="text-[10px] text-muted-foreground">Excede Limite</p>
+                </div>
+              )}
             </div>
 
             {stats.totalNew > 0 && (
