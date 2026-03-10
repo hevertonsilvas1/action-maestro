@@ -17,9 +17,8 @@ import { Progress } from '@/components/ui/progress';
 
 const Index = () => {
   const { data: actions = [], isLoading: loadingActions } = useActions();
-  const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { isAdmin, loading: loadingRole } = useUserRole();
-  const isLoading = loadingActions || loadingWinners || loadingRole;
+  const isLoading = loadingActions || loadingRole;
 
   const operationalActions = actions.filter(a => a.status !== 'archived');
   const totalRevenue = operationalActions.reduce((s, a) => s + a.expectedRevenue, 0);
