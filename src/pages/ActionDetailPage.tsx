@@ -1207,6 +1207,8 @@ export default function ActionDetailPage() {
           userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
         />
       )}
+
+      <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
     </AppLayout>
   );
 }
