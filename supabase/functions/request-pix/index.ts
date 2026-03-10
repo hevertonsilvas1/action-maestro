@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getWindowMessage } from "../_shared/window-messages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
