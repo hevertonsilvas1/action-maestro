@@ -78,3 +78,53 @@ export function useDeleteWinnerStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   });
 }
+
+// ── Transitions ──
+
+export interface StatusTransition {
+  id: string;
+  from_status_id: string;
+  to_status_id: string;
+}
+
+const TRANSITIONS_KEY = ['winner_status_transitions'];
+
+export function useStatusTransitions() {
+  return useQuery({
+    queryKey: TRANSITIONS_KEY,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('winner_status_transitions' as any)
+        .select('*');
+      if (error) throw error;
+      return (data || []) as unknown as StatusTransition[];
+    },
+  });
+}
+
+export function useSaveTransitions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ fromStatusId, toStatusIds }: { fromStatusId: string; toStatusIds: string[] }) => {
+      // Delete existing transitions for this source status
+      const { error: delError } = await supabase
+        .from('winner_status_transitions' as any)
+        .delete()
+        .eq('from_status_id', fromStatusId);
+      if (delError) throw delError;
+
+      // Insert new transitions
+      if (toStatusIds.length > 0) {
+        const rows = toStatusIds.map(toId => ({
+          from_status_id: fromStatusId,
+          to_status_id: toId,
+        }));
+        const { error: insError } = await supabase
+          .from('winner_status_transitions' as any)
+          .insert(rows as any);
+        if (insError) throw insError;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: TRANSITIONS_KEY }),
+  });
+}
