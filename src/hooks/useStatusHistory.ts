@@ -12,6 +12,7 @@ export interface StatusHistoryEntry {
   changed_by_user_id: string | null;
   changed_by_name: string | null;
   notes: string | null;
+  status_version_id: string | null;
   created_at: string;
 }
 
