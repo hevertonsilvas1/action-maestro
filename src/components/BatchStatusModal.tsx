@@ -71,9 +71,14 @@ export function BatchStatusModal({ open, onOpenChange, winnerIds, currentStatuse
       onDone();
       onOpenChange(false);
       setStatus('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Erro ao atualizar status.');
+      const msg = err?.message || '';
+      if (msg.includes('Transição de status não permitida')) {
+        toast.error('Transição de status não permitida. Verifique as transições configuradas em Configurações → Status.');
+      } else {
+        toast.error('Erro ao atualizar status.');
+      }
     } finally {
       setSaving(false);
     }
