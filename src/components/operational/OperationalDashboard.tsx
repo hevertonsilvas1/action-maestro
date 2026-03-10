@@ -77,7 +77,7 @@ export function OperationalDashboard() {
       <OperationalSummaryCards winners={winners} onStatusClick={handleStatusClick} />
 
       {/* Bottleneck Alerts */}
-      <OperationalBottlenecks winners={winners} timeInStatus={timeInStatus} />
+      <OperationalBottlenecks winners={winners} timeInStatus={timeInStatus} warningMinutes={warningMin} criticalMinutes={criticalMin} />
 
       {/* Filters */}
       <OperationalFilters filters={filters} onFiltersChange={handleFiltersChange} actionsMap={actionsMap} />
