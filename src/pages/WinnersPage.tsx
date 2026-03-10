@@ -83,9 +83,17 @@ export default function WinnersPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // All actions map (for display/filters)
   const actionsMap = useMemo(() => {
     const map: Record<string, string> = {};
     actions.forEach((a) => { map[a.id] = a.name; });
+    return map;
+  }, [actions]);
+
+  // Operational actions only (exclude planning) — for NewWinnerModal and other operational flows
+  const operationalActionsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    actions.filter((a) => a.status !== 'planning').forEach((a) => { map[a.id] = a.name; });
     return map;
   }, [actions]);
 
