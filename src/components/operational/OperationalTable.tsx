@@ -61,7 +61,7 @@ export function OperationalTable({ winners, actionsMap, timeInStatus, warningMin
           )}
           {winners.map(w => {
             const tis = timeInStatus[w.id];
-            const variant = tis ? getDurationVariant(tis) : 'normal';
+            const variant = tis ? durationVariant(tis) : 'normal';
             const statusColor = getColor(w.status);
 
             return (
