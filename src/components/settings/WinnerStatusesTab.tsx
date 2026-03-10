@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,23 @@ import {
   useUpdateWinnerStatus,
   type WinnerStatusConfig,
 } from '@/hooks/useWinnerStatuses';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const TRIGGER_EVENTS = [
   { value: 'winner_created', label: 'Ganhador criado/importado' },
@@ -52,6 +69,119 @@ const emptyForm: FormData = {
   trigger_event: '',
 };
 
+// Sortable row component
+function SortableStatusRow({
+  status,
+  onEdit,
+  onToggleActive,
+  onSetDefault,
+}: {
+  status: WinnerStatusConfig;
+  onEdit: (s: WinnerStatusConfig) => void;
+  onToggleActive: (s: WinnerStatusConfig) => void;
+  onSetDefault: (s: WinnerStatusConfig) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: status.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : status.is_active ? 1 : 0.5,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell className="text-muted-foreground text-xs">
+        <div className="flex items-center gap-1">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none p-0.5 rounded hover:bg-accent"
+            aria-label="Reordenar"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground/60" />
+          </button>
+          <span className="min-w-[1.5rem] text-center">{status.sort_order}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
+            style={{ backgroundColor: status.color }}
+          >
+            {status.name}
+          </span>
+          {status.is_default && (
+            <Badge variant="outline" className="text-[10px]">Padrão</Badge>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-5 rounded border" style={{ backgroundColor: status.color }} />
+          <span className="text-xs font-mono text-muted-foreground">{status.color}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1.5 text-xs">
+          {status.update_mode === 'automatic' ? (
+            <>
+              <Zap className="h-3.5 w-3.5 text-warning" />
+              Automático
+            </>
+          ) : (
+            <>
+              <Hand className="h-3.5 w-3.5 text-muted-foreground" />
+              Manual
+            </>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        {status.trigger_event ? (
+          <Badge variant="secondary" className="text-[10px] font-mono">
+            {status.trigger_event}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      <TableCell className="text-center">
+        <Switch
+          checked={status.is_active}
+          onCheckedChange={() => onToggleActive(status)}
+        />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(status)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          {!status.is_default && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => onSetDefault(status)}
+            >
+              Definir padrão
+            </Button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export function WinnerStatusesTab() {
   const { data: statuses, isLoading } = useWinnerStatuses();
   const createMutation = useCreateWinnerStatus();
@@ -61,6 +191,35 @@ export function WinnerStatusesTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const sorted = statuses ? [...statuses].sort((a, b) => a.sort_order - b.sort_order) : [];
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !statuses) return;
+
+    const oldIndex = sorted.findIndex(s => s.id === active.id);
+    const newIndex = sorted.findIndex(s => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(sorted, oldIndex, newIndex);
+
+    // Batch update sort_order
+    try {
+      const updates = reordered.map((s, i) => 
+        updateMutation.mutateAsync({ id: s.id, sort_order: i })
+      );
+      await Promise.all(updates);
+      toast({ title: 'Ordem atualizada!' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao reordenar', description: err.message, variant: 'destructive' });
+    }
+  }, [sorted, statuses, updateMutation, toast]);
 
   const openCreate = () => {
     const nextOrder = statuses ? Math.max(...statuses.map(s => s.sort_order), -1) + 1 : 0;
@@ -145,7 +304,6 @@ export function WinnerStatusesTab() {
 
   const handleSetDefault = async (status: WinnerStatusConfig) => {
     try {
-      // Unset current default first
       const currentDefault = statuses?.find(s => s.is_default && s.id !== status.id);
       if (currentDefault) {
         await updateMutation.mutateAsync({ id: currentDefault.id, is_default: false });
@@ -174,7 +332,9 @@ export function WinnerStatusesTab() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">Status de Ganhadores</CardTitle>
-              <CardDescription>Gerencie os status do fluxo operacional dos ganhadores</CardDescription>
+              <CardDescription>
+                Gerencie os status do fluxo operacional dos ganhadores. Arraste para reordenar.
+              </CardDescription>
             </div>
             <Button size="sm" onClick={openCreate} className="gap-1.5">
               <Plus className="h-4 w-4" />
@@ -187,7 +347,7 @@ export function WinnerStatusesTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">#</TableHead>
+                  <TableHead className="w-16">#</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Cor</TableHead>
                   <TableHead>Tipo</TableHead>
@@ -196,92 +356,29 @@ export function WinnerStatusesTab() {
                   <TableHead className="w-20">Ações</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {statuses && statuses.length > 0 ? (
-                  statuses.map((status) => (
-                    <TableRow key={status.id} className={!status.is_active ? 'opacity-50' : ''}>
-                      <TableCell className="text-muted-foreground text-xs">
-                        <div className="flex items-center gap-1">
-                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
-                          {status.sort_order}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
-                            style={{ backgroundColor: status.color }}
-                          >
-                            {status.name}
-                          </span>
-                          {status.is_default && (
-                            <Badge variant="outline" className="text-[10px]">Padrão</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="h-5 w-5 rounded border" style={{ backgroundColor: status.color }} />
-                          <span className="text-xs font-mono text-muted-foreground">{status.color}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-xs">
-                          {status.update_mode === 'automatic' ? (
-                            <>
-                              <Zap className="h-3.5 w-3.5 text-warning" />
-                              Automático
-                            </>
-                          ) : (
-                            <>
-                              <Hand className="h-3.5 w-3.5 text-muted-foreground" />
-                              Manual
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {status.trigger_event ? (
-                          <Badge variant="secondary" className="text-[10px] font-mono">
-                            {status.trigger_event}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={status.is_active}
-                          onCheckedChange={() => handleToggleActive(status)}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={sorted.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                  <TableBody>
+                    {sorted.length > 0 ? (
+                      sorted.map((status) => (
+                        <SortableStatusRow
+                          key={status.id}
+                          status={status}
+                          onEdit={openEdit}
+                          onToggleActive={handleToggleActive}
+                          onSetDefault={handleSetDefault}
                         />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(status)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          {!status.is_default && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-xs"
-                              onClick={() => handleSetDefault(status)}
-                            >
-                              Definir padrão
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
-                      Nenhum status cadastrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                          Nenhum status cadastrado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </SortableContext>
+              </DndContext>
             </Table>
           </div>
         </CardContent>
