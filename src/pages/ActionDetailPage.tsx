@@ -35,6 +35,7 @@ import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
+import { StatusHistorySheet } from '@/components/StatusHistorySheet';
 import { useState, useMemo, useCallback } from 'react';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { RequestPixModal, getEligibleWinners } from '@/components/RequestPixModal';
@@ -76,6 +77,7 @@ export default function ActionDetailPage() {
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [winnersPage, setWinnersPage] = useState(1);
   const [winnersPageSize, setWinnersPageSize] = useState(20);
@@ -596,9 +598,19 @@ export default function ActionDetailPage() {
                           </td>
                           {isAdmin && (
                             <td className="px-2 py-3">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setDeleteWinnerTarget(w)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <div className="flex items-center gap-0.5">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setHistoryTarget(w)}>
+                                      <History className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Histórico</TooltipContent>
+                                </Tooltip>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setDeleteWinnerTarget(w)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -1195,6 +1207,8 @@ export default function ActionDetailPage() {
           userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
         />
       )}
+
+      <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
     </AppLayout>
   );
 }

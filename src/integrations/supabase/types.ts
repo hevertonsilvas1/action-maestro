@@ -485,6 +485,67 @@ export type Database = {
         }
         Relationships: []
       }
+      winner_status_history: {
+        Row: {
+          change_type: string
+          changed_by_name: string | null
+          changed_by_user_id: string | null
+          created_at: string
+          from_status_id: string | null
+          id: string
+          notes: string | null
+          to_status_id: string
+          trigger_event: string | null
+          winner_id: string
+        }
+        Insert: {
+          change_type?: string
+          changed_by_name?: string | null
+          changed_by_user_id?: string | null
+          created_at?: string
+          from_status_id?: string | null
+          id?: string
+          notes?: string | null
+          to_status_id: string
+          trigger_event?: string | null
+          winner_id: string
+        }
+        Update: {
+          change_type?: string
+          changed_by_name?: string | null
+          changed_by_user_id?: string | null
+          created_at?: string
+          from_status_id?: string | null
+          id?: string
+          notes?: string | null
+          to_status_id?: string
+          trigger_event?: string | null
+          winner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "winner_status_history_from_status_id_fkey"
+            columns: ["from_status_id"]
+            isOneToOne: false
+            referencedRelation: "winner_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winner_status_history_to_status_id_fkey"
+            columns: ["to_status_id"]
+            isOneToOne: false
+            referencedRelation: "winner_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winner_status_history_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "winners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       winner_status_transitions: {
         Row: {
           created_at: string | null

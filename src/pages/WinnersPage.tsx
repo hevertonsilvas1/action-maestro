@@ -20,12 +20,13 @@ import { BatchStatusModal } from '@/components/BatchStatusModal';
 import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
+import { StatusHistorySheet } from '@/components/StatusHistorySheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, Info,
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
-  XCircle, Phone, UserX,
+  XCircle, Phone, UserX, History,
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -53,6 +54,7 @@ export default function WinnersPage() {
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
@@ -401,6 +403,14 @@ export default function WinnersPage() {
                                   </div>
                                 </PopoverContent>
                               </Popover>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
+                                    <History className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Histórico de Status</TooltipContent>
+                              </Tooltip>
                               {isAdmin && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -536,6 +546,7 @@ export default function WinnersPage() {
       <PixDataModal open={!!pixTarget} onOpenChange={v => { if (!v) setPixTarget(null); }} winner={pixTarget} isAdmin={isAdmin} userName={userName} actionId={pixTarget?.actionId || ''} />
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
       <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} />
+      <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
     </AppLayout>
   );
 }
