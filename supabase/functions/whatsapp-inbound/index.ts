@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getWindowMessage } from "../_shared/window-messages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -308,31 +309,43 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── 10. Get action name and webhook URL ──
+    // ── 10. Get action name and webhook URL (window_messages first, integration_configs fallback) ──
     const { data: action } = await serviceClient
       .from("actions")
       .select("name")
       .eq("id", target.action_id)
       .maybeSingle();
 
-    const { data: webhookConfig } = await serviceClient
-      .from("integration_configs")
-      .select("value")
-      .eq("key", "UNNICHAT_COMPROVANTE")
-      .maybeSingle();
+    // Try window_messages for "abertura_janela" (auto-send receipt on inbound = opening/maintaining window)
+    let unnichatUrl: string | null = null;
+    const windowMsg = await getWindowMessage(serviceClient, "abertura_janela", { autoOnly: true });
+    if (windowMsg) {
+      unnichatUrl = windowMsg.unnichat_trigger_url;
+      console.log(`[INBOUND] Using window_messages config: "${windowMsg.name}" (type: abertura_janela)`);
+    }
 
-    let unnichatUrl = webhookConfig?.value;
+    // Fallback to integration_configs
     if (!unnichatUrl) {
-      const { data: fallback } = await serviceClient
+      console.warn("[INBOUND] No active window_messages for auto-send, falling back to integration_configs");
+      const { data: webhookConfig } = await serviceClient
         .from("integration_configs")
         .select("value")
-        .eq("key", "UNNICHAT_PIX")
+        .eq("key", "UNNICHAT_COMPROVANTE")
         .maybeSingle();
-      unnichatUrl = fallback?.value;
+
+      unnichatUrl = webhookConfig?.value || null;
+      if (!unnichatUrl) {
+        const { data: fallback } = await serviceClient
+          .from("integration_configs")
+          .select("value")
+          .eq("key", "UNNICHAT_PIX")
+          .maybeSingle();
+        unnichatUrl = fallback?.value || null;
+      }
     }
 
     if (!unnichatUrl) {
-      console.error("[INBOUND] ❌ No webhook URL configured (UNNICHAT_COMPROVANTE / UNNICHAT_PIX)");
+      console.error("[INBOUND] ❌ No webhook URL configured (window_messages / UNNICHAT_COMPROVANTE / UNNICHAT_PIX)");
       return jsonResponse({
         ok: true,
         matched: winners.length,
