@@ -667,9 +667,11 @@ export default function ActionDetailPage() {
 
           <TabsContent value="prizes" className="space-y-3">
             <div className="flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">
-                Total planejado: <span className="font-semibold text-foreground">{formatCurrency(totalPlannedPrizes)}</span>
-              </p>
+              <div className="flex gap-4 text-xs text-muted-foreground">
+                <span>Planejado: <span className="font-semibold text-foreground">{formatCurrency(totalPlannedPrizes)}</span></span>
+                <span>Pago: <span className="font-semibold text-success">{formatCurrency(totalPaidValue)}</span></span>
+                <span>Pendente: <span className="font-semibold text-warning">{formatCurrency(totalPlannedPrizes - totalPaidValue)}</span></span>
+              </div>
               <Button size="sm" variant="outline" className="h-8 text-xs">
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Adicionar Prêmio
@@ -679,7 +681,7 @@ export default function ActionDetailPage() {
               <p className="text-sm text-muted-foreground py-8 text-center">Nenhum prêmio cadastrado.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {prizes.map((p, i) => (
+                {prizeConsumption.map((p, i) => (
                   <div
                     key={p.id}
                     className="rounded-xl border bg-card p-4 transition-all duration-200 hover:shadow-card-hover animate-fade-in"
@@ -692,9 +694,31 @@ export default function ActionDetailPage() {
                       </div>
                       <p className="text-sm font-bold">{formatCurrency(p.totalValue)}</p>
                     </div>
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>{p.quantity}x</span>
-                      <span>{formatCurrency(p.unitValue)}/un</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Processados</span>
+                        <span className="font-medium">{p.processedCount} / {p.quantity}</span>
+                      </div>
+                      <Progress value={p.progress} className="h-1.5" />
+                      <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground pt-1">
+                        <div>
+                          <p className="font-semibold text-foreground">{p.processedCount}</p>
+                          <p>Processados</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-success">{p.paidCount}</p>
+                          <p>Pagos</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-warning">{p.remainingCount}</p>
+                          <p>Restantes</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 text-[10px] text-muted-foreground pt-1 border-t">
+                        <span>Pago: {formatCurrency(p.paidValue)}</span>
+                        <span>Pendente: {formatCurrency(p.pendingValue)}</span>
+                        <span>{formatCurrency(p.unitValue)}/un</span>
+                      </div>
                     </div>
                   </div>
                 ))}
