@@ -101,7 +101,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
           }
         } else {
           setParsedWinners([]);
-          setStats({ totalFound: 0, totalNew: 0, totalDuplicates: 0, totalInvalid: 0 });
+          setStats({ totalFound: 0, totalNew: 0, totalDuplicates: 0, totalInvalid: 0, totalOverLimit: 0 });
           setStep('preview');
         }
       }
