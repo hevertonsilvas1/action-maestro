@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Clock, Eye, FileText, History, MessageSquare, Paperclip } from 'lucide-react';
 import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { formatDuration, getDurationVariant } from '@/hooks/useTimeInStatus';
+import { TimeInStatusBadge } from '@/components/TimeInStatusBadge';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Winner, Action } from '@/types';
@@ -13,13 +14,17 @@ interface Props {
   winners: Winner[];
   actionsMap: Record<string, Action>;
   timeInStatus: Record<string, number>;
+  warningMinutes?: number;
+  criticalMinutes?: number;
   onViewDetails: (w: Winner) => void;
   onViewHistory: (w: Winner) => void;
   onViewReceipt: (w: Winner) => void;
 }
 
-export function OperationalTable({ winners, actionsMap, timeInStatus, onViewDetails, onViewHistory, onViewReceipt }: Props) {
+export function OperationalTable({ winners, actionsMap, timeInStatus, warningMinutes = 10, criticalMinutes = 30, onViewDetails, onViewHistory, onViewReceipt }: Props) {
   const { getLabel, getColor } = useWinnerStatusMap();
+
+  const durationVariant = (ms: number) => getDurationVariant(ms, warningMinutes, criticalMinutes);
 
   const durationClass = (variant: 'normal' | 'warning' | 'critical') => {
     if (variant === 'critical') return 'text-destructive font-semibold';
@@ -56,7 +61,7 @@ export function OperationalTable({ winners, actionsMap, timeInStatus, onViewDeta
           )}
           {winners.map(w => {
             const tis = timeInStatus[w.id];
-            const variant = tis ? getDurationVariant(tis) : 'normal';
+            const variant = tis ? durationVariant(tis) : 'normal';
             const statusColor = getColor(w.status);
 
             return (
@@ -91,8 +96,8 @@ export function OperationalTable({ winners, actionsMap, timeInStatus, onViewDeta
                     {getLabel(w.status)}
                   </span>
                 </TableCell>
-                <TableCell className={cn('py-2.5 hidden lg:table-cell text-xs', durationClass(variant))}>
-                  {tis ? formatDuration(tis) : '—'}
+                <TableCell className="py-2.5 hidden lg:table-cell">
+                  <TimeInStatusBadge ms={tis} warningMinutes={warningMinutes} criticalMinutes={criticalMinutes} />
                 </TableCell>
                 <TableCell className="py-2.5 text-right">
                   <div className="flex items-center justify-end gap-0.5">

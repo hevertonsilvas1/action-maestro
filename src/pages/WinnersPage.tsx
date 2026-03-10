@@ -6,6 +6,7 @@ import { formatCurrency, formatPhone } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { formatDate } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
+import { TimeInStatusBadge } from '@/components/TimeInStatusBadge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,12 +22,14 @@ import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { StatusHistorySheet } from '@/components/StatusHistorySheet';
+import { useTimeInStatus, useLiveTimeInStatus } from '@/hooks/useTimeInStatus';
+import { useStatusTimeConfig } from '@/hooks/useStatusTimeConfig';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, Info,
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
-  XCircle, Phone, UserX, History,
+  XCircle, Phone, UserX, History, Clock,
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -102,6 +105,14 @@ export default function WinnersPage() {
     () => paginateArray(filtered, page, pageSize),
     [filtered, page, pageSize],
   );
+
+  // Time in status
+  const winnerIds = useMemo(() => paginated.map(w => w.id), [paginated]);
+  const { data: baseTimeInStatus = {} } = useTimeInStatus(winnerIds);
+  const liveTimeInStatus = useLiveTimeInStatus(baseTimeInStatus);
+  const { data: timeConfig } = useStatusTimeConfig();
+  const warningMin = timeConfig?.warning_minutes ?? 10;
+  const criticalMin = timeConfig?.critical_minutes ?? 30;
 
   const handleFiltersChange = useCallback((f: typeof filters) => {
     setFilters(f);
@@ -268,6 +279,9 @@ export default function WinnersPage() {
                       <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">
+                        <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> Tempo</span>
+                      </th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Ações</th>
                     </tr>
                   </thead>
@@ -329,13 +343,21 @@ export default function WinnersPage() {
                               <span className="text-[10px] text-muted-foreground">—</span>
                             )}
                           </td>
-                          <td className="px-2 py-2.5">
-                            <div className="flex items-center justify-center gap-0.5">
+                          {/* Time in Status */}
+                          <td className="px-3 py-2.5 text-center">
+                            <TimeInStatusBadge
+                              ms={liveTimeInStatus[w.id]}
+                              warningMinutes={warningMin}
+                              criticalMinutes={criticalMin}
+                            />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center justify-center gap-1">
                               {canRequestPix && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); handleSingleRequestPix(w); }}>
-                                      <Send className="h-4 w-4 text-info" />
+                                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); handleSingleRequestPix(w); }}>
+                                      <Send className="h-[18px] w-[18px] text-info" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Solicitar Pix</TooltipContent>
@@ -343,24 +365,24 @@ export default function WinnersPage() {
                               )}
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setPixTarget(w); }}>
-                                    <CreditCard className={cn('h-4 w-4', w.pixKey ? 'text-purple' : 'text-muted-foreground')} />
+                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setPixTarget(w); }}>
+                                    <CreditCard className={cn('h-[18px] w-[18px]', w.pixKey ? 'text-purple' : 'text-muted-foreground')} />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{w.pixKey ? 'Editar Pix' : 'Cadastrar Pix'}</TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setReceiptTarget(w); }}>
-                                    <Paperclip className={cn('h-4 w-4', w.receiptUrl ? 'text-success' : 'text-muted-foreground')} />
+                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setReceiptTarget(w); }}>
+                                    <Paperclip className={cn('h-[18px] w-[18px]', w.receiptUrl ? 'text-success' : 'text-muted-foreground')} />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{w.receiptUrl ? 'Gerenciar Comprovante' : 'Anexar Comprovante'}</TooltipContent>
                               </Tooltip>
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <button className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors">
-                                    <Info className={cn('h-4 w-4', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
+                                  <button className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-muted transition-colors">
+                                    <Info className={cn('h-[18px] w-[18px]', w.lastPixError ? 'text-destructive' : 'text-muted-foreground')} />
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent side="left" className="w-80 text-xs space-y-2">
@@ -405,8 +427,8 @@ export default function WinnersPage() {
                               </Popover>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
-                                    <History className="h-4 w-4 text-muted-foreground" />
+                                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
+                                    <History className="h-[18px] w-[18px] text-muted-foreground" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Histórico de Status</TooltipContent>
@@ -414,8 +436,8 @@ export default function WinnersPage() {
                               {isAdmin && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
-                                      <Trash2 className="h-4 w-4" />
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
+                                      <Trash2 className="h-[18px] w-[18px]" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Excluir</TooltipContent>

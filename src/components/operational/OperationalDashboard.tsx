@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
-import { useTimeInStatus } from '@/hooks/useTimeInStatus';
+import { useTimeInStatus, useLiveTimeInStatus } from '@/hooks/useTimeInStatus';
+import { useStatusTimeConfig } from '@/hooks/useStatusTimeConfig';
 import { OperationalSummaryCards } from './OperationalSummaryCards';
 import { OperationalFilters, INITIAL_FILTERS, applyOperationalFilters, type OperationalFilterValues } from './OperationalFilters';
 import { OperationalTable } from './OperationalTable';
@@ -38,7 +39,11 @@ export function OperationalDashboard() {
   }, [filtered, page, pageSize]);
 
   const winnerIds = useMemo(() => paginated.map(w => w.id), [paginated]);
-  const { data: timeInStatus = {} } = useTimeInStatus(winnerIds);
+  const { data: baseTimeInStatus = {} } = useTimeInStatus(winnerIds);
+  const timeInStatus = useLiveTimeInStatus(baseTimeInStatus);
+  const { data: timeConfig } = useStatusTimeConfig();
+  const warningMin = timeConfig?.warning_minutes ?? 10;
+  const criticalMin = timeConfig?.critical_minutes ?? 30;
 
   const isLoading = winnersLoading || actionsLoading;
 
@@ -72,7 +77,7 @@ export function OperationalDashboard() {
       <OperationalSummaryCards winners={winners} onStatusClick={handleStatusClick} />
 
       {/* Bottleneck Alerts */}
-      <OperationalBottlenecks winners={winners} timeInStatus={timeInStatus} />
+      <OperationalBottlenecks winners={winners} timeInStatus={timeInStatus} warningMinutes={warningMin} criticalMinutes={criticalMin} />
 
       {/* Filters */}
       <OperationalFilters filters={filters} onFiltersChange={handleFiltersChange} actionsMap={actionsMap} />
@@ -89,6 +94,8 @@ export function OperationalDashboard() {
         winners={paginated}
         actionsMap={actionsMap}
         timeInStatus={timeInStatus}
+        warningMinutes={warningMin}
+        criticalMinutes={criticalMin}
         onViewDetails={(w) => setHistoryWinner(w)}
         onViewHistory={(w) => setHistoryWinner(w)}
         onViewReceipt={(w) => setReceiptWinner(w)}
