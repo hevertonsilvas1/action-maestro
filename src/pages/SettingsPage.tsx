@@ -57,6 +57,12 @@ export default function SettingsPage() {
                 Tempo
               </TabsTrigger>
             )}
+            {isAdmin && (
+              <TabsTrigger value="window-messages" className="gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5" />
+                Mensagens
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {isAdmin && (
