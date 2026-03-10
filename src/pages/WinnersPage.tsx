@@ -106,6 +106,14 @@ export default function WinnersPage() {
     [filtered, page, pageSize],
   );
 
+  // Time in status
+  const winnerIds = useMemo(() => paginated.map(w => w.id), [paginated]);
+  const { data: baseTimeInStatus = {} } = useTimeInStatus(winnerIds);
+  const liveTimeInStatus = useLiveTimeInStatus(baseTimeInStatus);
+  const { data: timeConfig } = useStatusTimeConfig();
+  const warningMin = timeConfig?.warning_minutes ?? 10;
+  const criticalMin = timeConfig?.critical_minutes ?? 30;
+
   const handleFiltersChange = useCallback((f: typeof filters) => {
     setFilters(f);
     setPage(1);
