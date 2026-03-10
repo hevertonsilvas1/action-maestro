@@ -261,7 +261,7 @@ export function useImportWinners(actionId: string, actionName: string) {
   ) => {
     setIsLoading(true);
     try {
-      const newWinners = winners.filter((w) => !w.isDuplicate && !w.isInvalid);
+      const newWinners = winners.filter((w) => !w.isDuplicate && !w.isInvalid && !w.isOverLimit);
 
       if (newWinners.length === 0) {
         toast.info('Nenhum novo ganhador para importar.');
