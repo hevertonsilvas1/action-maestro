@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Clock, Eye, FileText, History, MessageSquare, Paperclip } from 'lucide-react';
 import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { formatDuration, getDurationVariant } from '@/hooks/useTimeInStatus';
+import { TimeInStatusBadge } from '@/components/TimeInStatusBadge';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Winner, Action } from '@/types';
