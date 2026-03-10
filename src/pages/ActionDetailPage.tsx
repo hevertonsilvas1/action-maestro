@@ -326,10 +326,10 @@ export default function ActionDetailPage() {
         {/* KPIs - Admin only */}
         {isAdmin && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-            <StatsCard title="Receita Esperada" value={formatCurrency(action.expectedRevenue)} icon={DollarSign} variant="primary" />
-            <StatsCard title="Lucro Bruto" value={formatCurrency(action.grossProfit)} icon={TrendingUp} variant="success" subtitle={`${formatPercent(action.marginPercent)} margem`} />
-            <StatsCard title="Total Pago" value={formatCurrency(action.realPaid)} icon={CheckCircle2} variant="accent" />
-            <StatsCard title="Ganhadores" value={String(action.winnersCount)} icon={Users} subtitle={`${action.paidCount} pagos`} />
+            <StatsCard title="Receita Esperada" value={formatCurrency(action.expectedRevenue)} icon={DollarSign} variant="primary" subtitle={action.status === 'planning' ? 'Planejamento' : undefined} />
+            <StatsCard title="Lucro Planejado" value={formatCurrency(action.grossProfit)} icon={TrendingUp} variant={action.grossProfit >= 0 ? 'success' : 'warning'} subtitle={`${formatPercent(action.marginPercent)} margem`} />
+            <StatsCard title="Total Pago (Real)" value={formatCurrency(totalPaidValue)} icon={CheckCircle2} variant="accent" subtitle={`${formatCurrency(totalPendingValue)} pendente`} />
+            <StatsCard title="Ganhadores" value={String(winners.length)} icon={Users} subtitle={`${winnersWithPaid.length} pagos · ${receiptSentCount} comp. enviados`} />
           </div>
         )}
 
