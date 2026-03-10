@@ -23,12 +23,12 @@ export function OperationalBottlenecks({ winners, timeInStatus, warningMinutes =
 
   const alerts = [
     stuckCount > 0 && {
-      label: `${stuckCount} ganhador${stuckCount > 1 ? 'es' : ''} parado${stuckCount > 1 ? 's' : ''} há mais de 48h`,
+      label: `${stuckCount} ganhador${stuckCount > 1 ? 'es' : ''} parado${stuckCount > 1 ? 's' : ''} há mais de ${criticalMinutes}min`,
       variant: 'critical' as const,
       icon: Clock,
     },
     warningCount > 0 && {
-      label: `${warningCount} ganhador${warningCount > 1 ? 'es' : ''} parado${warningCount > 1 ? 's' : ''} há mais de 24h`,
+      label: `${warningCount} ganhador${warningCount > 1 ? 'es' : ''} parado${warningCount > 1 ? 's' : ''} há mais de ${warningMinutes}min`,
       variant: 'warning' as const,
       icon: Clock,
     },
