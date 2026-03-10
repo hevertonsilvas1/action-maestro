@@ -14,6 +14,8 @@ interface Props {
   winners: Winner[];
   actionsMap: Record<string, Action>;
   timeInStatus: Record<string, number>;
+  warningMinutes?: number;
+  criticalMinutes?: number;
   onViewDetails: (w: Winner) => void;
   onViewHistory: (w: Winner) => void;
   onViewReceipt: (w: Winner) => void;
