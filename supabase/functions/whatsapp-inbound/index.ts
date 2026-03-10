@@ -380,10 +380,19 @@ Deno.serve(async (req) => {
 
     if (resp.ok) {
       await resp.text();
+      
+      // Try automatic status transition
+      const { data: transitionResult } = await serviceClient.rpc(
+        "apply_automatic_status_transition",
+        { _winner_id: target.id, _trigger_event: "receipt_sent" }
+      );
+      
+      const resolvedStatus = transitionResult?.changed ? transitionResult.to : "receipt_sent";
+      
       await serviceClient
         .from("winners")
         .update({
-          status: "receipt_sent",
+          status: resolvedStatus,
           receipt_sent_at: now,
           last_outbound_at: now,
           last_pix_error: null,
