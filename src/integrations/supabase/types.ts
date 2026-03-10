@@ -568,6 +568,7 @@ export type Database = {
           receipt_url: string | null
           receipt_version: number
           status: Database["public"]["Enums"]["winner_status"]
+          status_id: string | null
           template_reopen_count: number
           template_reopen_sent_at: string | null
           ultima_interacao_whatsapp: string | null
@@ -611,6 +612,7 @@ export type Database = {
           receipt_url?: string | null
           receipt_version?: number
           status?: Database["public"]["Enums"]["winner_status"]
+          status_id?: string | null
           template_reopen_count?: number
           template_reopen_sent_at?: string | null
           ultima_interacao_whatsapp?: string | null
@@ -654,6 +656,7 @@ export type Database = {
           receipt_url?: string | null
           receipt_version?: number
           status?: Database["public"]["Enums"]["winner_status"]
+          status_id?: string | null
           template_reopen_count?: number
           template_reopen_sent_at?: string | null
           ultima_interacao_whatsapp?: string | null
@@ -673,6 +676,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "pix_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winners_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "winner_statuses"
             referencedColumns: ["id"]
           },
         ]

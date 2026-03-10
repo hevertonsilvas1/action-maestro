@@ -110,9 +110,10 @@ export function BulkDeleteWinnersDialog({ open, onOpenChange, winners, actionsMa
                     {blocked.length} ganhador(es) não podem ser excluídos:
                   </p>
                   <ul className="list-disc pl-4 space-y-0.5">
-                    {blocked.slice(0, 5).map(w => (
-                      <li key={w.id}>{w.name} — {w.status === 'sent_to_batch' ? 'Enviado para Lote' : w.status === 'receipt_attached' ? 'Comprovante Anexado' : 'Comprovante Enviado'}</li>
-                    ))}
+                    {blocked.slice(0, 5).map(w => {
+                      const statusLabel = w.status === 'sent_to_batch' ? 'Enviado para Lote' : w.status === 'receipt_attached' ? 'Comprovante Anexado' : 'Comprovante Enviado';
+                      return <li key={w.id}>{w.name} — {statusLabel}</li>;
+                    })}
                     {blocked.length > 5 && <li>...e mais {blocked.length - 5}</li>}
                   </ul>
                 </div>
