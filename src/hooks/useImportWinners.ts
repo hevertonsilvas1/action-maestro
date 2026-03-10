@@ -17,6 +17,7 @@ export interface ParsedWinner {
   isDuplicate?: boolean;
   isInvalid?: boolean;
   invalidReason?: string;
+  isOverLimit?: boolean;
 }
 
 interface ImportStats {
