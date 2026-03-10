@@ -476,42 +476,57 @@ export default function ActionDetailPage() {
           </TabsList>
 
           <TabsContent value="winners" className="space-y-3">
+            {isPlanning && (
+              <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <p className="font-medium text-warning">Ação em Planejamento</p>
+                  <p className="text-muted-foreground">
+                    Ações em planejamento não podem receber ganhadores nem iniciar operações. Altere o status da ação para iniciar a operação.
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setNewWinnerOpen(true)}>
-                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-                Novo Ganhador
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportModalOpen(true)}>
-                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-                Importar Ganhadores
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs"
-                onClick={() => {
-                  if (selectedWinnerIds.size === 0) {
-                    toast.info('Selecione pelo menos um ganhador.');
-                    return;
-                  }
-                  setPixModalOpen(true);
-                }}
-                disabled={isRequestingPix}
-              >
-                <Send className="h-3.5 w-3.5 mr-1.5" />
-                Solicitar Pix {selectedWinnerIds.size > 0 && `(${selectedWinnerIds.size})`}
-              </Button>
-              {isAdmin && selectedWinnerIds.size > 0 && (
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchStatusOpen(true)}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  Alterar Status ({selectedWinnerIds.size})
-                </Button>
-              )}
-              {isAdmin && (
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
-                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                  Gerar Lote PIX
-                </Button>
+              {isOperational && (
+                <>
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setNewWinnerOpen(true)}>
+                    <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                    Novo Ganhador
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportModalOpen(true)}>
+                    <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                    Importar Ganhadores
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      if (selectedWinnerIds.size === 0) {
+                        toast.info('Selecione pelo menos um ganhador.');
+                        return;
+                      }
+                      setPixModalOpen(true);
+                    }}
+                    disabled={isRequestingPix}
+                  >
+                    <Send className="h-3.5 w-3.5 mr-1.5" />
+                    Solicitar Pix {selectedWinnerIds.size > 0 && `(${selectedWinnerIds.size})`}
+                  </Button>
+                  {isAdmin && selectedWinnerIds.size > 0 && (
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchStatusOpen(true)}>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      Alterar Status ({selectedWinnerIds.size})
+                    </Button>
+                  )}
+                  {isAdmin && (
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
+                      <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                      Gerar Lote PIX
+                    </Button>
+                  )}
+                </>
               )}
               <Button size="sm" variant="outline" className="h-8 text-xs">
                 <Download className="h-3.5 w-3.5 mr-1.5" />
