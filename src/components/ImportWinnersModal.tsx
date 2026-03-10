@@ -37,7 +37,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [tab, setTab] = useState<'pdf' | 'excel'>('pdf');
   const [step, setStep] = useState<ImportStep>('choose');
   const [parsedWinners, setParsedWinners] = useState<ParsedWinner[]>([]);
-  const [stats, setStats] = useState<{ totalFound: number; totalNew: number; totalDuplicates: number; totalInvalid: number } | null>(null);
+  const [stats, setStats] = useState<{ totalFound: number; totalNew: number; totalDuplicates: number; totalInvalid: number; totalOverLimit: number } | null>(null);
   const [fileName, setFileName] = useState('');
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
