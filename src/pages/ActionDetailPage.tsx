@@ -67,6 +67,8 @@ export default function ActionDetailPage() {
   const { archive, isPending: isArchiving } = useArchiveAction();
   const { restore, isPending: isRestoring } = useRestoreAction();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const queryClient = useQueryClient();
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [pixModalOpen, setPixModalOpen] = useState(false);
