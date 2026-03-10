@@ -2,9 +2,8 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
-import { OperationalMetrics } from '@/components/OperationalMetrics';
+import { OperationalDashboard } from '@/components/operational/OperationalDashboard';
 import { useActions } from '@/hooks/useActions';
-import { useWinners } from '@/hooks/useWinners';
 import { useUserRole } from '@/hooks/useUserRole';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
 import {
@@ -17,9 +16,8 @@ import { Progress } from '@/components/ui/progress';
 
 const Index = () => {
   const { data: actions = [], isLoading: loadingActions } = useActions();
-  const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { isAdmin, loading: loadingRole } = useUserRole();
-  const isLoading = loadingActions || loadingWinners || loadingRole;
+  const isLoading = loadingActions || loadingRole;
 
   const operationalActions = actions.filter(a => a.status !== 'archived');
   const totalRevenue = operationalActions.reduce((s, a) => s + a.expectedRevenue, 0);
@@ -144,7 +142,7 @@ const Index = () => {
             <Users className="h-4 w-4 text-accent-foreground" />
             <h2 className="text-sm font-bold uppercase tracking-wider text-accent-foreground">Painel Operacional</h2>
           </div>
-          <OperationalMetrics winners={winners} />
+          <OperationalDashboard />
         </section>
       </div>
     </AppLayout>
