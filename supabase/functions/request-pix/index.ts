@@ -55,21 +55,31 @@ Deno.serve(async (req) => {
     // Service client (bypasses RLS for audit logging + config reads)
     const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Read webhook URL from integration_configs table (manageable via UI)
-    const { data: webhookConfig, error: configError } = await serviceClient
-      .from("integration_configs")
-      .select("value")
-      .eq("key", "UNNICHAT_PIX")
-      .maybeSingle();
+    // Resolve webhook URL: window_messages first, integration_configs fallback
+    let unnichatUrl: string | null = null;
 
-    if (configError || !webhookConfig?.value) {
-      return new Response(
-        JSON.stringify({ error: "UNNICHAT_WEBHOOK_URL não configurada em Integrações." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const windowMsg = await getWindowMessage(serviceClient, "abertura_janela");
+    if (windowMsg) {
+      unnichatUrl = windowMsg.unnichat_trigger_url;
+      console.log(`[request-pix] Using window_messages config: "${windowMsg.name}" (type: abertura_janela)`);
     }
 
-    const unnichatUrl = webhookConfig.value;
+    if (!unnichatUrl) {
+      console.warn("[request-pix] No active window_messages, falling back to integration_configs");
+      const { data: webhookConfig, error: configError } = await serviceClient
+        .from("integration_configs")
+        .select("value")
+        .eq("key", "UNNICHAT_PIX")
+        .maybeSingle();
+
+      if (configError || !webhookConfig?.value) {
+        return new Response(
+          JSON.stringify({ error: "Webhook não configurado. Configure em Configurações → Mensagens de Janela ou Integrações." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      unnichatUrl = webhookConfig.value;
+    }
 
     // Auth client (respects RLS)
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
