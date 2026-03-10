@@ -279,6 +279,9 @@ export default function WinnersPage() {
                       <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
+                      <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">
+                        <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> Tempo</span>
+                      </th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Ações</th>
                     </tr>
                   </thead>
