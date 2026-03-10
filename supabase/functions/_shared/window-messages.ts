@@ -1,7 +1,7 @@
 /**
  * Shared helper to fetch active window messages from the window_messages table.
  * Used by edge functions to get the correct UnniChat trigger URL and message content
- * based on message type and context.
+ * based on message type, scope, priority and context.
  */
 
 export interface WindowMessage {
@@ -16,16 +16,28 @@ export interface WindowMessage {
   usage_condition: string | null;
   trigger_rule: string | null;
   notes: string | null;
+  scope: string;
+  scope_value: string | null;
+  priority: number;
+}
+
+export interface WindowMessageQuery {
+  autoOnly?: boolean;
+  usageCondition?: string;
+  actionId?: string;
+  prizeType?: string;
+  operationalContext?: string;
 }
 
 /**
- * Fetch a single active window message by type.
- * Optionally filter by auto_use for automatic flows.
+ * Fetch the best matching active window message by type, applying scope priority:
+ * 1. action-specific → 2. prize_type-specific → 3. operational_context → 4. global
+ * Within the same scope level, uses the lowest priority number.
  */
 export async function getWindowMessage(
   client: any,
   type: string,
-  options?: { autoOnly?: boolean; usageCondition?: string }
+  options?: WindowMessageQuery
 ): Promise<WindowMessage | null> {
   let query = client
     .from("window_messages")
@@ -41,16 +53,38 @@ export async function getWindowMessage(
     query = query.eq("usage_condition", options.usageCondition);
   }
 
-  query = query.order("created_at", { ascending: true }).limit(1);
+  query = query.order("priority", { ascending: true });
 
-  const { data, error } = await query.maybeSingle();
+  const { data, error } = await query;
 
   if (error) {
     console.error(`[WindowMessage] Error fetching type="${type}":`, error.message);
     return null;
   }
 
-  return data as WindowMessage | null;
+  if (!data || data.length === 0) return null;
+
+  const messages = data as WindowMessage[];
+
+  // Apply scope priority: action > prize_type > operational_context > global
+  if (options?.actionId) {
+    const match = messages.find(m => m.scope === 'action' && m.scope_value === options.actionId);
+    if (match) return match;
+  }
+
+  if (options?.prizeType) {
+    const match = messages.find(m => m.scope === 'prize_type' && m.scope_value === options.prizeType);
+    if (match) return match;
+  }
+
+  if (options?.operationalContext) {
+    const match = messages.find(m => m.scope === 'operational_context' && m.scope_value === options.operationalContext);
+    if (match) return match;
+  }
+
+  // Fallback to global (already sorted by priority)
+  const globalMatch = messages.find(m => m.scope === 'global');
+  return globalMatch || messages[0];
 }
 
 /**

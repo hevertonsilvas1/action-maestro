@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Pencil, Loader2, Link2, Link2Off, Variable, Zap, MessageSquare } from 'lucide-react';
+import { Constants } from '@/integrations/supabase/types';
 
 const MESSAGE_TYPES = [
   { value: 'abertura_janela', label: 'Abertura de janela', description: 'Iniciar ou reabrir conversa operacional' },
@@ -25,6 +27,33 @@ const TYPE_LABEL_MAP: Record<string, string> = {
   abrir_janela: 'Abrir janela',
   prolongar_janela: 'Prolongar janela',
 };
+
+const SCOPE_OPTIONS = [
+  { value: 'global', label: 'Global' },
+  { value: 'action', label: 'Ação específica' },
+  { value: 'prize_type', label: 'Tipo de prêmio' },
+  { value: 'operational_context', label: 'Contexto operacional' },
+];
+
+const SCOPE_LABEL_MAP: Record<string, string> = {
+  global: 'Global',
+  action: 'Ação específica',
+  prize_type: 'Tipo de prêmio',
+  operational_context: 'Contexto operacional',
+};
+
+const PRIZE_TYPE_OPTIONS = Constants.public.Enums.prize_type.map((t) => ({
+  value: t,
+  label: t.charAt(0).toUpperCase() + t.slice(1).replace(/_/g, ' '),
+}));
+
+const OPERATIONAL_CONTEXT_OPTIONS = [
+  { value: 'pagamento_pendente', label: 'Pagamento pendente' },
+  { value: 'comprovante_pendente', label: 'Comprovante pendente' },
+  { value: 'cliente_nao_respondeu', label: 'Cliente não respondeu' },
+  { value: 'pix_recusado', label: 'PIX recusado' },
+  { value: 'numero_inexistente', label: 'Número inexistente' },
+];
 
 const AVAILABLE_VARIABLES = ['{{nome}}', '{{acao}}', '{{valor}}', '{{premio}}'];
 
@@ -40,6 +69,9 @@ interface WindowMessage {
   usage_condition: string | null;
   trigger_rule: string | null;
   notes: string | null;
+  scope: string;
+  scope_value: string | null;
+  priority: number;
   created_at: string;
   updated_at: string;
 }
@@ -57,6 +89,9 @@ const emptyForm: FormData = {
   usage_condition: null,
   trigger_rule: null,
   notes: null,
+  scope: 'global',
+  scope_value: null,
+  priority: 1,
 };
 
 export function WindowMessagesTab() {
@@ -69,12 +104,22 @@ export function WindowMessagesTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
 
+  // Load actions for scope selector
+  const { data: actions } = useQuery({
+    queryKey: ['actions-list-simple'],
+    queryFn: async () => {
+      const { data } = await supabase.from('actions').select('id, name').order('name');
+      return data || [];
+    },
+  });
+
   const fetchMessages = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('window_messages')
       .select('*')
       .order('type')
+      .order('priority')
       .order('name');
     if (error) {
       toast({ title: 'Erro ao carregar mensagens', description: error.message, variant: 'destructive' });
@@ -105,6 +150,9 @@ export function WindowMessagesTab() {
       usage_condition: msg.usage_condition,
       trigger_rule: msg.trigger_rule,
       notes: msg.notes,
+      scope: msg.scope,
+      scope_value: msg.scope_value,
+      priority: msg.priority,
     });
     setDialogOpen(true);
   };
@@ -126,6 +174,9 @@ export function WindowMessagesTab() {
       usage_condition: form.usage_condition?.trim() || null,
       trigger_rule: form.trigger_rule?.trim() || null,
       notes: form.notes?.trim() || null,
+      scope: form.scope,
+      scope_value: form.scope === 'global' ? null : (form.scope_value?.trim() || null),
+      priority: form.priority,
     };
 
     let error;
@@ -159,6 +210,22 @@ export function WindowMessagesTab() {
 
   const insertVariable = (variable: string) => {
     setForm(prev => ({ ...prev, content: prev.content + variable }));
+  };
+
+  const getScopeLabel = (msg: WindowMessage) => {
+    if (msg.scope === 'global') return 'Global';
+    if (msg.scope === 'action' && msg.scope_value) {
+      const action = actions?.find((a: any) => a.id === msg.scope_value);
+      return action ? `Ação: ${action.name}` : 'Ação específica';
+    }
+    if (msg.scope === 'prize_type' && msg.scope_value) {
+      return `Prêmio: ${msg.scope_value.replace(/_/g, ' ')}`;
+    }
+    if (msg.scope === 'operational_context' && msg.scope_value) {
+      const ctx = OPERATIONAL_CONTEXT_OPTIONS.find(o => o.value === msg.scope_value);
+      return ctx ? ctx.label : msg.scope_value;
+    }
+    return SCOPE_LABEL_MAP[msg.scope] || msg.scope;
   };
 
   if (loading) {
@@ -199,6 +266,8 @@ export function WindowMessagesTab() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Tipo</TableHead>
+                    <TableHead>Escopo</TableHead>
+                    <TableHead className="text-center">Prioridade</TableHead>
                     <TableHead className="text-center">Ativa</TableHead>
                     <TableHead className="text-center">Auto</TableHead>
                     <TableHead className="text-center">Variáveis</TableHead>
@@ -214,6 +283,12 @@ export function WindowMessagesTab() {
                         <Badge variant="outline" className="text-xs">
                           {TYPE_LABEL_MAP[msg.type] || msg.type}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">{getScopeLabel(msg)}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary" className="text-xs font-mono">{msg.priority}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <Switch
@@ -332,6 +407,83 @@ export function WindowMessagesTab() {
               />
             </div>
 
+            {/* Scope + Priority */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Escopo</Label>
+                <Select value={form.scope} onValueChange={(v) => setForm(prev => ({ ...prev, scope: v, scope_value: null }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SCOPE_OPTIONS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prioridade</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.priority}
+                  onChange={(e) => setForm(prev => ({ ...prev, priority: parseInt(e.target.value) || 1 }))}
+                  placeholder="1 = máxima"
+                />
+                <p className="text-xs text-muted-foreground">Menor número = maior prioridade</p>
+              </div>
+            </div>
+
+            {/* Scope value selector */}
+            {form.scope === 'action' && (
+              <div className="space-y-2">
+                <Label>Selecionar ação</Label>
+                <Select value={form.scope_value || ''} onValueChange={(v) => setForm(prev => ({ ...prev, scope_value: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha uma ação" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(actions || []).map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {form.scope === 'prize_type' && (
+              <div className="space-y-2">
+                <Label>Tipo de prêmio</Label>
+                <Select value={form.scope_value || ''} onValueChange={(v) => setForm(prev => ({ ...prev, scope_value: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIZE_TYPE_OPTIONS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {form.scope === 'operational_context' && (
+              <div className="space-y-2">
+                <Label>Contexto operacional</Label>
+                <Select value={form.scope_value || ''} onValueChange={(v) => setForm(prev => ({ ...prev, scope_value: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha o contexto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPERATIONAL_CONTEXT_OPTIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Toggles */}
             <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center gap-2">
@@ -372,7 +524,7 @@ export function WindowMessagesTab() {
                 <Input
                   value={form.trigger_rule || ''}
                   onChange={(e) => setForm(prev => ({ ...prev, trigger_rule: e.target.value }))}
-                  placeholder="Ex: 24h sem resposta"
+                  placeholder="Ex: após 20h sem resposta"
                 />
               </div>
             </div>
