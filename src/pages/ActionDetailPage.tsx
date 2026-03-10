@@ -336,8 +336,8 @@ export default function ActionDetailPage() {
         {/* Support sees only winner count KPI */}
         {!isAdmin && (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
-            <StatsCard title="Ganhadores" value={String(action.winnersCount)} icon={Users} subtitle={`${action.paidCount} pagos`} />
-            <StatsCard title="Pendentes" value={String(action.winnersCount - action.paidCount)} icon={Clock} variant="warning" />
+            <StatsCard title="Ganhadores" value={String(winners.length)} icon={Users} subtitle={`${winnersWithPaid.length} pagos`} />
+            <StatsCard title="Pendentes" value={String(winners.length - winnersWithPaid.length)} icon={Clock} variant="warning" />
             <StatsCard title="Progresso" value={`${paidProgress.toFixed(0)}%`} icon={CheckCircle2} variant="success" />
           </div>
         )}
