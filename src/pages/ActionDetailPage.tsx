@@ -214,8 +214,8 @@ export default function ActionDetailPage() {
     : 0;
 
   // Realized financials
-  const realizedCost = totalPaidValue + totalCosts + action?.totalTaxes ?? 0;
-  const realizedProfit = (action?.expectedRevenue ?? 0) - realizedCost;
+  const realizedCost = totalPaidValue + totalCosts + (action?.totalTaxes || 0);
+  const realizedProfit = (action?.expectedRevenue || 0) - realizedCost;
 
   const isLoading = loadingAction || loadingWinners || loadingPrizes || loadingCosts;
 
