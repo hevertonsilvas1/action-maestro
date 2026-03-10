@@ -20,11 +20,15 @@ const Index = () => {
   const isLoading = loadingActions || loadingRole;
 
   const operationalActions = actions.filter(a => a.status !== 'archived');
-  const totalRevenue = operationalActions.reduce((s, a) => s + a.expectedRevenue, 0);
-  const totalProfit = operationalActions.reduce((s, a) => s + a.grossProfit, 0);
-  const totalWinners = operationalActions.reduce((s, a) => s + a.winnersCount, 0);
-  const totalPaid = operationalActions.reduce((s, a) => s + a.paidCount, 0);
+  // Financial totals: exclude planning actions (only realized/active/completed)
+  const financialActions = operationalActions.filter(a => a.status !== 'planning');
+  const totalRevenue = financialActions.reduce((s, a) => s + a.expectedRevenue, 0);
+  const totalProfit = financialActions.reduce((s, a) => s + a.grossProfit, 0);
+  const totalWinners = financialActions.reduce((s, a) => s + a.winnersCount, 0);
+  const totalPaid = financialActions.reduce((s, a) => s + a.paidCount, 0);
   const activeActions = operationalActions.filter(a => a.status === 'active').length;
+  const planningActions = operationalActions.filter(a => a.status === 'planning');
+  const plannedRevenue = planningActions.reduce((s, a) => s + a.expectedRevenue, 0);
 
   if (isLoading) {
     return (
