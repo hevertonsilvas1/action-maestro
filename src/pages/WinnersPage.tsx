@@ -26,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, Info,
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
-  XCircle, Phone, UserX,
+  XCircle, Phone, UserX, History,
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
