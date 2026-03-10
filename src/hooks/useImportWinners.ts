@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { insertAuditLog } from '@/hooks/useAuditLogger';
+import { checkPrizeLimitsFromDB } from '@/hooks/usePrizeLimits';
 
 export interface ParsedWinner {
   name: string;
