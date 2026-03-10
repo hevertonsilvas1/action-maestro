@@ -12,6 +12,8 @@ import { formatCurrency, formatPercent, formatDate, formatPhone } from '@/lib/fo
 import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
+import type { Action } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
