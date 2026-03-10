@@ -7,7 +7,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Search, Filter, X, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { WINNER_STATUS_LABELS, type WinnerStatus } from '@/types';
+import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { isWindowOpen } from '@/lib/time';
 
 export interface WinnersFilterValues {
@@ -35,9 +35,7 @@ const INITIAL_FILTERS: WinnersFilterValues = {
 interface WinnersFiltersProps {
   filters: WinnersFilterValues;
   onFiltersChange: (filters: WinnersFilterValues) => void;
-  /** Map of actionId -> actionName. If omitted, action filter is hidden. */
   actionsMap?: Record<string, string>;
-  /** Show value filters (admin only) */
   showValueFilter?: boolean;
 }
 
@@ -53,6 +51,7 @@ export function WinnersFilters({
   showValueFilter = false,
 }: WinnersFiltersProps) {
   const [expanded, setExpanded] = useState(false);
+  const { activeOrdered } = useWinnerStatusMap();
 
   const update = (partial: Partial<WinnersFilterValues>) =>
     onFiltersChange({ ...filters, ...partial });
@@ -75,7 +74,6 @@ export function WinnersFilters({
 
   return (
     <div className="space-y-3">
-      {/* Search + toggle */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -108,10 +106,9 @@ export function WinnersFilters({
         )}
       </div>
 
-      {/* Expanded filters */}
       {expanded && (
         <div className="rounded-xl border bg-card p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in">
-          {/* Status */}
+          {/* Status - now dynamic from DB */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-medium text-muted-foreground">Status</label>
             <Select value={filters.status} onValueChange={(v) => update({ status: v })}>
@@ -120,14 +117,18 @@ export function WinnersFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {(Object.entries(WINNER_STATUS_LABELS) as [WinnerStatus, string][]).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                {activeOrdered.map((s) => (
+                  <SelectItem key={s.slug} value={s.slug}>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                      {s.name}
+                    </div>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Action (only when actionsMap provided) */}
           {actionsMap && actionEntries.length > 0 && (
             <div className="space-y-1.5">
               <label className="text-[11px] font-medium text-muted-foreground">Ação</label>
@@ -145,63 +146,42 @@ export function WinnersFilters({
             </div>
           )}
 
-          {/* Date From */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-medium text-muted-foreground">Data início</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn(
-                    'w-full h-9 justify-start text-left text-xs font-normal',
-                    !filters.dateFrom && 'text-muted-foreground'
-                  )}
+                  className={cn('w-full h-9 justify-start text-left text-xs font-normal', !filters.dateFrom && 'text-muted-foreground')}
                 >
                   <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
                   {filters.dateFrom ? format(filters.dateFrom, 'dd/MM/yyyy') : 'Selecionar'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={filters.dateFrom}
-                  onSelect={(d) => update({ dateFrom: d })}
-                  initialFocus
-                  className={cn('p-3 pointer-events-auto')}
-                />
+                <Calendar mode="single" selected={filters.dateFrom} onSelect={(d) => update({ dateFrom: d })} initialFocus className={cn('p-3 pointer-events-auto')} />
               </PopoverContent>
             </Popover>
           </div>
 
-          {/* Date To */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-medium text-muted-foreground">Data fim</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn(
-                    'w-full h-9 justify-start text-left text-xs font-normal',
-                    !filters.dateTo && 'text-muted-foreground'
-                  )}
+                  className={cn('w-full h-9 justify-start text-left text-xs font-normal', !filters.dateTo && 'text-muted-foreground')}
                 >
                   <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
                   {filters.dateTo ? format(filters.dateTo, 'dd/MM/yyyy') : 'Selecionar'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={filters.dateTo}
-                  onSelect={(d) => update({ dateTo: d })}
-                  initialFocus
-                  className={cn('p-3 pointer-events-auto')}
-                />
+                <Calendar mode="single" selected={filters.dateTo} onSelect={(d) => update({ dateTo: d })} initialFocus className={cn('p-3 pointer-events-auto')} />
               </PopoverContent>
             </Popover>
           </div>
 
-          {/* WhatsApp Window */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-medium text-muted-foreground">Janela WhatsApp</label>
             <Select value={filters.whatsappWindow} onValueChange={(v) => update({ whatsappWindow: v as 'all' | 'open' | 'closed' })}>
@@ -216,28 +196,15 @@ export function WinnersFilters({
             </Select>
           </div>
 
-          {/* Value Min/Max (admin only) */}
           {showValueFilter && (
             <>
               <div className="space-y-1.5">
                 <label className="text-[11px] font-medium text-muted-foreground">Valor mínimo (R$)</label>
-                <Input
-                  type="number"
-                  placeholder="0,00"
-                  value={filters.valueMin}
-                  onChange={(e) => update({ valueMin: e.target.value })}
-                  className="h-9 text-xs"
-                />
+                <Input type="number" placeholder="0,00" value={filters.valueMin} onChange={(e) => update({ valueMin: e.target.value })} className="h-9 text-xs" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[11px] font-medium text-muted-foreground">Valor máximo (R$)</label>
-                <Input
-                  type="number"
-                  placeholder="0,00"
-                  value={filters.valueMax}
-                  onChange={(e) => update({ valueMax: e.target.value })}
-                  className="h-9 text-xs"
-                />
+                <Input type="number" placeholder="0,00" value={filters.valueMax} onChange={(e) => update({ valueMax: e.target.value })} className="h-9 text-xs" />
               </div>
             </>
           )}
@@ -247,7 +214,7 @@ export function WinnersFilters({
   );
 }
 
-/** Apply filter values to a list of winners (with optional actionName) */
+/** Apply filter values to a list of winners */
 export function applyWinnersFilters<T extends { name: string; status: string; actionId: string; value: number; prizeDatetime?: string; fullName?: string; actionName?: string; lastInboundAt?: string }>(
   winners: T[],
   filters: WinnersFilterValues,
@@ -258,16 +225,12 @@ export function applyWinnersFilters<T extends { name: string; status: string; ac
   const valueMax = filters.valueMax ? parseFloat(filters.valueMax) : undefined;
 
   return winners.filter((w) => {
-    // Search (name, fullName, actionName, phone, cpf)
     if (searchLower) {
       const searchable = [w.name, w.fullName, w.actionName, (w as any).phone, (w as any).cpf].filter(Boolean).join(' ').toLowerCase();
       if (!searchable.includes(searchLower)) return false;
     }
-    // Status
     if (filters.status !== 'all' && w.status !== filters.status) return false;
-    // Action
     if (filters.actionId !== 'all' && w.actionId !== filters.actionId) return false;
-    // Date
     if (filters.dateFrom || filters.dateTo) {
       const d = w.prizeDatetime ? new Date(w.prizeDatetime) : null;
       if (!d) return false;
@@ -278,11 +241,8 @@ export function applyWinnersFilters<T extends { name: string; status: string; ac
         if (d > end) return false;
       }
     }
-    // Value
     if (valueMin !== undefined && w.value < valueMin) return false;
     if (valueMax !== undefined && w.value > valueMax) return false;
-
-    // WhatsApp Window
     if (filters.whatsappWindow !== 'all') {
       const hasInbound = !!w.lastInboundAt;
       if (filters.whatsappWindow === 'open') {
@@ -291,7 +251,6 @@ export function applyWinnersFilters<T extends { name: string; status: string; ac
         if (!hasInbound || isWindowOpen(w.lastInboundAt, windowHours)) return false;
       }
     }
-
     return true;
   });
 }

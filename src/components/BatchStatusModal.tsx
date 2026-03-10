@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { WINNER_STATUS_LABELS, type WinnerStatus } from '@/types';
+import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 
 interface BatchStatusModalProps {
   open: boolean;
@@ -18,22 +18,11 @@ interface BatchStatusModalProps {
   onDone: () => void;
 }
 
-const CHANGEABLE_STATUSES: WinnerStatus[] = [
-  'imported',
-  'pix_requested',
-  'pix_received',
-  'sent_to_batch',
-  'pix_refused',
-  'numero_inexistente',
-  'cliente_nao_responde',
-  'receipt_attached',
-  'receipt_sent',
-];
-
 export function BatchStatusModal({ open, onOpenChange, winnerIds, onDone }: BatchStatusModalProps) {
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
+  const { activeOrdered, getLabel } = useWinnerStatusMap();
 
   const handleSave = async () => {
     if (!status || winnerIds.length === 0) return;
@@ -74,8 +63,13 @@ export function BatchStatusModal({ open, onOpenChange, winnerIds, onDone }: Batc
                   <SelectValue placeholder="Selecione o novo status..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {CHANGEABLE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{WINNER_STATUS_LABELS[s]}</SelectItem>
+                  {activeOrdered.map((s) => (
+                    <SelectItem key={s.slug} value={s.slug}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                        {s.name}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
