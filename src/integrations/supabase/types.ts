@@ -485,6 +485,51 @@ export type Database = {
         }
         Relationships: []
       }
+      winner_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          slug: string
+          sort_order: number
+          trigger_event: string | null
+          update_mode: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          trigger_event?: string | null
+          update_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          trigger_event?: string | null
+          update_mode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       winners: {
         Row: {
           action_id: string

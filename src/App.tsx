@@ -14,7 +14,7 @@ import EditActionPage from "./pages/EditActionPage";
 import WinnersPage from "./pages/WinnersPage";
 import TeamPage from "./pages/TeamPage";
 import SettingsPage from "./pages/SettingsPage";
-import IntegrationsPage from "./pages/IntegrationsPage";
+
 import AuthPage from "./pages/AuthPage";
 import DeletedWinnersPage from "./pages/DeletedWinnersPage";
 import NotFound from "./pages/NotFound";
@@ -93,7 +93,6 @@ const AppRoutes = () => (
     <Route path="/winners/deleted" element={<AdminRoute><DeletedWinnersPage /></AdminRoute>} />
     <Route path="/team" element={<AdminRoute><TeamPage /></AdminRoute>} />
     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-    <Route path="/settings/integrations" element={<AdminRoute><IntegrationsPage /></AdminRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
