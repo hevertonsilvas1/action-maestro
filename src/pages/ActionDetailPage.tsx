@@ -9,8 +9,11 @@ import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { formatCurrency, formatPercent, formatDate, formatPhone } from '@/lib/format';
+import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
+import type { Action } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -67,6 +70,8 @@ export default function ActionDetailPage() {
   const { archive, isPending: isArchiving } = useArchiveAction();
   const { restore, isPending: isRestoring } = useRestoreAction();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const queryClient = useQueryClient();
   const [deleteBlockReason, setDeleteBlockReason] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [pixModalOpen, setPixModalOpen] = useState(false);
@@ -315,11 +320,48 @@ export default function ActionDetailPage() {
                 Excluir
               </Button>
             )}
-            <StatusBadge
-              status={action.status}
-              labels={ACTION_STATUS_LABELS}
-              colors={ACTION_STATUS_COLORS}
-            />
+            {isAdmin && !isArchived ? (
+              <Select
+                value={action.status}
+                onValueChange={async (newStatus) => {
+                  if (newStatus === action.status) return;
+                  setChangingStatus(true);
+                  try {
+                    const { error } = await supabase
+                      .from('actions')
+                      .update({ status: newStatus as any, previous_status: action.status as any })
+                      .eq('id', id!);
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ['actions'] });
+                    queryClient.invalidateQueries({ queryKey: ['actions', id] });
+                    toast.success(`Status alterado para "${ACTION_STATUS_LABELS[newStatus as Action['status']] || newStatus}"`);
+                  } catch (err: any) {
+                    console.error(err);
+                    toast.error('Erro ao alterar status da ação.');
+                  } finally {
+                    setChangingStatus(false);
+                  }
+                }}
+                disabled={changingStatus}
+              >
+                <SelectTrigger className="h-8 w-[160px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(['planning', 'active', 'completed', 'cancelled'] as Action['status'][]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {ACTION_STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <StatusBadge
+                status={action.status}
+                labels={ACTION_STATUS_LABELS}
+                colors={ACTION_STATUS_COLORS}
+              />
+            )}
           </div>
         }
       />
