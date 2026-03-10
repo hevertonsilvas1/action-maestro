@@ -92,6 +92,12 @@ export default function SettingsPage() {
               <TimeConfigTab />
             </TabsContent>
           )}
+
+          {isAdmin && (
+            <TabsContent value="window-messages">
+              <WindowMessagesTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </AppLayout>
