@@ -188,6 +188,12 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         .eq('id', winner.id);
       if (updateError) throw updateError;
 
+      // Apply automatic status transition if configured
+      await supabase.rpc('apply_automatic_status_transition' as any, {
+        _winner_id: winner.id,
+        _trigger_event: 'receipt_attached',
+      });
+
       await insertAuditLog({
         actionId,
         actionName,
