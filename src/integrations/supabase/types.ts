@@ -464,6 +464,75 @@ export type Database = {
         }
         Relationships: []
       }
+      status_time_config: {
+        Row: {
+          critical_minutes: number
+          id: string
+          updated_at: string
+          updated_by: string | null
+          warning_minutes: number
+        }
+        Insert: {
+          critical_minutes?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          warning_minutes?: number
+        }
+        Update: {
+          critical_minutes?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          warning_minutes?: number
+        }
+        Relationships: []
+      }
+      status_time_rules: {
+        Row: {
+          condition_description: string | null
+          condition_field: string | null
+          created_at: string
+          created_by: string | null
+          from_status: string
+          id: string
+          is_active: boolean
+          name: string
+          time_limit: number
+          time_unit: string
+          to_status: string
+          updated_at: string
+        }
+        Insert: {
+          condition_description?: string | null
+          condition_field?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_status: string
+          id?: string
+          is_active?: boolean
+          name: string
+          time_limit: number
+          time_unit?: string
+          to_status: string
+          updated_at?: string
+        }
+        Update: {
+          condition_description?: string | null
+          condition_field?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_status?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          time_limit?: number
+          time_unit?: string
+          to_status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
