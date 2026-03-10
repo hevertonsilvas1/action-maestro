@@ -367,7 +367,9 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                   {parsedWinners.map((w, i) => (
                     <tr key={i} className="border-t hover:bg-muted/30">
                       <td className="px-3 py-1.5">
-                        {w.isDuplicate ? (
+                        {w.isOverLimit ? (
+                          <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Excede Limite</Badge>
+                        ) : w.isDuplicate ? (
                           <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">Duplicado</Badge>
                         ) : w.isInvalid ? (
                           <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">{w.invalidReason}</Badge>
