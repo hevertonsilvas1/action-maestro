@@ -96,8 +96,8 @@ export function OperationalTable({ winners, actionsMap, timeInStatus, warningMin
                     {getLabel(w.status)}
                   </span>
                 </TableCell>
-                <TableCell className={cn('py-2.5 hidden lg:table-cell text-xs', durationClass(variant))}>
-                  {tis ? formatDuration(tis) : '—'}
+                <TableCell className="py-2.5 hidden lg:table-cell">
+                  <TimeInStatusBadge ms={tis} warningMinutes={warningMinutes} criticalMinutes={criticalMinutes} />
                 </TableCell>
                 <TableCell className="py-2.5 text-right">
                   <div className="flex items-center justify-end gap-0.5">
