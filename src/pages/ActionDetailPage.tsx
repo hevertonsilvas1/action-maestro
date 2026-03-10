@@ -199,11 +199,40 @@ export default function ActionDetailPage() {
     );
   }
 
+  // === PLANNING LAYER ===
   const totalPlannedPrizes = prizes.reduce((s, p) => s + p.totalValue, 0);
-  const totalPaidPrizes = winners
-    .filter((w) => w.status === 'paid' || w.status === 'receipt_sent')
-    .reduce((s, w) => s + w.value, 0);
   const totalCosts = costs.reduce((s, c) => s + c.value, 0);
+
+  // === EXECUTION / REALIZED LAYER (derived from winners) ===
+  const paidStatuses: WinnerStatus[] = ['paid', 'receipt_sent'];
+  const receiptSentStatuses: WinnerStatus[] = ['receipt_sent'];
+  const receiptAttachedStatuses: WinnerStatus[] = ['receipt_attached', 'receipt_sent'];
+
+  const winnersWithPaid = winners.filter((w) => paidStatuses.includes(w.status));
+  const totalPaidValue = winnersWithPaid.reduce((s, w) => s + w.value, 0);
+  const totalPendingValue = winners.reduce((s, w) => s + w.value, 0) - totalPaidValue;
+  const totalWinnersValue = winners.reduce((s, w) => s + w.value, 0);
+  const receiptSentCount = winners.filter(w => receiptSentStatuses.includes(w.status)).length;
+  const receiptAttachedCount = winners.filter(w => receiptAttachedStatuses.includes(w.status)).length;
+
+  // Prize consumption: group winners by prize title to track planned vs processed
+  const prizeConsumption = useMemo(() => {
+    return prizes.map(prize => {
+      const matchingWinners = winners.filter(w => w.prizeTitle === prize.title);
+      const processedCount = matchingWinners.length;
+      const paidCount = matchingWinners.filter(w => paidStatuses.includes(w.status)).length;
+      const paidValue = matchingWinners.filter(w => paidStatuses.includes(w.status)).reduce((s, w) => s + w.value, 0);
+      return {
+        ...prize,
+        processedCount,
+        remainingCount: Math.max(0, prize.quantity - processedCount),
+        paidCount,
+        paidValue,
+        pendingValue: matchingWinners.reduce((s, w) => s + w.value, 0) - paidValue,
+        progress: prize.quantity > 0 ? (processedCount / prize.quantity) * 100 : 0,
+      };
+    });
+  }, [prizes, winners]);
 
   const statusCounts: Record<string, number> = {};
   winners.forEach((w) => {
@@ -211,8 +240,12 @@ export default function ActionDetailPage() {
   });
 
   const paidProgress = winners.length > 0
-    ? (winners.filter(w => w.status === 'paid' || w.status === 'receipt_sent').length / winners.length) * 100
+    ? (winnersWithPaid.length / winners.length) * 100
     : 0;
+
+  // Realized financials
+  const realizedCost = totalPaidValue + totalCosts + action.totalTaxes;
+  const realizedProfit = action.expectedRevenue - realizedCost;
 
   const isArchived = action.status === 'archived';
 
