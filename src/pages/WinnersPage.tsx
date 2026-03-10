@@ -403,6 +403,14 @@ export default function WinnersPage() {
                                   </div>
                                 </PopoverContent>
                               </Popover>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setHistoryTarget(w); }}>
+                                    <History className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Histórico de Status</TooltipContent>
+                              </Tooltip>
                               {isAdmin && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
