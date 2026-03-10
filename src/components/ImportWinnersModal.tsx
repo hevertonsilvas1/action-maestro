@@ -37,7 +37,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [tab, setTab] = useState<'pdf' | 'excel'>('pdf');
   const [step, setStep] = useState<ImportStep>('choose');
   const [parsedWinners, setParsedWinners] = useState<ParsedWinner[]>([]);
-  const [stats, setStats] = useState<{ totalFound: number; totalNew: number; totalDuplicates: number; totalInvalid: number } | null>(null);
+  const [stats, setStats] = useState<{ totalFound: number; totalNew: number; totalDuplicates: number; totalInvalid: number; totalOverLimit: number } | null>(null);
   const [fileName, setFileName] = useState('');
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
@@ -101,14 +101,14 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
           }
         } else {
           setParsedWinners([]);
-          setStats({ totalFound: 0, totalNew: 0, totalDuplicates: 0, totalInvalid: 0 });
+          setStats({ totalFound: 0, totalNew: 0, totalDuplicates: 0, totalInvalid: 0, totalOverLimit: 0 });
           setStep('preview');
         }
       }
     } catch (error: any) {
       console.error('Import error:', error);
       setParsedWinners([]);
-      setStats({ totalFound: 0, totalNew: 0, totalDuplicates: 0, totalInvalid: 0 });
+      setStats({ totalFound: 0, totalNew: 0, totalDuplicates: 0, totalInvalid: 0, totalOverLimit: 0 });
       setStep('preview');
     }
   };
@@ -314,7 +314,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
         {step === 'preview' && stats && (
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
             {/* Stats summary */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className={`grid gap-3 ${stats.totalOverLimit > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
               <div className="rounded-lg border p-3 text-center">
                 <Users className="h-4 w-4 text-primary mx-auto mb-1" />
                 <p className="text-lg font-bold">{stats.totalFound}</p>
@@ -335,6 +335,13 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                 <p className="text-lg font-bold text-destructive">{stats.totalInvalid}</p>
                 <p className="text-[10px] text-muted-foreground">Inválidos</p>
               </div>
+              {stats.totalOverLimit > 0 && (
+                <div className="rounded-lg border border-destructive/30 p-3 text-center">
+                  <AlertTriangle className="h-4 w-4 text-destructive mx-auto mb-1" />
+                  <p className="text-lg font-bold text-destructive">{stats.totalOverLimit}</p>
+                  <p className="text-[10px] text-muted-foreground">Excede Limite</p>
+                </div>
+              )}
             </div>
 
             {stats.totalNew > 0 && (
@@ -360,7 +367,9 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                   {parsedWinners.map((w, i) => (
                     <tr key={i} className="border-t hover:bg-muted/30">
                       <td className="px-3 py-1.5">
-                        {w.isDuplicate ? (
+                        {w.isOverLimit ? (
+                          <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Excede Limite</Badge>
+                        ) : w.isDuplicate ? (
                           <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">Duplicado</Badge>
                         ) : w.isInvalid ? (
                           <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">{w.invalidReason}</Badge>

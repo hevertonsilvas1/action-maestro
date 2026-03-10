@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { insertAuditLog } from '@/hooks/useAuditLogger';
+import { useWinners } from '@/hooks/useWinners';
+import { usePrizes } from '@/hooks/usePrizes';
+import { usePrizeLimits } from '@/hooks/usePrizeLimits';
 
 const PRIZE_TYPES = [
   { value: 'spin', label: 'Giro Abençoado' },
@@ -24,7 +27,6 @@ const PRIZE_TYPES = [
 interface NewWinnerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Pre-selected action ID (when opened from action detail page) */
   defaultActionId?: string;
   actionsMap: Record<string, string>;
 }
@@ -46,6 +48,11 @@ export function NewWinnerModal({
     value: '',
     observation: '',
   });
+
+  // Load prizes and winners for the selected action to check limits
+  const { data: actionPrizes } = usePrizes(form.actionId);
+  const { data: actionWinners } = useWinners(form.actionId || undefined);
+  const { canAdd, exhaustedMessage, limits } = usePrizeLimits(actionPrizes, actionWinners);
 
   const update = (partial: Partial<typeof form>) => {
     setForm((prev) => ({ ...prev, ...partial }));
@@ -70,13 +77,18 @@ export function NewWinnerModal({
   const isPhoneValid = phoneDigits.length === 0 || (phoneDigits.length >= 10 && phoneDigits.length <= 11);
   const valueNum = parseFloat(form.value.replace(',', '.')) || 0;
 
+  // Check prize limit for selected type
+  const prizeLimitExhausted = form.prizeType && form.actionId ? !canAdd(form.prizeType) : false;
+  const prizeLimitMsg = form.prizeType ? exhaustedMessage(form.prizeType) : null;
+
   const canSave =
     form.actionId &&
     form.prizeType &&
     form.name.trim().length >= 2 &&
     valueNum > 0 &&
     isPhoneValid &&
-    !saving;
+    !saving &&
+    !prizeLimitExhausted;
 
   const handleSave = async (force = false) => {
     if (!canSave) return;
@@ -115,7 +127,6 @@ export function NewWinnerModal({
 
       if (error) throw error;
 
-      // Audit
       await insertAuditLog({
         actionId: form.actionId,
         actionName: actionsMap[form.actionId] || '',
@@ -145,6 +156,13 @@ export function NewWinnerModal({
 
   const actionEntries = Object.entries(actionsMap).sort((a, b) => a[1].localeCompare(b[1]));
 
+  // Helper to show remaining slots in prize type options
+  const getPrizeTypeLabel = (type: { value: string; label: string }) => {
+    const info = limits.get(type.value);
+    if (!info) return type.label;
+    return `${type.label} (${info.remaining}/${info.planned} restantes)`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="max-w-lg">
@@ -156,7 +174,7 @@ export function NewWinnerModal({
           {/* Action */}
           <div className="space-y-1.5">
             <Label className="text-xs">Ação *</Label>
-            <Select value={form.actionId} onValueChange={(v) => update({ actionId: v })}>
+            <Select value={form.actionId} onValueChange={(v) => update({ actionId: v, prizeType: '' })}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Selecione..." />
               </SelectTrigger>
@@ -177,9 +195,15 @@ export function NewWinnerModal({
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRIZE_TYPES.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
+                  {PRIZE_TYPES.map((p) => {
+                    const info = limits.get(p.value);
+                    const exhausted = info ? info.isExhausted : false;
+                    return (
+                      <SelectItem key={p.value} value={p.value} disabled={exhausted}>
+                        {getPrizeTypeLabel(p)}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -194,6 +218,17 @@ export function NewWinnerModal({
               />
             </div>
           </div>
+
+          {/* Prize limit warning */}
+          {prizeLimitExhausted && prizeLimitMsg && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+              <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-medium text-destructive">Limite de premiação atingido</p>
+                <p className="text-muted-foreground">{prizeLimitMsg}</p>
+              </div>
+            </div>
+          )}
 
           {/* Name */}
           <div className="space-y-1.5">

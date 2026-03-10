@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { insertAuditLog } from '@/hooks/useAuditLogger';
+import { checkPrizeLimitsFromDB } from '@/hooks/usePrizeLimits';
 
 export interface ParsedWinner {
   name: string;
@@ -16,6 +17,7 @@ export interface ParsedWinner {
   isDuplicate?: boolean;
   isInvalid?: boolean;
   invalidReason?: string;
+  isOverLimit?: boolean;
 }
 
 interface ImportStats {
@@ -23,6 +25,7 @@ interface ImportStats {
   totalNew: number;
   totalDuplicates: number;
   totalInvalid: number;
+  totalOverLimit: number;
 }
 
 // Map prize type text to DB enum
@@ -209,7 +212,7 @@ export function useImportWinners(actionId: string, actionName: string) {
 
     // Also check for duplicates within the batch itself
     const seenKeys = new Set<string>();
-    const finalResult = result.map((w) => {
+    const afterDedupe = result.map((w) => {
       if (w.isInvalid || w.isDuplicate) return w;
       const identifier = w.cpf || w.name;
       const key = `${normalizePrizeType(w.prize_type)}|${identifier}|${w.prize_datetime || ''}|${w.value}`;
@@ -220,11 +223,32 @@ export function useImportWinners(actionId: string, actionName: string) {
       return w;
     });
 
+    // Check prize limits
+    const prizeLimits = await checkPrizeLimitsFromDB(actionId);
+    const remainingSlots = new Map<string, number>();
+    prizeLimits.forEach((info, type) => {
+      remainingSlots.set(type, info.remaining);
+    });
+
+    const finalResult = afterDedupe.map((w) => {
+      if (w.isInvalid || w.isDuplicate || w.isOverLimit) return w;
+      const normalizedType = normalizePrizeType(w.prize_type);
+      const remaining = remainingSlots.get(normalizedType);
+      if (remaining !== undefined) {
+        if (remaining <= 0) {
+          return { ...w, isOverLimit: true, isInvalid: true, invalidReason: 'Limite de premiação atingido' };
+        }
+        remainingSlots.set(normalizedType, remaining - 1);
+      }
+      return w;
+    });
+
     const stats: ImportStats = {
       totalFound: finalResult.length,
-      totalNew: finalResult.filter((w) => !w.isDuplicate && !w.isInvalid).length,
+      totalNew: finalResult.filter((w) => !w.isDuplicate && !w.isInvalid && !w.isOverLimit).length,
       totalDuplicates: finalResult.filter((w) => w.isDuplicate).length,
-      totalInvalid: finalResult.filter((w) => w.isInvalid).length,
+      totalInvalid: finalResult.filter((w) => w.isInvalid && !w.isOverLimit).length,
+      totalOverLimit: finalResult.filter((w) => w.isOverLimit).length,
     };
 
     return { winners: finalResult, stats };
@@ -237,7 +261,7 @@ export function useImportWinners(actionId: string, actionName: string) {
   ) => {
     setIsLoading(true);
     try {
-      const newWinners = winners.filter((w) => !w.isDuplicate && !w.isInvalid);
+      const newWinners = winners.filter((w) => !w.isDuplicate && !w.isInvalid && !w.isOverLimit);
 
       if (newWinners.length === 0) {
         toast.info('Nenhum novo ganhador para importar.');
