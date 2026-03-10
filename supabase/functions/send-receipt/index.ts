@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getWindowMessage, replaceVariables } from "../_shared/window-messages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,18 +133,50 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Webhook URL
-    const { data: webhookConfig } = await svc
-      .from("integration_configs").select("value").eq("key", "UNNICHAT_COMPROVANTE").maybeSingle();
-    let unnichatUrl = webhookConfig?.value;
+    // ── Resolve UnniChat URL and content from window_messages ──
+    let unnichatUrl: string | null = null;
+    let messageContent: string | null = null;
+
+    if (isConfirmation) {
+      // Template reopen = "abrir janela" (window closed, need to stimulate response)
+      const windowMsg = await getWindowMessage(svc, "abrir_janela", { autoOnly: isAuto });
+
+      if (windowMsg) {
+        unnichatUrl = windowMsg.unnichat_trigger_url;
+        if (windowMsg.allow_variables) {
+          messageContent = replaceVariables(windowMsg.content, {
+            nome: winner_name,
+            acao: action_name,
+            valor: String(prize_value),
+            premio: prize_title,
+          });
+        } else {
+          messageContent = windowMsg.content;
+        }
+        console.log(`[send-receipt] Using window_messages config: "${windowMsg.name}" (type: abrir_janela)`);
+      } else {
+        // Fallback to legacy integration_configs
+        console.warn("[send-receipt] No active window_messages for type 'abrir_janela', falling back to integration_configs");
+        const { data: templateConfig } = await svc
+          .from("integration_configs").select("value").eq("key", "RECEIPT_CONFIRMATION_TEMPLATE").maybeSingle();
+        messageContent = templateConfig?.value || "Olá! Temos seu comprovante de pagamento. Responda esta mensagem para recebê-lo.";
+      }
+    }
+
+    // If URL not resolved from window_messages, fall back to integration_configs
     if (!unnichatUrl) {
-      const { data: fallback } = await svc
-        .from("integration_configs").select("value").eq("key", "UNNICHAT_PIX").maybeSingle();
-      unnichatUrl = fallback?.value;
+      const { data: webhookConfig } = await svc
+        .from("integration_configs").select("value").eq("key", "UNNICHAT_COMPROVANTE").maybeSingle();
+      unnichatUrl = webhookConfig?.value || null;
+      if (!unnichatUrl) {
+        const { data: fallback } = await svc
+          .from("integration_configs").select("value").eq("key", "UNNICHAT_PIX").maybeSingle();
+        unnichatUrl = fallback?.value || null;
+      }
     }
 
     if (!unnichatUrl) {
-      const errMsg = "Webhook de envio de comprovante não configurado em Integrações.";
+      const errMsg = "Webhook de envio não configurado. Configure em Configurações → Mensagens de Janela ou Integrações.";
       if (isAuto) {
         await saveError(svc, winner_id, `Auto-envio bloqueado: ${errMsg}`);
         return jsonRes({ success: false, skipped: true, reason: "no_webhook" });
@@ -154,15 +187,12 @@ Deno.serve(async (req) => {
     // Build payload
     let payloadBody: Record<string, unknown>;
     if (isConfirmation) {
-      const { data: templateConfig } = await svc
-        .from("integration_configs").select("value").eq("key", "RECEIPT_CONFIRMATION_TEMPLATE").maybeSingle();
-      const template = templateConfig?.value || "Olá! Temos seu comprovante de pagamento. Responda esta mensagem para recebê-lo.";
       payloadBody = {
-      tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
-      nome: winner_name,
-      acao: action_name,
-      mensagem: template,
-      row_number: 0,
+        tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
+        nome: winner_name,
+        acao: action_name,
+        mensagem: messageContent,
+        row_number: 0,
       };
     } else {
       // Use short proxy URL via download-receipt function with filename in path
