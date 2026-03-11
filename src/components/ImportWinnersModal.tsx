@@ -14,6 +14,18 @@ import { useImportWinners, ParsedWinner } from '@/hooks/useImportWinners';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
 
+function convertExcelDate(value: any): string | null {
+  if (value == null || value === '') return null;
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+  if (isNaN(num) || num < 1) {
+    return typeof value === 'string' ? value : null;
+  }
+  const epoch = new Date(Date.UTC(1899, 11, 30));
+  const d = new Date(epoch.getTime() + num * 86400000);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 interface ImportWinnersModalProps {
   open: boolean;
   onClose: () => void;
@@ -136,7 +148,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
         value: col('value') ? row[col('value')!] : 0,
         prize_type: String(col('prize_type') ? row[col('prize_type')!] : '').trim(),
         title: col('title') ? String(row[col('title')!] || '').trim() : undefined,
-        prize_datetime: col('prize_datetime') ? row[col('prize_datetime')!] : null,
+        prize_datetime: col('prize_datetime') ? convertExcelDate(row[col('prize_datetime')!]) : null,
       }));
 
       const result = await checkDuplicatesAndValidate(mapped);
@@ -155,6 +167,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
       setStep('done');
     } catch (error: any) {
       console.error('Import failed:', error);
+      toast.error('Erro ao importar: ' + (error?.message || 'Erro desconhecido'));
     }
   };
 
