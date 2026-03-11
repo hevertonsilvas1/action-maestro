@@ -270,49 +270,87 @@ export function WindowMessagesTab() {
   const openTest = (msg: WindowMessage) => {
     setTestingId(msg.id);
     setTestPhone('');
+    setTestResult(null);
     setTestDialogOpen(true);
+  };
+
+  const normalizePhoneForAutomation = (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('55') && digits.length >= 12) return digits;
+    if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+    return digits;
   };
 
   const handleTest = async () => {
     const msg = messages.find(m => m.id === testingId);
     if (!msg || !testPhone.trim()) return;
+
+    const payload = {
+      nome: 'Teste',
+      tel: normalizePhoneForAutomation(testPhone),
+      acao: 'Ação de teste',
+      tipo_premio: 'Giro da Sorte',
+      valor: 200,
+      receipt_url: 'https://seusistema.com/storage/comprovante.pdf',
+    };
+
     setTesting(true);
+    setTestResult(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('test-webhook', {
-        body: { url: msg.unnichat_trigger_url, payload: {
-          nome: 'Teste',
-          telefone: (() => {
-            const digits = testPhone.replace(/\D/g, '');
-            if (digits.startsWith('55') && digits.length >= 12) return `+${digits}`;
-            if (digits.length === 11) return `+55${digits}`;
-            if (digits.length === 10) return `+55${digits.substring(0,2)}9${digits.substring(2)}`;
-            return `+${digits}`;
-          })(),
-          acao: 'Ação de teste',
-          valor: 0,
-          premio: 'Teste',
-          ganhador_id: '00000000-0000-0000-0000-000000000000',
-          action_id: '00000000-0000-0000-0000-000000000000',
-        }},
+        body: { url: msg.unnichat_trigger_url, payload },
       });
 
       if (error) {
+        setTestResult({
+          success: false,
+          url_called: msg.unnichat_trigger_url,
+          http_method: 'POST',
+          payload_sent: payload,
+          error: error.message,
+        });
         toast({ title: 'Erro ao testar', description: error.message, variant: 'destructive' });
-      } else if (data?.success) {
-        toast({ title: '✅ Teste enviado com sucesso', description: `Status ${data.status} — Verifique no UnniChat.` });
+        return;
+      }
+
+      const result = (data || {}) as TestAutomationResult;
+      const finalResult: TestAutomationResult = {
+        success: !!result.success,
+        url_called: result.url_called || msg.unnichat_trigger_url,
+        http_method: result.http_method || 'POST',
+        payload_sent: result.payload_sent || payload,
+        status_code: result.status_code,
+        status_text: result.status_text,
+        response_body: result.response_body,
+        error: result.error,
+      };
+
+      setTestResult(finalResult);
+
+      if (finalResult.success) {
+        toast({ title: '✅ Teste enviado', description: `Status ${finalResult.status_code ?? 200}` });
       } else {
-        const detail = data?.response_body
-          ? `Status ${data.status}: ${data.response_body.substring(0, 200)}`
-          : (data?.error || `Status ${data?.status}`);
-        toast({ title: 'Erro na automação', description: detail, variant: 'destructive' });
+        toast({
+          title: 'Erro na automação',
+          description: finalResult.error || finalResult.response_body || `Status ${finalResult.status_code ?? 'desconhecido'}`,
+          variant: 'destructive',
+        });
       }
     } catch (err: any) {
-      toast({ title: 'Erro ao testar', description: err.message, variant: 'destructive' });
+      const message = err?.message || 'Erro desconhecido';
+      setTestResult({
+        success: false,
+        url_called: msg.unnichat_trigger_url,
+        http_method: 'POST',
+        payload_sent: payload,
+        error: message,
+      });
+      toast({ title: 'Erro ao testar', description: message, variant: 'destructive' });
+    } finally {
+      setTesting(false);
     }
-
-    setTesting(false);
-    setTestDialogOpen(false);
   };
 
   /* ── Helpers ── */
