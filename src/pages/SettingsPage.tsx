@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/AppLayout';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings2, User, Webhook, Tags, Clock, MessageSquare } from 'lucide-react';
+import { Settings2, User, Webhook, Tags, Clock, Zap } from 'lucide-react';
 import { GeneralTab } from '@/components/settings/GeneralTab';
 import { UserTab } from '@/components/settings/UserTab';
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab';
@@ -59,8 +59,8 @@ export default function SettingsPage() {
             )}
             {isAdmin && (
               <TabsTrigger value="window-messages" className="gap-1.5">
-                <MessageSquare className="h-3.5 w-3.5" />
-                Mensagens
+                <Zap className="h-3.5 w-3.5" />
+                Automações
               </TabsTrigger>
             )}
           </TabsList>

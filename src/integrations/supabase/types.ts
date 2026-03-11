@@ -558,7 +558,7 @@ export type Database = {
         Row: {
           allow_variables: boolean
           auto_use: boolean
-          content: string
+          content: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -576,7 +576,7 @@ export type Database = {
         Insert: {
           allow_variables?: boolean
           auto_use?: boolean
-          content: string
+          content?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -594,7 +594,7 @@ export type Database = {
         Update: {
           allow_variables?: boolean
           auto_use?: boolean
-          content?: string
+          content?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
