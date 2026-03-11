@@ -1476,6 +1476,14 @@ export default function ActionDetailPage() {
         onDone={() => setSelectedWinnerIds(new Set())}
       />
 
+      <BulkDeleteWinnersDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        winners={selectedWinners}
+        actionsMap={action ? { [action.id]: action.name } : {}}
+        onDone={() => setSelectedWinnerIds(new Set())}
+      />
+
       {action && (
         <PixDataModal
           open={!!pixTarget}
