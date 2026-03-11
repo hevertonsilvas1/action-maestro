@@ -136,7 +136,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
         value: col('value') ? row[col('value')!] : 0,
         prize_type: String(col('prize_type') ? row[col('prize_type')!] : '').trim(),
         title: col('title') ? String(row[col('title')!] || '').trim() : undefined,
-        prize_datetime: col('prize_datetime') ? row[col('prize_datetime')!] : null,
+        prize_datetime: col('prize_datetime') ? convertExcelDate(row[col('prize_datetime')!]) : null,
       }));
 
       const result = await checkDuplicatesAndValidate(mapped);
