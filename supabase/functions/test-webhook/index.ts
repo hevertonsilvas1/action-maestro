@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { url } = await req.json() as { url: string };
+    const { url, payload } = await req.json() as { url: string; payload?: Record<string, unknown> };
 
     if (!url || !url.startsWith("http")) {
       return new Response(
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true, source: "actionpay", timestamp: new Date().toISOString() }),
+        body: JSON.stringify(payload || { test: true, source: "actionpay", timestamp: new Date().toISOString() }),
         signal: controller.signal,
       });
       clearTimeout(timeout);

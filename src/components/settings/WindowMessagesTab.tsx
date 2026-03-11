@@ -268,13 +268,8 @@ export function WindowMessagesTab() {
     setTesting(true);
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
-      const res = await fetch(msg.unnichat_trigger_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('test-webhook', {
+        body: { url: msg.unnichat_trigger_url, payload: {
           nome: 'Teste',
           telefone: testPhone.replace(/\D/g, ''),
           acao: 'Ação de teste',
@@ -282,19 +277,18 @@ export function WindowMessagesTab() {
           premio: 'Teste',
           ganhador_id: '00000000-0000-0000-0000-000000000000',
           action_id: '00000000-0000-0000-0000-000000000000',
-        }),
-        signal: controller.signal,
+        }},
       });
 
-      clearTimeout(timeout);
-
-      if (res.ok) {
-        toast({ title: 'Teste enviado', description: `Status ${res.status} — Verifique no UnniChat.` });
+      if (error) {
+        toast({ title: 'Erro ao testar', description: error.message, variant: 'destructive' });
+      } else if (data?.success) {
+        toast({ title: 'Teste enviado', description: `Status ${data.status} — Verifique no UnniChat.` });
       } else {
-        toast({ title: 'Resposta inesperada', description: `Status ${res.status} ${res.statusText}`, variant: 'destructive' });
+        toast({ title: 'Resposta inesperada', description: data?.error || `Status ${data?.status}`, variant: 'destructive' });
       }
     } catch (err: any) {
-      toast({ title: 'Erro ao testar', description: err.name === 'AbortError' ? 'Timeout: sem resposta em 10s' : err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao testar', description: err.message, variant: 'destructive' });
     }
 
     setTesting(false);
