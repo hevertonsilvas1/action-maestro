@@ -1,17 +1,19 @@
 /**
- * Shared helper to fetch active window messages from the window_messages table.
- * Used by edge functions to get the correct UnniChat trigger URL and message content
- * based on message type, scope, priority and context.
+ * Shared helper to fetch active automation triggers from the window_messages table.
+ * Used by edge functions to get the correct UnniChat trigger URL
+ * based on type, scope, priority and context.
+ *
+ * This system is an orchestrator — it does NOT store message content.
+ * The actual message text lives in the automation platform (UnniChat).
+ * This helper resolves WHICH automation URL to call and builds the operational payload.
  */
 
 export interface WindowMessage {
   id: string;
   name: string;
   type: string;
-  content: string;
   unnichat_trigger_url: string;
   is_active: boolean;
-  allow_variables: boolean;
   auto_use: boolean;
   usage_condition: string | null;
   trigger_rule: string | null;
@@ -30,7 +32,34 @@ export interface WindowMessageQuery {
 }
 
 /**
- * Fetch the best matching active window message by type, applying scope priority:
+ * Build the standard operational payload sent to the automation platform.
+ */
+export function buildPayload(vars: {
+  nome?: string;
+  telefone?: string;
+  acao?: string;
+  valor?: number;
+  premio?: string;
+  ganhador_id?: string;
+  action_id?: string;
+  [key: string]: unknown;
+}): Record<string, unknown> {
+  return {
+    nome: vars.nome ?? '',
+    telefone: vars.telefone ?? '',
+    acao: vars.acao ?? '',
+    valor: vars.valor ?? 0,
+    premio: vars.premio ?? '',
+    ganhador_id: vars.ganhador_id ?? '',
+    action_id: vars.action_id ?? '',
+    ...Object.fromEntries(
+      Object.entries(vars).filter(([k]) => !['nome','telefone','acao','valor','premio','ganhador_id','action_id'].includes(k))
+    ),
+  };
+}
+
+/**
+ * Fetch the best matching active automation trigger by type, applying scope priority:
  * 1. action-specific → 2. prize_type-specific → 3. operational_context → 4. global
  * Within the same scope level, uses the lowest priority number.
  */
@@ -41,7 +70,7 @@ export async function getWindowMessage(
 ): Promise<WindowMessage | null> {
   let query = client
     .from("window_messages")
-    .select("*")
+    .select("id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority")
     .eq("type", type)
     .eq("is_active", true);
 
@@ -82,23 +111,6 @@ export async function getWindowMessage(
     if (match) return match;
   }
 
-  // Fallback to global (already sorted by priority)
   const globalMatch = messages.find(m => m.scope === 'global');
   return globalMatch || messages[0];
-}
-
-/**
- * Replace supported variables in a message content string.
- * Supported: {{nome}}, {{acao}}, {{valor}}, {{premio}}
- */
-export function replaceVariables(
-  content: string,
-  variables: Record<string, string | undefined>
-): string {
-  let result = content;
-  if (variables.nome) result = result.replace(/\{\{nome\}\}/g, variables.nome);
-  if (variables.acao) result = result.replace(/\{\{acao\}\}/g, variables.acao);
-  if (variables.valor) result = result.replace(/\{\{valor\}\}/g, variables.valor);
-  if (variables.premio) result = result.replace(/\{\{premio\}\}/g, variables.premio);
-  return result;
 }

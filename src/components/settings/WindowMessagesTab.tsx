@@ -13,8 +13,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Loader2, Link2, Link2Off, Variable, Zap, MessageSquare } from 'lucide-react';
+import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2 } from 'lucide-react';
 import { Constants } from '@/integrations/supabase/types';
+
+/* ───────── constants ───────── */
 
 const MESSAGE_TYPES = [
   { value: 'abertura_janela', label: 'Abertura de janela', description: 'Iniciar ou reabrir conversa operacional' },
@@ -53,18 +55,28 @@ const OPERATIONAL_CONTEXT_OPTIONS = [
   { value: 'cliente_nao_respondeu', label: 'Cliente não respondeu' },
   { value: 'pix_recusado', label: 'PIX recusado' },
   { value: 'numero_inexistente', label: 'Número inexistente' },
+  { value: 'janela_fechada', label: 'Janela fechada' },
+  { value: 'aguardando_chave_pix', label: 'Aguardando chave PIX' },
 ];
 
-const AVAILABLE_VARIABLES = ['{{nome}}', '{{acao}}', '{{valor}}', '{{premio}}'];
+const PAYLOAD_PREVIEW = `{
+  "nome": "João",
+  "telefone": "5573999999999",
+  "acao": "153 - Corolla Altis + 100 mil",
+  "valor": 200,
+  "premio": "Giro da Sorte",
+  "ganhador_id": "uuid",
+  "action_id": "uuid"
+}`;
+
+/* ───────── types ───────── */
 
 interface WindowMessage {
   id: string;
   name: string;
   type: string;
-  content: string;
   unnichat_trigger_url: string;
   is_active: boolean;
-  allow_variables: boolean;
   auto_use: boolean;
   usage_condition: string | null;
   trigger_rule: string | null;
@@ -76,15 +88,25 @@ interface WindowMessage {
   updated_at: string;
 }
 
-type FormData = Omit<WindowMessage, 'id' | 'created_at' | 'updated_at'>;
+interface FormData {
+  name: string;
+  type: string;
+  unnichat_trigger_url: string;
+  is_active: boolean;
+  auto_use: boolean;
+  usage_condition: string | null;
+  trigger_rule: string | null;
+  notes: string | null;
+  scope: string;
+  scope_value: string | null;
+  priority: number;
+}
 
 const emptyForm: FormData = {
   name: '',
   type: 'abertura_janela',
-  content: '',
   unnichat_trigger_url: '',
   is_active: true,
-  allow_variables: false,
   auto_use: false,
   usage_condition: null,
   trigger_rule: null,
@@ -94,8 +116,9 @@ const emptyForm: FormData = {
   priority: 1,
 };
 
+/* ───────── component ───────── */
+
 export function WindowMessagesTab() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<WindowMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +127,12 @@ export function WindowMessagesTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
 
-  // Load actions for scope selector
+  // Test modal
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+
   const { data: actions } = useQuery({
     queryKey: ['actions-list-simple'],
     queryFn: async () => {
@@ -117,12 +145,12 @@ export function WindowMessagesTab() {
     setLoading(true);
     const { data, error } = await supabase
       .from('window_messages')
-      .select('*')
+      .select('id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority, created_at, updated_at')
       .order('type')
       .order('priority')
       .order('name');
     if (error) {
-      toast({ title: 'Erro ao carregar mensagens', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao carregar automações', description: error.message, variant: 'destructive' });
     } else {
       setMessages((data as unknown as WindowMessage[]) || []);
     }
@@ -130,6 +158,8 @@ export function WindowMessagesTab() {
   };
 
   useEffect(() => { fetchMessages(); }, []);
+
+  /* ── CRUD ── */
 
   const openCreate = () => {
     setEditingId(null);
@@ -142,10 +172,26 @@ export function WindowMessagesTab() {
     setForm({
       name: msg.name,
       type: msg.type,
-      content: msg.content,
       unnichat_trigger_url: msg.unnichat_trigger_url,
       is_active: msg.is_active,
-      allow_variables: msg.allow_variables,
+      auto_use: msg.auto_use,
+      usage_condition: msg.usage_condition,
+      trigger_rule: msg.trigger_rule,
+      notes: msg.notes,
+      scope: msg.scope,
+      scope_value: msg.scope_value,
+      priority: msg.priority,
+    });
+    setDialogOpen(true);
+  };
+
+  const openDuplicate = (msg: WindowMessage) => {
+    setEditingId(null);
+    setForm({
+      name: `${msg.name} (cópia)`,
+      type: msg.type,
+      unnichat_trigger_url: msg.unnichat_trigger_url,
+      is_active: false,
       auto_use: msg.auto_use,
       usage_condition: msg.usage_condition,
       trigger_rule: msg.trigger_rule,
@@ -158,18 +204,18 @@ export function WindowMessagesTab() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.content.trim() || !form.unnichat_trigger_url.trim()) {
-      toast({ title: 'Preencha os campos obrigatórios', description: 'Nome, conteúdo e link do UnniChat são obrigatórios.', variant: 'destructive' });
+    if (!form.name.trim() || !form.unnichat_trigger_url.trim()) {
+      toast({ title: 'Preencha os campos obrigatórios', description: 'Nome e URL de acionamento são obrigatórios.', variant: 'destructive' });
       return;
     }
     setSaving(true);
     const payload = {
       name: form.name.trim(),
       type: form.type,
-      content: form.content.trim(),
+      content: '',
       unnichat_trigger_url: form.unnichat_trigger_url.trim(),
       is_active: form.is_active,
-      allow_variables: form.allow_variables,
+      allow_variables: false,
       auto_use: form.auto_use,
       usage_condition: form.usage_condition?.trim() || null,
       trigger_rule: form.trigger_rule?.trim() || null,
@@ -189,7 +235,7 @@ export function WindowMessagesTab() {
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: editingId ? 'Mensagem atualizada' : 'Mensagem criada' });
+      toast({ title: editingId ? 'Automação atualizada' : 'Automação criada' });
       setDialogOpen(false);
       fetchMessages();
     }
@@ -208,9 +254,54 @@ export function WindowMessagesTab() {
     }
   };
 
-  const insertVariable = (variable: string) => {
-    setForm(prev => ({ ...prev, content: prev.content + variable }));
+  /* ── Test automation ── */
+
+  const openTest = (msg: WindowMessage) => {
+    setTestingId(msg.id);
+    setTestPhone('');
+    setTestDialogOpen(true);
   };
+
+  const handleTest = async () => {
+    const msg = messages.find(m => m.id === testingId);
+    if (!msg || !testPhone.trim()) return;
+    setTesting(true);
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch(msg.unnichat_trigger_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: 'Teste',
+          telefone: testPhone.replace(/\D/g, ''),
+          acao: 'Ação de teste',
+          valor: 0,
+          premio: 'Teste',
+          ganhador_id: '00000000-0000-0000-0000-000000000000',
+          action_id: '00000000-0000-0000-0000-000000000000',
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        toast({ title: 'Teste enviado', description: `Status ${res.status} — Verifique no UnniChat.` });
+      } else {
+        toast({ title: 'Resposta inesperada', description: `Status ${res.status} ${res.statusText}`, variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro ao testar', description: err.name === 'AbortError' ? 'Timeout: sem resposta em 10s' : err.message, variant: 'destructive' });
+    }
+
+    setTesting(false);
+    setTestDialogOpen(false);
+  };
+
+  /* ── Helpers ── */
 
   const getScopeLabel = (msg: WindowMessage) => {
     if (msg.scope === 'global') return 'Global';
@@ -242,22 +333,22 @@ export function WindowMessagesTab() {
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Mensagens de Janela
+              <Settings2 className="h-4 w-4" />
+              Automações de Janela
             </CardTitle>
             <CardDescription>
-              Gerencie as mensagens operacionais vinculadas ao UnniChat para controle da janela de atendimento do WhatsApp.
+              Gerencie os gatilhos de automação vinculados ao UnniChat. O conteúdo das mensagens é configurado diretamente na plataforma de automação — aqui você controla quando e como cada gatilho é acionado.
             </CardDescription>
           </div>
           <Button size="sm" onClick={openCreate} className="gap-1.5">
             <Plus className="h-3.5 w-3.5" />
-            Nova mensagem
+            Nova automação
           </Button>
         </CardHeader>
         <CardContent>
           {messages.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              Nenhuma mensagem cadastrada. Clique em "Nova mensagem" para começar.
+              Nenhuma automação cadastrada. Clique em "Nova automação" para começar.
             </p>
           ) : (
             <div className="rounded-md border">
@@ -270,8 +361,7 @@ export function WindowMessagesTab() {
                     <TableHead className="text-center">Prioridade</TableHead>
                     <TableHead className="text-center">Ativa</TableHead>
                     <TableHead className="text-center">Auto</TableHead>
-                    <TableHead className="text-center">Variáveis</TableHead>
-                    <TableHead className="text-center">Link</TableHead>
+                    <TableHead className="text-center">URL</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -291,21 +381,11 @@ export function WindowMessagesTab() {
                         <Badge variant="secondary" className="text-xs font-mono">{msg.priority}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Switch
-                          checked={msg.is_active}
-                          onCheckedChange={() => toggleActive(msg)}
-                        />
+                        <Switch checked={msg.is_active} onCheckedChange={() => toggleActive(msg)} />
                       </TableCell>
                       <TableCell className="text-center">
                         {msg.auto_use ? (
                           <Zap className="h-4 w-4 text-amber-500 mx-auto" />
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {msg.allow_variables ? (
-                          <Variable className="h-4 w-4 text-blue-500 mx-auto" />
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
@@ -318,9 +398,17 @@ export function WindowMessagesTab() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(msg)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(msg)} title="Editar">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openDuplicate(msg)} title="Duplicar">
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openTest(msg)} title="Testar">
+                            <Play className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -331,30 +419,41 @@ export function WindowMessagesTab() {
         </CardContent>
       </Card>
 
-      {/* Create / Edit Dialog */}
+      {/* ── Payload reference ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Payload enviado nas automações</CardTitle>
+          <CardDescription>
+            Ao acionar um gatilho, o sistema envia automaticamente os seguintes dados operacionais via POST. Use essas variáveis para personalizar o fluxo na plataforma de automação.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto font-mono">{PAYLOAD_PREVIEW}</pre>
+        </CardContent>
+      </Card>
+
+      {/* ── Create / Edit Dialog ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar mensagem' : 'Nova mensagem'}</DialogTitle>
+            <DialogTitle>{editingId ? 'Editar automação' : 'Nova automação'}</DialogTitle>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
-            {/* Row 1: Name + Type */}
+            {/* Name + Type */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nome interno *</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Ex: Reabertura padrão"
+                  placeholder="Ex: Abrir janela – confirmação comprovante"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Tipo *</Label>
                 <Select value={form.type} onValueChange={(v) => setForm(prev => ({ ...prev, type: v }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {MESSAGE_TYPES.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
@@ -369,42 +468,17 @@ export function WindowMessagesTab() {
               </div>
             </div>
 
-            {/* Content */}
+            {/* URL */}
             <div className="space-y-2">
-              <Label>Conteúdo da mensagem *</Label>
-              <Textarea
-                value={form.content}
-                onChange={(e) => setForm(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Digite o texto da mensagem..."
-                rows={4}
-              />
-              {form.allow_variables && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs text-muted-foreground">Variáveis:</span>
-                  {AVAILABLE_VARIABLES.map((v) => (
-                    <Button
-                      key={v}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-xs px-2"
-                      onClick={() => insertVariable(v)}
-                    >
-                      {v}
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* UnniChat URL */}
-            <div className="space-y-2">
-              <Label>Link de acionamento do UnniChat *</Label>
+              <Label>URL de acionamento da automação *</Label>
               <Input
                 value={form.unnichat_trigger_url}
                 onChange={(e) => setForm(prev => ({ ...prev, unnichat_trigger_url: e.target.value }))}
-                placeholder="https://..."
+                placeholder="https://api.unnichat.com/webhook/xxxxx"
               />
+              <p className="text-xs text-muted-foreground">
+                Endpoint que receberá um POST com o payload operacional quando esta automação for acionada.
+              </p>
             </div>
 
             {/* Scope + Priority */}
@@ -412,9 +486,7 @@ export function WindowMessagesTab() {
               <div className="space-y-2">
                 <Label>Escopo</Label>
                 <Select value={form.scope} onValueChange={(v) => setForm(prev => ({ ...prev, scope: v, scope_value: null }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SCOPE_OPTIONS.map((s) => (
                       <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
@@ -435,14 +507,12 @@ export function WindowMessagesTab() {
               </div>
             </div>
 
-            {/* Scope value selector */}
+            {/* Scope value selectors */}
             {form.scope === 'action' && (
               <div className="space-y-2">
                 <Label>Selecionar ação</Label>
                 <Select value={form.scope_value || ''} onValueChange={(v) => setForm(prev => ({ ...prev, scope_value: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha uma ação" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Escolha uma ação" /></SelectTrigger>
                   <SelectContent>
                     {(actions || []).map((a: any) => (
                       <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -456,9 +526,7 @@ export function WindowMessagesTab() {
               <div className="space-y-2">
                 <Label>Tipo de prêmio</Label>
                 <Select value={form.scope_value || ''} onValueChange={(v) => setForm(prev => ({ ...prev, scope_value: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha o tipo" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Escolha o tipo" /></SelectTrigger>
                   <SelectContent>
                     {PRIZE_TYPE_OPTIONS.map((p) => (
                       <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
@@ -472,9 +540,7 @@ export function WindowMessagesTab() {
               <div className="space-y-2">
                 <Label>Contexto operacional</Label>
                 <Select value={form.scope_value || ''} onValueChange={(v) => setForm(prev => ({ ...prev, scope_value: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha o contexto" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Escolha o contexto" /></SelectTrigger>
                   <SelectContent>
                     {OPERATIONAL_CONTEXT_OPTIONS.map((c) => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
@@ -485,20 +551,13 @@ export function WindowMessagesTab() {
             )}
 
             {/* Toggles */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <Switch
                   checked={form.is_active}
                   onCheckedChange={(v) => setForm(prev => ({ ...prev, is_active: v }))}
                 />
                 <Label className="cursor-pointer">Ativa</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.allow_variables}
-                  onCheckedChange={(v) => setForm(prev => ({ ...prev, allow_variables: v }))}
-                />
-                <Label className="cursor-pointer">Usa variáveis</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
@@ -520,7 +579,7 @@ export function WindowMessagesTab() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Regra/tempo de disparo</Label>
+                <Label>Regra de disparo</Label>
                 <Input
                   value={form.trigger_rule || ''}
                   onChange={(e) => setForm(prev => ({ ...prev, trigger_rule: e.target.value }))}
@@ -535,7 +594,7 @@ export function WindowMessagesTab() {
               <Textarea
                 value={form.notes || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Anotações sobre esta mensagem..."
+                placeholder="Anotações administrativas sobre esta automação..."
                 rows={2}
               />
             </div>
@@ -546,6 +605,35 @@ export function WindowMessagesTab() {
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {editingId ? 'Salvar' : 'Criar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Test Dialog ── */}
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Testar automação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Telefone de teste</Label>
+              <Input
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                placeholder="5573999999999"
+              />
+              <p className="text-xs text-muted-foreground">
+                O sistema enviará um POST de teste para a URL configurada com dados fictícios.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleTest} disabled={testing || !testPhone.trim()}>
+              {testing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Enviar teste
             </Button>
           </DialogFooter>
         </DialogContent>
