@@ -169,34 +169,17 @@ Deno.serve(async (req) => {
       return jsonRes({ error: errMsg }, 500);
     }
 
-    // Build payload — operational data sent to the automation platform
-    let payloadBody: Record<string, unknown>;
-    if (isConfirmation) {
-      payloadBody = buildPayload({
-        nome: winner_name,
-        telefone: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164 || '',
-        acao: action_name,
-        valor: prize_value,
-        premio: prize_title,
-        ganhador_id: winner_id,
-        action_id: w.action_id,
-      });
-    } else {
-      // Use short proxy URL via download-receipt function with filename in path
-      const receiptName = w.receipt_filename || "comprovante.pdf";
-      const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${winner_id}`;
-
-      payloadBody = {
-        tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
-        nome: winner_name,
-        acao: action_name,
-        tipo_premio: prize_title,
-        valor: String(prize_value),
-        comprovante_url: shortUrl,
-        comprovante_filename: receiptName,
-        row_number: 0,
-      };
-    }
+    // Build payload — JSON plano esperado pelo gatilho do UnniChat
+    const receiptName = w.receipt_filename || "comprovante.pdf";
+    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${winner_id}`;
+    const payloadBody = buildPayload({
+      nome: winner_name,
+      tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164 || "",
+      acao: action_name,
+      tipo_premio: prize_title,
+      valor: prize_value,
+      receipt_url: shortUrl,
+    });
 
     // Send to UnniChat
     const resp = await fetch(unnichatUrl, {
@@ -218,7 +201,7 @@ Deno.serve(async (req) => {
         action_id, action_name, table_name: "winners", record_id: winner_id,
         operation: isConfirmation ? "template_reopen_falha" : opFail,
         user_id: user.id, user_name: isAuto ? `${userName} (auto)` : userName, user_role: userRole,
-        changes: { winner_name, error: errorMsg, trigger: triggerSource || "manual" },
+        changes: { winner_name, error: errorMsg, upstream_response: errText.substring(0, 500), trigger: triggerSource || "manual" },
       });
       await saveError(svc, winner_id, `Erro envio: ${errorMsg}`);
       return jsonRes({ success: false, error: errorMsg });

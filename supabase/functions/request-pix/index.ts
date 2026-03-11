@@ -171,20 +171,24 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Normalize phone to E.164 ---
+        // --- Normalize phone and send in plain digits (55...) ---
         const normalizedPhone = normalizePhoneE164(w.winner_phone) || w.winner_phone;
+        const phoneDigits = (normalizedPhone || "").replace(/\D/g, "");
+        const tel = phoneDigits
+          ? (phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`)
+          : "";
 
         // --- Send to UnniChat ---
         const unnichatResponse = await fetch(unnichatUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tel: normalizedPhone,
             nome: w.winner_name,
+            tel,
             acao: w.action_name,
             tipo_premio: w.prize_title,
-            valor: String(w.prize_value),
-            row_number: 0,
+            valor: w.prize_value,
+            receipt_url: "",
           }),
         });
 

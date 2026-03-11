@@ -33,28 +33,39 @@ export interface WindowMessageQuery {
 
 /**
  * Build the standard operational payload sent to the automation platform.
+ * UnniChat espera JSON plano com estas chaves exatas.
  */
 export function buildPayload(vars: {
   nome?: string;
-  telefone?: string;
+  tel?: string;
   acao?: string;
-  valor?: number;
+  tipo_premio?: string;
+  valor?: number | string;
+  receipt_url?: string;
+  // aliases legadas (mantidas para compatibilidade)
+  telefone?: string;
   premio?: string;
-  ganhador_id?: string;
-  action_id?: string;
-  [key: string]: unknown;
+  comprovante_url?: string;
 }): Record<string, unknown> {
+  const phoneDigits = String(vars.tel ?? vars.telefone ?? "").replace(/\D/g, "");
+  const tel = phoneDigits
+    ? (phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`)
+    : "";
+
+  const numericValue =
+    typeof vars.valor === "number"
+      ? vars.valor
+      : Number.isFinite(Number(vars.valor))
+        ? Number(vars.valor)
+        : 0;
+
   return {
-    nome: vars.nome ?? '',
-    telefone: vars.telefone ?? '',
-    acao: vars.acao ?? '',
-    valor: vars.valor ?? 0,
-    premio: vars.premio ?? '',
-    ganhador_id: vars.ganhador_id ?? '',
-    action_id: vars.action_id ?? '',
-    ...Object.fromEntries(
-      Object.entries(vars).filter(([k]) => !['nome','telefone','acao','valor','premio','ganhador_id','action_id'].includes(k))
-    ),
+    nome: vars.nome ?? "",
+    tel,
+    acao: vars.acao ?? "",
+    tipo_premio: vars.tipo_premio ?? vars.premio ?? "",
+    valor: numericValue,
+    receipt_url: vars.receipt_url ?? vars.comprovante_url ?? "",
   };
 }
 

@@ -61,12 +61,11 @@ const OPERATIONAL_CONTEXT_OPTIONS = [
 
 const PAYLOAD_PREVIEW = `{
   "nome": "João",
-  "telefone": "5573999999999",
+  "tel": "5573999999999",
   "acao": "153 - Corolla Altis + 100 mil",
+  "tipo_premio": "Giro da Sorte",
   "valor": 200,
-  "premio": "Giro da Sorte",
-  "ganhador_id": "uuid",
-  "action_id": "uuid"
+  "receipt_url": "https://seusistema.com/storage/comprovante.pdf"
 }`;
 
 /* ───────── types ───────── */
@@ -102,6 +101,17 @@ interface FormData {
   priority: number;
 }
 
+interface TestAutomationResult {
+  success: boolean;
+  url_called?: string;
+  http_method?: string;
+  payload_sent?: Record<string, unknown>;
+  status_code?: number;
+  status_text?: string;
+  response_body?: string;
+  error?: string;
+}
+
 const emptyForm: FormData = {
   name: '',
   type: 'abertura_janela',
@@ -132,6 +142,7 @@ export function WindowMessagesTab() {
   const [testPhone, setTestPhone] = useState('');
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<TestAutomationResult | null>(null);
 
   const { data: actions } = useQuery({
     queryKey: ['actions-list-simple'],
@@ -259,49 +270,87 @@ export function WindowMessagesTab() {
   const openTest = (msg: WindowMessage) => {
     setTestingId(msg.id);
     setTestPhone('');
+    setTestResult(null);
     setTestDialogOpen(true);
+  };
+
+  const normalizePhoneForAutomation = (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('55') && digits.length >= 12) return digits;
+    if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+    return digits;
   };
 
   const handleTest = async () => {
     const msg = messages.find(m => m.id === testingId);
     if (!msg || !testPhone.trim()) return;
+
+    const payload = {
+      nome: 'Teste',
+      tel: normalizePhoneForAutomation(testPhone),
+      acao: 'Ação de teste',
+      tipo_premio: 'Giro da Sorte',
+      valor: 200,
+      receipt_url: 'https://seusistema.com/storage/comprovante.pdf',
+    };
+
     setTesting(true);
+    setTestResult(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('test-webhook', {
-        body: { url: msg.unnichat_trigger_url, payload: {
-          nome: 'Teste',
-          telefone: (() => {
-            const digits = testPhone.replace(/\D/g, '');
-            if (digits.startsWith('55') && digits.length >= 12) return `+${digits}`;
-            if (digits.length === 11) return `+55${digits}`;
-            if (digits.length === 10) return `+55${digits.substring(0,2)}9${digits.substring(2)}`;
-            return `+${digits}`;
-          })(),
-          acao: 'Ação de teste',
-          valor: 0,
-          premio: 'Teste',
-          ganhador_id: '00000000-0000-0000-0000-000000000000',
-          action_id: '00000000-0000-0000-0000-000000000000',
-        }},
+        body: { url: msg.unnichat_trigger_url, payload },
       });
 
       if (error) {
+        setTestResult({
+          success: false,
+          url_called: msg.unnichat_trigger_url,
+          http_method: 'POST',
+          payload_sent: payload,
+          error: error.message,
+        });
         toast({ title: 'Erro ao testar', description: error.message, variant: 'destructive' });
-      } else if (data?.success) {
-        toast({ title: '✅ Teste enviado com sucesso', description: `Status ${data.status} — Verifique no UnniChat.` });
+        return;
+      }
+
+      const result = (data || {}) as TestAutomationResult;
+      const finalResult: TestAutomationResult = {
+        success: !!result.success,
+        url_called: result.url_called || msg.unnichat_trigger_url,
+        http_method: result.http_method || 'POST',
+        payload_sent: result.payload_sent || payload,
+        status_code: result.status_code,
+        status_text: result.status_text,
+        response_body: result.response_body,
+        error: result.error,
+      };
+
+      setTestResult(finalResult);
+
+      if (finalResult.success) {
+        toast({ title: '✅ Teste enviado', description: `Status ${finalResult.status_code ?? 200}` });
       } else {
-        const detail = data?.response_body
-          ? `Status ${data.status}: ${data.response_body.substring(0, 200)}`
-          : (data?.error || `Status ${data?.status}`);
-        toast({ title: 'Erro na automação', description: detail, variant: 'destructive' });
+        toast({
+          title: 'Erro na automação',
+          description: finalResult.error || finalResult.response_body || `Status ${finalResult.status_code ?? 'desconhecido'}`,
+          variant: 'destructive',
+        });
       }
     } catch (err: any) {
-      toast({ title: 'Erro ao testar', description: err.message, variant: 'destructive' });
+      const message = err?.message || 'Erro desconhecido';
+      setTestResult({
+        success: false,
+        url_called: msg.unnichat_trigger_url,
+        http_method: 'POST',
+        payload_sent: payload,
+        error: message,
+      });
+      toast({ title: 'Erro ao testar', description: message, variant: 'destructive' });
+    } finally {
+      setTesting(false);
     }
-
-    setTesting(false);
-    setTestDialogOpen(false);
   };
 
   /* ── Helpers ── */
@@ -628,9 +677,28 @@ export function WindowMessagesTab() {
                 placeholder="5573999999999"
               />
               <p className="text-xs text-muted-foreground">
-                O sistema enviará um POST de teste para a URL configurada com dados fictícios.
+                O sistema envia POST com JSON plano: nome, tel, acao, tipo_premio, valor, receipt_url.
               </p>
             </div>
+
+            {testResult && (
+              <div className="space-y-2">
+                <Label>Resultado do teste</Label>
+                <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-xs">
+                  <p><span className="font-medium">URL:</span> {testResult.url_called || '-'}</p>
+                  <p><span className="font-medium">Método:</span> {testResult.http_method || 'POST'}</p>
+                  <p><span className="font-medium">Status:</span> {testResult.status_code ?? '-'} {testResult.status_text || ''}</p>
+                  <div>
+                    <p className="font-medium mb-1">Payload enviado</p>
+                    <pre className="bg-background border rounded p-2 overflow-x-auto">{JSON.stringify(testResult.payload_sent || {}, null, 2)}</pre>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-1">Resposta do UnniChat</p>
+                    <pre className="bg-background border rounded p-2 overflow-x-auto whitespace-pre-wrap">{testResult.response_body || testResult.error || '-'}</pre>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTestDialogOpen(false)}>Cancelar</Button>
