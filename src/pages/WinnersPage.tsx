@@ -61,6 +61,9 @@ export default function WinnersPage() {
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
+  const [importActionSelectorOpen, setImportActionSelectorOpen] = useState(false);
+  const [importActionId, setImportActionId] = useState<string>('');
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
