@@ -735,6 +735,7 @@ export default function ActionDetailPage() {
                             <td className="px-3 py-2.5 text-center">
                               <TimeInStatusBadge
                                 ms={liveTimeInStatus[w.id]}
+                                status={w.status}
                                 warningMinutes={warningMin}
                                 criticalMinutes={criticalMin}
                               />
@@ -851,7 +852,7 @@ export default function ActionDetailPage() {
                         <span className="font-semibold shrink-0">{formatCurrency(w.value)}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <TimeInStatusBadge ms={liveTimeInStatus[w.id]} warningMinutes={warningMin} criticalMinutes={criticalMin} />
+                        <TimeInStatusBadge ms={liveTimeInStatus[w.id]} status={w.status} warningMinutes={warningMin} criticalMinutes={criticalMin} />
                         {w.ultimaInteracaoWhatsapp && (
                           <Badge
                             variant="outline"

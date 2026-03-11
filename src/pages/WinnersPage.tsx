@@ -367,6 +367,7 @@ export default function WinnersPage() {
                           <td className="px-3 py-2.5 text-center">
                             <TimeInStatusBadge
                               ms={liveTimeInStatus[w.id]}
+                              status={w.status}
                               warningMinutes={warningMin}
                               criticalMinutes={criticalMin}
                             />
