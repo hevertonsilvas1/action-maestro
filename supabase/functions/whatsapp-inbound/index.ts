@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getWindowMessage } from "../_shared/window-messages.ts";
+import { getWindowMessage, buildPayload, dispatchAutomation } from "../_shared/window-messages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,23 +10,15 @@ const corsHeaders = {
 function normalizePhoneE164(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;
-  // Already has country code 55
   if (digits.startsWith("55")) {
-    if (digits.length === 13) {
-      return `+${digits}`;
-    }
-    // 12 digits = 55 + DDD(2) + 8-digit number → insert 9 after DDD
+    if (digits.length === 13) return `+${digits}`;
     if (digits.length === 12) {
       const ddd = digits.substring(2, 4);
       const number = digits.substring(4);
       return `+55${ddd}9${number}`;
     }
   }
-  // Local: DDD + number
-  if (digits.length === 11) {
-    return `+55${digits}`;
-  }
-  // 10 digits = DDD(2) + 8-digit number → insert 9
+  if (digits.length === 11) return `+55${digits}`;
   if (digits.length === 10) {
     const ddd = digits.substring(0, 2);
     const number = digits.substring(2);
@@ -54,27 +46,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── 1. LOG: Request received ──
     console.log("[INBOUND] ✅ Request received", {
-      method: req.method,
-      url: req.url,
-      timestamp: new Date().toISOString(),
+      method: req.method, url: req.url, timestamp: new Date().toISOString(),
     });
 
-    // ── 2. Secret validation (reads from integration_configs first, env fallback) ──
+    // Secret validation
     const secret = req.headers.get("x-webhook-secret");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Try to load secret from integration_configs table
     let expectedSecret: string | undefined;
     const { data: secretRow } = await adminClient
-      .from("integration_configs")
-      .select("value")
-      .eq("key", "UNNICHAT_INBOUND_SECRET")
-      .maybeSingle();
+      .from("integration_configs").select("value").eq("key", "UNNICHAT_INBOUND_SECRET").maybeSingle();
 
     if (secretRow?.value) {
       expectedSecret = secretRow.value;
@@ -82,63 +66,29 @@ Deno.serve(async (req) => {
       expectedSecret = Deno.env.get("UNNICHAT_INBOUND_SECRET");
     }
 
-    console.log("[INBOUND] 🔑 Secret check", {
-      secret_present: !!secret,
-      secret_length: secret?.length ?? 0,
-      expected_present: !!expectedSecret,
-      expected_length: expectedSecret?.length ?? 0,
-      source: secretRow?.value ? "integration_configs" : "env",
-      match: secret === expectedSecret,
-    });
-
     if (!expectedSecret || secret !== expectedSecret) {
-      console.error("[INBOUND] ❌ AUTH FAILED", {
-        received: secret ? `${secret.substring(0, 4)}...` : "(null)",
-        expected: expectedSecret ? `${expectedSecret.substring(0, 4)}...` : "(null)",
-        reason: !expectedSecret
-          ? "UNNICHAT_INBOUND_SECRET not configured"
-          : "Secret mismatch",
-      });
+      console.error("[INBOUND] ❌ AUTH FAILED");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("[INBOUND] ✅ Auth OK");
-
-    // ── 3. Parse payload ──
+    // Parse payload
     const body = await req.json();
-    console.log("[INBOUND] 📦 Payload received", {
-      keys: Object.keys(body),
-      has_data: !!body.data,
-      data_keys: body.data ? Object.keys(body.data) : [],
-    });
-
-    const phoneRaw: string | undefined =
-      body.phone ?? body.data?.phoneNumber ?? body.data?.phone;
-    const message: string | null =
-      body.message ?? body.data?.lastMessage ?? body.data?.message ?? null;
+    const phoneRaw: string | undefined = body.phone ?? body.data?.phoneNumber ?? body.data?.phone;
+    const message: string | null = body.message ?? body.data?.lastMessage ?? body.data?.message ?? null;
     const actionId: string | undefined = body.action_id;
 
-    console.log("[INBOUND] 📞 Extracted fields", {
-      phoneRaw,
-      message_preview: message?.substring(0, 80) ?? null,
-      action_id: actionId ?? null,
-    });
-
     if (!phoneRaw) {
-      console.error("[INBOUND] ❌ No phone found in payload", { received_keys: Object.keys(body) });
       return new Response(
         JSON.stringify({ error: "phone is required", received_keys: Object.keys(body) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // ── 4. Normalize phone ──
     const phoneE164 = normalizePhoneE164(phoneRaw);
     if (!phoneE164) {
-      console.error("[INBOUND] ❌ Invalid phone format", { raw: phoneRaw });
       return new Response(
         JSON.stringify({ error: "Invalid phone format", raw: phoneRaw }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -148,38 +98,27 @@ Deno.serve(async (req) => {
     console.log("[INBOUND] ✅ Phone normalized", { raw: phoneRaw, e164: phoneE164 });
 
     const serviceClient = adminClient;
-
     const now = new Date().toISOString();
     let fallbackUsed = false;
 
-    // ── 5. Match winners ──
+    // Match winners
     let query = serviceClient
       .from("winners")
       .select("id, status, action_id, name, phone, phone_e164, prize_title, prize_type, value, receipt_url, receipt_filename, receipt_sent_at, template_reopen_count, created_at, last_outbound_at")
       .eq("phone_e164", phoneE164)
       .is("deleted_at", null);
 
-    if (actionId) {
-      query = query.eq("action_id", actionId);
-    }
+    if (actionId) query = query.eq("action_id", actionId);
 
     const { data: matched, error: findErr } = await query;
-
     if (findErr) {
       console.error("[INBOUND] ❌ DB error finding winners", findErr);
       return new Response(JSON.stringify({ error: "DB error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     let winners = matched ?? [];
-    console.log("[INBOUND] 🔍 Primary query result", {
-      phone_e164: phoneE164,
-      action_id: actionId ?? "none",
-      matched_count: winners.length,
-      matched_ids: winners.map((w) => w.id),
-    });
 
     // Fallback
     if (winners.length === 0) {
@@ -192,287 +131,141 @@ Deno.serve(async (req) => {
         .in("status", FALLBACK_STATUSES)
         .order("last_outbound_at", { ascending: false, nullsFirst: false })
         .limit(1);
-
       winners = fallbackMatched ?? [];
-      console.log("[INBOUND] 🔄 Fallback query", {
-        matched_count: winners.length,
-        matched_ids: winners.map((w) => w.id),
-      });
     }
 
     if (winners.length === 0) {
-      console.log("[INBOUND] ⚠️ No winners found for phone", { phone_e164: phoneE164 });
-      return jsonResponse({
-        ok: true,
-        matched: 0,
-        normalized_phone: phoneE164,
-        fallback_used: fallbackUsed,
-        winner_id: null,
-        action_id_resolved: null,
-      });
+      return jsonResponse({ ok: true, matched: 0, normalized_phone: phoneE164, fallback_used: fallbackUsed, winner_id: null, action_id_resolved: null });
     }
 
-    // ── 6. Update inbound timestamps ──
+    // Update inbound timestamps
     for (const winner of winners) {
-      await serviceClient
-        .from("winners")
-        .update({
-          ultima_interacao_whatsapp: now,
-          last_inbound_at: now,
-          last_pix_error: null,
-        })
-        .eq("id", winner.id);
+      await serviceClient.from("winners").update({
+        ultima_interacao_whatsapp: now, last_inbound_at: now, last_pix_error: null,
+      }).eq("id", winner.id);
     }
 
-    console.log("[INBOUND] ✅ Updated last_inbound_at for", {
-      winner_ids: winners.map((w) => w.id),
-      timestamp: now,
-    });
-
-    // ── 7. Check auto-send config ──
+    // Check auto-send config
     const { data: autoSendConfig } = await serviceClient
-      .from("integration_configs")
-      .select("value")
-      .eq("key", "AUTO_SEND_RECEIPT_ON_INBOUND")
-      .maybeSingle();
-
+      .from("integration_configs").select("value").eq("key", "AUTO_SEND_RECEIPT_ON_INBOUND").maybeSingle();
     const autoSendEnabled = autoSendConfig?.value !== "false";
 
     const primaryWinner = winners[0];
 
     if (!autoSendEnabled) {
-      console.log("[INBOUND] ℹ️ Auto-send disabled, skipping receipt delivery");
       return jsonResponse({
-        ok: true,
-        matched: winners.length,
-        receipts_sent: 0,
-        auto_send: false,
-        normalized_phone: phoneE164,
-        winner_id: primaryWinner.id,
-        action_id_resolved: primaryWinner.action_id,
-        fallback_used: fallbackUsed,
-        inbound_window_open: true,
+        ok: true, matched: winners.length, receipts_sent: 0, auto_send: false,
+        normalized_phone: phoneE164, winner_id: primaryWinner.id,
+        action_id_resolved: primaryWinner.action_id, fallback_used: fallbackUsed, inbound_window_open: true,
       });
     }
 
-    // ── 8. Filter candidates for auto-send ──
+    // Filter candidates for auto-send
     const candidates = winners
       .filter((w) => w.status === "receipt_attached" && !w.receipt_sent_at && w.receipt_url)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    console.log("[INBOUND] 📋 Auto-send candidates", {
-      total_winners: winners.length,
-      eligible_candidates: candidates.length,
-      candidate_ids: candidates.map((c) => c.id),
-    });
-
     if (candidates.length > 1) {
       for (let i = 1; i < candidates.length; i++) {
-        await serviceClient
-          .from("winners")
-          .update({
-            last_pix_error: `Conflito: múltiplos ganhadores com mesmo telefone. Comprovante enviado para ${candidates[0].name} (mais recente).`,
-          })
-          .eq("id", candidates[i].id);
+        await serviceClient.from("winners").update({
+          last_pix_error: `Conflito: múltiplos ganhadores com mesmo telefone. Comprovante enviado para ${candidates[0].name} (mais recente).`,
+        }).eq("id", candidates[i].id);
       }
     }
 
     const target = candidates[0];
     if (!target) {
-      console.log("[INBOUND] ℹ️ No eligible candidates for auto-send (no receipt_attached without receipt_sent_at)");
       return jsonResponse({
-        ok: true,
-        matched: winners.length,
-        receipts_sent: 0,
-        normalized_phone: phoneE164,
-        winner_id: primaryWinner.id,
-        action_id_resolved: primaryWinner.action_id,
-        fallback_used: fallbackUsed,
-        inbound_window_open: true,
+        ok: true, matched: winners.length, receipts_sent: 0,
+        normalized_phone: phoneE164, winner_id: primaryWinner.id,
+        action_id_resolved: primaryWinner.action_id, fallback_used: fallbackUsed, inbound_window_open: true,
       });
     }
 
-    // ── 9. Extract receipt path ──
+    // Extract receipt path
     const receiptPath = extractStoragePath(target.receipt_url || "");
     if (!receiptPath) {
-      console.error("[INBOUND] ❌ Could not extract receipt path", { receipt_url: target.receipt_url });
       return jsonResponse({
-        ok: true,
-        matched: winners.length,
-        receipts_sent: 0,
-        error: "Could not extract receipt path",
-        normalized_phone: phoneE164,
-        winner_id: target.id,
-        action_id_resolved: target.action_id,
-        fallback_used: fallbackUsed,
-        inbound_window_open: true,
+        ok: true, matched: winners.length, receipts_sent: 0, error: "Could not extract receipt path",
+        normalized_phone: phoneE164, winner_id: target.id,
+        action_id_resolved: target.action_id, fallback_used: fallbackUsed, inbound_window_open: true,
       });
     }
 
-    // ── 10. Get action name and webhook URL (window_messages first, integration_configs fallback) ──
-    const { data: action } = await serviceClient
-      .from("actions")
-      .select("name")
-      .eq("id", target.action_id)
-      .maybeSingle();
+    // Get action name
+    const { data: action } = await serviceClient.from("actions").select("name").eq("id", target.action_id).maybeSingle();
 
-    // Try window_messages for "abertura_janela" (auto-send receipt on inbound = opening/maintaining window)
-    let unnichatUrl: string | null = null;
-    const windowMsg = await getWindowMessage(serviceClient, "abertura_janela", { autoOnly: true });
-    if (windowMsg) {
-      unnichatUrl = windowMsg.unnichat_trigger_url;
-      console.log(`[INBOUND] Using window_messages config: "${windowMsg.name}" (type: abertura_janela)`);
-    }
-
-    // Fallback to integration_configs
-    if (!unnichatUrl) {
-      console.warn("[INBOUND] No active window_messages for auto-send, falling back to integration_configs");
-      const { data: webhookConfig } = await serviceClient
-        .from("integration_configs")
-        .select("value")
-        .eq("key", "UNNICHAT_COMPROVANTE")
-        .maybeSingle();
-
-      unnichatUrl = webhookConfig?.value || null;
-      if (!unnichatUrl) {
-        const { data: fallback } = await serviceClient
-          .from("integration_configs")
-          .select("value")
-          .eq("key", "UNNICHAT_PIX")
-          .maybeSingle();
-        unnichatUrl = fallback?.value || null;
-      }
-    }
-
-    if (!unnichatUrl) {
-      console.error("[INBOUND] ❌ No webhook URL configured (window_messages / UNNICHAT_COMPROVANTE / UNNICHAT_PIX)");
+    // ── Resolve automation from window_messages (single source of truth) ──
+    const automation = await getWindowMessage(serviceClient, "enviar_comprovante", { autoOnly: true });
+    if (!automation) {
+      console.error("[INBOUND] ❌ No active automation 'enviar_comprovante' found in window_messages");
       return jsonResponse({
-        ok: true,
-        matched: winners.length,
-        receipts_sent: 0,
-        error: "No webhook configured",
-        normalized_phone: phoneE164,
-        winner_id: target.id,
-        action_id_resolved: target.action_id,
-        fallback_used: fallbackUsed,
-        inbound_window_open: true,
+        ok: true, matched: winners.length, receipts_sent: 0, error: "Automação 'enviar_comprovante' não encontrada",
+        normalized_phone: phoneE164, winner_id: target.id,
+        action_id_resolved: target.action_id, fallback_used: fallbackUsed, inbound_window_open: true,
       });
     }
 
-    // ── 11. Build short proxy URL for receipt with filename ──
-    const supabaseUrlForReceipt = Deno.env.get("SUPABASE_URL")!;
+    console.log(`[INBOUND] Using automation: "${automation.name}" (type: enviar_comprovante)`);
+
+    // Build payload
     const receiptName = target.receipt_filename || "comprovante.pdf";
-    const shortUrl = `${supabaseUrlForReceipt}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${target.id}`;
-
-    // ── 12. Send receipt via webhook ──
-    const phoneDigits = (target.phone_e164 || normalizePhoneE164(target.phone || "") || target.phone || "").replace(/\D/g, "");
-    const tel = phoneDigits
-      ? (phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`)
-      : "";
-
-    const payload = {
+    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${target.id}`;
+    const payloadBody = buildPayload({
       nome: target.name,
-      tel,
+      tel: target.phone_e164 || normalizePhoneE164(target.phone || "") || target.phone || "",
       acao: action?.name || "",
       tipo_premio: target.prize_title,
-      valor: Number(target.value) || 0,
+      valor: target.value,
       receipt_url: shortUrl,
-    };
-
-    console.log("[INBOUND] 🚀 Sending receipt to UnniChat", {
-      webhook_url: unnichatUrl.substring(0, 60) + "...",
-      winner_id: target.id,
-      winner_name: target.name,
-      phone: target.phone,
     });
 
-    const resp = await fetch(unnichatUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    // Dispatch via unified automation system
+    const { success, statusCode, responseBody } = await dispatchAutomation(
+      serviceClient, automation, payloadBody,
+      { winnerId: target.id, actionId: target.action_id, actionName: action?.name || "", triggerSource: "auto_inbound" }
+    );
 
     let receiptsSent = 0;
 
-    if (resp.ok) {
-      await resp.text();
-      
-      // Try automatic status transition
+    if (success) {
       const { data: transitionResult } = await serviceClient.rpc(
         "apply_automatic_status_transition",
         { _winner_id: target.id, _trigger_event: "receipt_sent" }
       );
-      
       const resolvedStatus = transitionResult?.changed ? transitionResult.to : "receipt_sent";
-      
-      await serviceClient
-        .from("winners")
-        .update({
-          status: resolvedStatus,
-          receipt_sent_at: now,
-          last_outbound_at: now,
-          last_pix_error: null,
-          template_reopen_sent_at: null,
-          template_reopen_count: 0,
-          updated_at: now,
-        })
-        .eq("id", target.id);
+
+      await serviceClient.from("winners").update({
+        status: resolvedStatus, receipt_sent_at: now, last_outbound_at: now,
+        last_pix_error: null, template_reopen_sent_at: null, template_reopen_count: 0, updated_at: now,
+      }).eq("id", target.id);
 
       await serviceClient.from("action_audit_log").insert({
-        action_id: target.action_id,
-        action_name: action?.name || null,
-        table_name: "winners",
-        record_id: target.id,
-        operation: "AUTO_SEND_RECEIPT",
-        user_id: null,
-        user_name: "Sistema (Inbound WhatsApp)",
-        user_role: null,
+        action_id: target.action_id, action_name: action?.name || null,
+        table_name: "winners", record_id: target.id,
+        operation: "AUTO_SEND_RECEIPT", user_id: null,
+        user_name: "Sistema (Inbound WhatsApp)", user_role: null,
         changes: {
-          winner_name: target.name,
-          prize_title: target.prize_title,
-          trigger: "whatsapp_inbound",
-          phone_e164: phoneE164,
+          winner_name: target.name, prize_title: target.prize_title,
+          trigger: "whatsapp_inbound", phone_e164: phoneE164, automation_used: automation.name,
           message_preview: message?.substring(0, 100) ?? null,
-          status: { before: "receipt_attached", after: "receipt_sent" },
+          status: { before: "receipt_attached", after: resolvedStatus },
         },
       });
 
       receiptsSent++;
-      console.log("[INBOUND] ✅ Receipt sent successfully", {
-        winner_id: target.id,
-        status_changed: "receipt_attached → receipt_sent",
-      });
+      console.log("[INBOUND] ✅ Receipt sent successfully", { winner_id: target.id });
     } else {
-      const errText = await resp.text();
-      console.error("[INBOUND] ❌ Receipt send FAILED", {
-        status: resp.status,
-        statusText: resp.statusText,
-        response: errText.substring(0, 200),
-        winner_id: target.id,
-      });
-      await serviceClient
-        .from("winners")
-        .update({
-          last_pix_error: `AUTO_SEND_RECEIPT_FAILED (inbound): ${resp.status} ${resp.statusText}`.substring(0, 200),
-        })
-        .eq("id", target.id);
+      console.error("[INBOUND] ❌ Receipt send FAILED", { status: statusCode, response: responseBody.substring(0, 200) });
+      await serviceClient.from("winners").update({
+        last_pix_error: `AUTO_SEND_RECEIPT_FAILED (inbound): ${statusCode}`.substring(0, 200),
+      }).eq("id", target.id);
     }
 
-    console.log("[INBOUND] 🏁 Processing complete", {
-      matched: winners.length,
-      receipts_sent: receiptsSent,
-      fallback_used: fallbackUsed,
-    });
-
     return jsonResponse({
-      ok: true,
-      matched: winners.length,
-      receipts_sent: receiptsSent,
-      normalized_phone: phoneE164,
-      winner_id: target.id,
-      action_id_resolved: target.action_id,
-      fallback_used: fallbackUsed,
-      inbound_window_open: true,
+      ok: true, matched: winners.length, receipts_sent: receiptsSent,
+      normalized_phone: phoneE164, winner_id: target.id,
+      action_id_resolved: target.action_id, fallback_used: fallbackUsed, inbound_window_open: true,
     });
   } catch (err) {
     console.error("[INBOUND] 💥 Unhandled error:", err);
@@ -485,8 +278,7 @@ Deno.serve(async (req) => {
 
 function jsonResponse(data: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 

@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getWindowMessage, buildPayload } from "../_shared/window-messages.ts";
+import { getWindowMessage, buildPayload, dispatchAutomation } from "../_shared/window-messages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,11 +48,9 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Auth
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return jsonRes({ error: "Unauthorized" }, 401);
 
-    // User info
     const [{ data: profile }, { data: roleData }] = await Promise.all([
       svc.from("profiles").select("signature, display_name").eq("user_id", user.id).maybeSingle(),
       svc.from("user_roles").select("role").eq("user_id", user.id).maybeSingle(),
@@ -87,20 +85,18 @@ Deno.serve(async (req) => {
       return jsonRes({ error: `Status "${w.status}" não permite enviar comprovante. Necessário: "receipt_attached".` }, 400);
     }
 
-    // ── Duplicate prevention for receipt sends ──
+    // Duplicate prevention for receipt sends
     if (!isConfirmation && w.receipt_sent_at) {
       return jsonRes({ success: false, skipped: true, reason: "receipt_already_sent" });
     }
 
-    // ── Template duplicate prevention: max 3 templates, min 1h between sends ──
+    // Template duplicate prevention
     if (isConfirmation) {
       const MAX_TEMPLATES = 3;
-      const MIN_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
-
+      const MIN_INTERVAL_MS = 60 * 60 * 1000;
       if ((w.template_reopen_count || 0) >= MAX_TEMPLATES) {
         return jsonRes({ success: false, skipped: true, reason: "max_templates_reached" });
       }
-
       if (w.template_reopen_sent_at) {
         const elapsed = Date.now() - new Date(w.template_reopen_sent_at).getTime();
         if (elapsed < MIN_INTERVAL_MS) {
@@ -109,14 +105,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // For auto receipt sends: validate conditions
+    // Auto-send validations
     if (isAuto && !isConfirmation) {
       if (!w.phone_e164) {
         await saveError(svc, winner_id, "Auto-envio bloqueado: telefone E.164 não cadastrado.");
         return jsonRes({ success: false, skipped: true, reason: "no_phone_e164" });
       }
-
-      // Window check
       const { data: windowConfig } = await svc
         .from("integration_configs").select("value").eq("key", "INBOUND_WINDOW_HOURS").maybeSingle();
       const windowHours = parseInt(windowConfig?.value || "24", 10);
@@ -125,7 +119,6 @@ Deno.serve(async (req) => {
         await saveError(svc, winner_id, "Auto-envio bloqueado: sem interação inbound registrada.");
         return jsonRes({ success: false, skipped: true, reason: "no_inbound" });
       }
-
       const inboundAge = Date.now() - new Date(w.last_inbound_at).getTime();
       if (inboundAge > windowHours * 3600000) {
         await saveError(svc, winner_id, `Auto-envio bloqueado: janela fechada (última interação há ${Math.round(inboundAge / 3600000)}h).`);
@@ -133,43 +126,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Resolve UnniChat URL from window_messages (orchestrator only — no content stored) ──
-    let unnichatUrl: string | null = null;
+    // ── Resolve automation from window_messages (single source of truth) ──
+    const automationType = isConfirmation ? "abrir_janela" : "enviar_comprovante";
+    const automation = await getWindowMessage(svc, automationType, { autoOnly: isAuto });
 
-    if (isConfirmation) {
-      // Template reopen = "abrir janela" (window closed, need to stimulate response)
-      const windowMsg = await getWindowMessage(svc, "abrir_janela", { autoOnly: isAuto });
-
-      if (windowMsg) {
-        unnichatUrl = windowMsg.unnichat_trigger_url;
-        console.log(`[send-receipt] Using window_messages trigger: "${windowMsg.name}" (type: abrir_janela)`);
-      } else {
-        console.warn("[send-receipt] No active window_messages for type 'abrir_janela', falling back to integration_configs");
-      }
-    }
-
-    // If URL not resolved from window_messages, fall back to integration_configs
-    if (!unnichatUrl) {
-      const { data: webhookConfig } = await svc
-        .from("integration_configs").select("value").eq("key", "UNNICHAT_COMPROVANTE").maybeSingle();
-      unnichatUrl = webhookConfig?.value || null;
-      if (!unnichatUrl) {
-        const { data: fallback } = await svc
-          .from("integration_configs").select("value").eq("key", "UNNICHAT_PIX").maybeSingle();
-        unnichatUrl = fallback?.value || null;
-      }
-    }
-
-    if (!unnichatUrl) {
-      const errMsg = "Webhook de envio não configurado. Configure em Configurações → Automações de Janela ou Integrações.";
+    if (!automation) {
+      const errMsg = `Automação '${automationType}' não encontrada ou inativa. Cadastre em Configurações → Automações.`;
       if (isAuto) {
         await saveError(svc, winner_id, `Auto-envio bloqueado: ${errMsg}`);
-        return jsonRes({ success: false, skipped: true, reason: "no_webhook" });
+        return jsonRes({ success: false, skipped: true, reason: "no_automation" });
       }
       return jsonRes({ error: errMsg }, 500);
     }
 
-    // Build payload — JSON plano esperado pelo gatilho do UnniChat
+    console.log(`[send-receipt] Using automation: "${automation.name}" (type: ${automationType})`);
+
+    // Build payload
     const receiptName = w.receipt_filename || "comprovante.pdf";
     const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${winner_id}`;
     const payloadBody = buildPayload({
@@ -181,37 +153,32 @@ Deno.serve(async (req) => {
       receipt_url: shortUrl,
     });
 
-    // Send to UnniChat
-    const resp = await fetch(unnichatUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payloadBody),
-    });
+    // Dispatch via unified automation system
+    const { success, statusCode, responseBody } = await dispatchAutomation(
+      svc, automation, payloadBody,
+      { winnerId: winner_id, actionId: action_id, actionName: action_name, triggerSource: triggerSource || "manual" }
+    );
 
     const opSuccess = isConfirmation
       ? "template_reopen_enviado"
       : isAuto ? "AUTO_SEND_RECEIPT" : "MANUAL_SEND_RECEIPT";
     const opFail = isAuto ? "AUTO_SEND_RECEIPT_FAILED" : "MANUAL_SEND_RECEIPT_FAILED";
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      const errorMsg = `UnniChat: ${resp.status} ${resp.statusText}`.substring(0, 200);
-
+    if (!success) {
+      const errorMsg = `UnniChat: ${statusCode} - ${responseBody.substring(0, 100)}`;
       await svc.from("action_audit_log").insert({
         action_id, action_name, table_name: "winners", record_id: winner_id,
         operation: isConfirmation ? "template_reopen_falha" : opFail,
         user_id: user.id, user_name: isAuto ? `${userName} (auto)` : userName, user_role: userRole,
-        changes: { winner_name, error: errorMsg, upstream_response: errText.substring(0, 500), trigger: triggerSource || "manual" },
+        changes: { winner_name, error: errorMsg, automation_used: automation.name, trigger: triggerSource || "manual" },
       });
       await saveError(svc, winner_id, `Erro envio: ${errorMsg}`);
       return jsonRes({ success: false, error: errorMsg });
     }
 
-    await resp.text();
     const now = new Date().toISOString();
 
     if (isConfirmation) {
-      // Template sent: update tracking, keep status as receipt_attached (pending)
       await svc.from("winners").update({
         template_reopen_sent_at: now,
         template_reopen_count: (w.template_reopen_count || 0) + 1,
@@ -220,14 +187,12 @@ Deno.serve(async (req) => {
         updated_at: now,
       }).eq("id", winner_id);
     } else {
-      // Receipt sent: try automatic status transition, fallback to direct update
       const { data: transitionResult } = await svc.rpc(
         "apply_automatic_status_transition",
         { _winner_id: winner_id, _trigger_event: "receipt_sent" }
       );
-      
       const resolvedStatus = transitionResult?.changed ? transitionResult.to : "receipt_sent";
-      
+
       await svc.from("winners").update({
         status: resolvedStatus,
         receipt_sent_at: now,
@@ -246,7 +211,7 @@ Deno.serve(async (req) => {
       user_id: user.id, user_name: isAuto ? `${userName} (auto)` : userName, user_role: userRole,
       changes: {
         winner_name, prize_title, prize_value,
-        channel: "UnniChat",
+        channel: "UnniChat", automation_used: automation.name,
         trigger: triggerSource || "manual",
         mode: isConfirmation ? "template_reopen" : "receipt",
         template_count: isConfirmation ? (w.template_reopen_count || 0) + 1 : undefined,
