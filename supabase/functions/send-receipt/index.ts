@@ -141,9 +141,23 @@ Deno.serve(async (req) => {
 
     console.log(`[send-receipt] Using automation: "${automation.name}" (type: ${automationType})`);
 
-    // Build payload
-    const receiptName = w.receipt_filename || "comprovante.pdf";
-    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${winner_id}`;
+    const receiptName = (w.receipt_filename || "comprovante.pdf")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._-]/g, "_") || "comprovante.pdf";
+
+    if (!w.receipt_url) {
+      await saveError(svc, winner_id, "Envio bloqueado: comprovante não encontrado no registro do ganhador.");
+      return jsonRes({ success: false, error: "Comprovante não encontrado para envio." }, 400);
+    }
+
+    const { error: signedUrlError } = await svc.storage.from("receipts").createSignedUrl(w.receipt_url, 60);
+    if (signedUrlError) {
+      await saveError(svc, winner_id, `Envio bloqueado: arquivo do comprovante indisponível (${signedUrlError.message}).`);
+      return jsonRes({ success: false, error: "Arquivo do comprovante indisponível. Reanexe o comprovante e tente novamente." }, 400);
+    }
+
+    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/comprovante.pdf?id=${winner_id}`;
     const payloadBody = buildPayload({
       nome: winner_name,
       tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164 || "",
@@ -151,6 +165,7 @@ Deno.serve(async (req) => {
       tipo_premio: prize_title,
       valor: prize_value,
       receipt_url: shortUrl,
+      comprovante_filename: receiptName,
     });
 
     // Dispatch via unified automation system
