@@ -40,12 +40,14 @@ Deno.serve(async (req) => {
         signal: controller.signal,
       });
       clearTimeout(timeout);
+      const responseBody = await response.text();
 
       return new Response(
         JSON.stringify({
-          success: true,
+          success: response.ok,
           status: response.status,
           statusText: response.statusText,
+          response_body: responseBody.substring(0, 500),
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
