@@ -271,7 +271,13 @@ export function WindowMessagesTab() {
       const { data, error } = await supabase.functions.invoke('test-webhook', {
         body: { url: msg.unnichat_trigger_url, payload: {
           nome: 'Teste',
-          telefone: testPhone.replace(/\D/g, ''),
+          telefone: (() => {
+            const digits = testPhone.replace(/\D/g, '');
+            if (digits.startsWith('55') && digits.length >= 12) return `+${digits}`;
+            if (digits.length === 11) return `+55${digits}`;
+            if (digits.length === 10) return `+55${digits.substring(0,2)}9${digits.substring(2)}`;
+            return `+${digits}`;
+          })(),
           acao: 'Ação de teste',
           valor: 0,
           premio: 'Teste',
