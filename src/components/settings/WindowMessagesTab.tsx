@@ -289,9 +289,12 @@ export function WindowMessagesTab() {
       if (error) {
         toast({ title: 'Erro ao testar', description: error.message, variant: 'destructive' });
       } else if (data?.success) {
-        toast({ title: 'Teste enviado', description: `Status ${data.status} — Verifique no UnniChat.` });
+        toast({ title: '✅ Teste enviado com sucesso', description: `Status ${data.status} — Verifique no UnniChat.` });
       } else {
-        toast({ title: 'Resposta inesperada', description: data?.error || `Status ${data?.status}`, variant: 'destructive' });
+        const detail = data?.response_body
+          ? `Status ${data.status}: ${data.response_body.substring(0, 200)}`
+          : (data?.error || `Status ${data?.status}`);
+        toast({ title: 'Erro na automação', description: detail, variant: 'destructive' });
       }
     } catch (err: any) {
       toast({ title: 'Erro ao testar', description: err.message, variant: 'destructive' });
