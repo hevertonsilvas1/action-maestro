@@ -22,6 +22,9 @@ import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { StatusHistorySheet } from '@/components/StatusHistorySheet';
+import { ImportWinnersModal } from '@/components/ImportWinnersModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTimeInStatus, useLiveTimeInStatus } from '@/hooks/useTimeInStatus';
 import { useStatusTimeConfig } from '@/hooks/useStatusTimeConfig';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -58,6 +61,9 @@ export default function WinnersPage() {
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
+  const [importActionSelectorOpen, setImportActionSelectorOpen] = useState(false);
+  const [importActionId, setImportActionId] = useState<string>('');
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
@@ -194,6 +200,12 @@ export default function WinnersPage() {
               <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
               Novo
             </Button>
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportActionSelectorOpen(true)}>
+                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                Importar
+              </Button>
+            )}
             {selected.size > 0 && (
               <>
                 <Button size="sm" className="h-8 text-xs" onClick={() => setPixModalOpen(true)}>
@@ -577,6 +589,46 @@ export default function WinnersPage() {
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
       <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} />
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
+
+      {/* Import: Action Selector Dialog */}
+      <Dialog open={importActionSelectorOpen} onOpenChange={setImportActionSelectorOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Selecionar Ação para Importação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <Select value={importActionId} onValueChange={setImportActionId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma ação..." />
+              </SelectTrigger>
+              <SelectContent>
+                {actions.filter(a => a.status !== 'planning' && a.status !== 'archived').map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!importActionId}
+              onClick={() => {
+                setImportActionSelectorOpen(false);
+                setImportModalOpen(true);
+              }}
+            >
+              Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {importActionId && (
+        <ImportWinnersModal
+          open={importModalOpen}
+          onClose={() => { setImportModalOpen(false); setImportActionId(''); }}
+          actionId={importActionId}
+          actionName={actionsMap[importActionId] || ''}
+        />
+      )}
     </AppLayout>
   );
 }
