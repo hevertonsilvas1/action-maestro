@@ -142,6 +142,7 @@ export function WindowMessagesTab() {
   const [testPhone, setTestPhone] = useState('');
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<TestAutomationResult | null>(null);
 
   const { data: actions } = useQuery({
     queryKey: ['actions-list-simple'],
