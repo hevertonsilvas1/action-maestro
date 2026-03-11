@@ -70,6 +70,7 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
     if (!winner.phoneE164 || winner.receiptSentAt) return;
 
     if (isWindowOpen(winner)) {
+      // Window open → send immediately
       try {
         const { data, error } = await supabase.functions.invoke('send-receipt', {
           body: {
@@ -100,38 +101,8 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         console.error('Auto-send exception:', err);
       }
     } else {
-      try {
-        const { data, error } = await supabase.functions.invoke('send-receipt', {
-          body: {
-            winner_id: winner.id,
-            winner_name: winner.name,
-            winner_phone: winner.phoneE164,
-            action_id: actionId,
-            action_name: actionName,
-            prize_title: winner.prizeTitle,
-            prize_value: winner.value,
-            receipt_path: receiptPath,
-            mode: 'confirmation',
-            trigger: 'auto_attach_template',
-          },
-        });
-
-        if (error) {
-          console.error('Auto-template error:', error);
-          return;
-        }
-
-        if (data?.success) {
-          await queryClient.invalidateQueries({ queryKey: ['winners'] });
-          toast.info('Janela fechada. Template de confirmação enviado ao cliente para reabrir a conversa.');
-        } else if (data?.skipped) {
-          toast.info('Comprovante anexado. Aguardando interação do cliente para envio automático.');
-        } else if (data?.error) {
-          toast.warning(`Template não enviado: ${data.error}`);
-        }
-      } catch (err) {
-        console.error('Auto-template exception:', err);
-      }
+      // Window closed → just mark as pending, don't try to send anything
+      toast.info('Comprovante anexado. Envio pendente — será enviado automaticamente quando o cliente interagir.');
     }
   };
 
