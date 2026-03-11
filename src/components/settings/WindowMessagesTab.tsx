@@ -19,12 +19,16 @@ import { Constants } from '@/integrations/supabase/types';
 /* ───────── constants ───────── */
 
 const MESSAGE_TYPES = [
+  { value: 'solicitar_pix', label: 'Solicitar PIX', description: 'Enviar solicitação de dados PIX ao ganhador' },
+  { value: 'enviar_comprovante', label: 'Enviar Comprovante', description: 'Enviar comprovante de pagamento ao ganhador' },
   { value: 'abertura_janela', label: 'Abertura de janela', description: 'Iniciar ou reabrir conversa operacional' },
   { value: 'abrir_janela', label: 'Abrir janela', description: 'Estimular resposta quando janela está fechada' },
   { value: 'prolongar_janela', label: 'Prolongar janela', description: 'Manter conversa ativa para estender janela' },
 ];
 
 const TYPE_LABEL_MAP: Record<string, string> = {
+  solicitar_pix: 'Solicitar PIX',
+  enviar_comprovante: 'Enviar Comprovante',
   abertura_janela: 'Abertura de janela',
   abrir_janela: 'Abrir janela',
   prolongar_janela: 'Prolongar janela',
