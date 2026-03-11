@@ -61,6 +61,8 @@ Deno.serve(async (req) => {
           payload_sent: requestPayload,
           status_code: response.status,
           status_text: response.statusText,
+          status: response.status,
+          statusText: response.statusText,
           response_body: responseBody.substring(0, 4000),
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
