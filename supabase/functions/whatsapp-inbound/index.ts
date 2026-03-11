@@ -209,8 +209,11 @@ Deno.serve(async (req) => {
     console.log(`[INBOUND] Using automation: "${automation.name}" (type: enviar_comprovante)`);
 
     // Build payload
-    const receiptName = target.receipt_filename || "comprovante.pdf";
-    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${target.id}`;
+    const receiptName = (target.receipt_filename || "comprovante.pdf")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._-]/g, "_") || "comprovante.pdf";
+    const shortUrl = `${supabaseUrl}/functions/v1/download-receipt/comprovante.pdf?id=${target.id}`;
     const payloadBody = buildPayload({
       nome: target.name,
       tel: target.phone_e164 || normalizePhoneE164(target.phone || "") || target.phone || "",
@@ -218,6 +221,7 @@ Deno.serve(async (req) => {
       tipo_premio: target.prize_title,
       valor: target.value,
       receipt_url: shortUrl,
+      comprovante_filename: receiptName,
     });
 
     // Dispatch via unified automation system

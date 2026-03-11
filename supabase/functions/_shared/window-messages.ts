@@ -42,6 +42,7 @@ export function buildPayload(vars: {
   tipo_premio?: string;
   valor?: number | string;
   receipt_url?: string;
+  comprovante_filename?: string;
 }): Record<string, unknown> {
   const phoneDigits = String(vars.tel ?? "").replace(/\D/g, "");
   const tel = phoneDigits
@@ -62,6 +63,7 @@ export function buildPayload(vars: {
     tipo_premio: vars.tipo_premio ?? "",
     valor: numericValue,
     receipt_url: vars.receipt_url ?? "",
+    comprovante_filename: vars.comprovante_filename ?? "comprovante.pdf",
   };
 }
 
