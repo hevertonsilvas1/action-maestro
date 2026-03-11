@@ -677,9 +677,28 @@ export function WindowMessagesTab() {
                 placeholder="5573999999999"
               />
               <p className="text-xs text-muted-foreground">
-                O sistema enviará um POST de teste para a URL configurada com dados fictícios.
+                O sistema envia POST com JSON plano: nome, tel, acao, tipo_premio, valor, receipt_url.
               </p>
             </div>
+
+            {testResult && (
+              <div className="space-y-2">
+                <Label>Resultado do teste</Label>
+                <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-xs">
+                  <p><span className="font-medium">URL:</span> {testResult.url_called || '-'}</p>
+                  <p><span className="font-medium">Método:</span> {testResult.http_method || 'POST'}</p>
+                  <p><span className="font-medium">Status:</span> {testResult.status_code ?? '-'} {testResult.status_text || ''}</p>
+                  <div>
+                    <p className="font-medium mb-1">Payload enviado</p>
+                    <pre className="bg-background border rounded p-2 overflow-x-auto">{JSON.stringify(testResult.payload_sent || {}, null, 2)}</pre>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-1">Resposta do UnniChat</p>
+                    <pre className="bg-background border rounded p-2 overflow-x-auto whitespace-pre-wrap">{testResult.response_body || testResult.error || '-'}</pre>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTestDialogOpen(false)}>Cancelar</Button>
