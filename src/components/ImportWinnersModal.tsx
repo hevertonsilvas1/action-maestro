@@ -41,6 +41,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [fileName, setFileName] = useState('');
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [rawExcelRows, setRawExcelRows] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { parsePdf, parseExcel, checkDuplicatesAndValidate, importWinners, isLoading, isParsing } = useImportWinners(actionId, actionName);
