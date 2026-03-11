@@ -29,25 +29,39 @@ Deno.serve(async (req) => {
       );
     }
 
+    const method = "POST";
+    const requestPayload = payload || {
+      nome: "Teste",
+      tel: "5573999999999",
+      acao: "Ação de teste",
+      tipo_premio: "Teste",
+      valor: 0,
+      receipt_url: "https://example.com/receipt.pdf",
+    };
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
       const response = await fetch(url, {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload || { test: true, source: "actionpay", timestamp: new Date().toISOString() }),
+        body: JSON.stringify(requestPayload),
         signal: controller.signal,
       });
       clearTimeout(timeout);
+
       const responseBody = await response.text();
 
       return new Response(
         JSON.stringify({
           success: response.ok,
-          status: response.status,
-          statusText: response.statusText,
-          response_body: responseBody.substring(0, 500),
+          url_called: url,
+          http_method: method,
+          payload_sent: requestPayload,
+          status_code: response.status,
+          status_text: response.statusText,
+          response_body: responseBody.substring(0, 4000),
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -59,6 +73,9 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
+          url_called: url,
+          http_method: method,
+          payload_sent: requestPayload,
           error: isTimeout ? "Timeout: webhook não respondeu em 10s" : message,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

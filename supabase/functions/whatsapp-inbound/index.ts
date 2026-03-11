@@ -365,15 +365,18 @@ Deno.serve(async (req) => {
     const shortUrl = `${supabaseUrlForReceipt}/functions/v1/download-receipt/${encodeURIComponent(receiptName)}?id=${target.id}`;
 
     // ── 12. Send receipt via webhook ──
+    const phoneDigits = (target.phone_e164 || normalizePhoneE164(target.phone || "") || target.phone || "").replace(/\D/g, "");
+    const tel = phoneDigits
+      ? (phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`)
+      : "";
+
     const payload = {
-      tel: target.phone_e164 || normalizePhoneE164(target.phone || "") || target.phone,
       nome: target.name,
+      tel,
       acao: action?.name || "",
       tipo_premio: target.prize_title,
-      valor: String(target.value),
-      comprovante_url: shortUrl,
-      comprovante_filename: receiptName,
-      row_number: 0,
+      valor: Number(target.value) || 0,
+      receipt_url: shortUrl,
     };
 
     console.log("[INBOUND] 🚀 Sending receipt to UnniChat", {
