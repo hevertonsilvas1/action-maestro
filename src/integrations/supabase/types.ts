@@ -142,6 +142,85 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_logs: {
+        Row: {
+          action_id: string | null
+          action_name: string | null
+          automation_id: string | null
+          automation_name: string | null
+          automation_type: string | null
+          created_at: string
+          error_message: string | null
+          http_method: string
+          id: string
+          payload_sent: Json | null
+          response_body: string | null
+          status_code: number | null
+          success: boolean
+          trigger_source: string | null
+          url_called: string
+          winner_id: string | null
+        }
+        Insert: {
+          action_id?: string | null
+          action_name?: string | null
+          automation_id?: string | null
+          automation_name?: string | null
+          automation_type?: string | null
+          created_at?: string
+          error_message?: string | null
+          http_method?: string
+          id?: string
+          payload_sent?: Json | null
+          response_body?: string | null
+          status_code?: number | null
+          success?: boolean
+          trigger_source?: string | null
+          url_called: string
+          winner_id?: string | null
+        }
+        Update: {
+          action_id?: string | null
+          action_name?: string | null
+          automation_id?: string | null
+          automation_name?: string | null
+          automation_type?: string | null
+          created_at?: string
+          error_message?: string | null
+          http_method?: string
+          id?: string
+          payload_sent?: Json | null
+          response_body?: string | null
+          status_code?: number | null
+          success?: boolean
+          trigger_source?: string | null
+          url_called?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "window_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "winners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_type_configs: {
         Row: {
           active: boolean

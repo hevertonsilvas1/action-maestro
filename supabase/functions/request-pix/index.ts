@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getWindowMessage } from "../_shared/window-messages.ts";
+import { getWindowMessage, buildPayload, dispatchAutomation } from "../_shared/window-messages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,41 +52,23 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Service client (bypasses RLS for audit logging + config reads)
     const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Resolve webhook URL: window_messages first, integration_configs fallback
-    let unnichatUrl: string | null = null;
-
-    const windowMsg = await getWindowMessage(serviceClient, "abertura_janela");
-    if (windowMsg) {
-      unnichatUrl = windowMsg.unnichat_trigger_url;
-      console.log(`[request-pix] Using window_messages config: "${windowMsg.name}" (type: abertura_janela)`);
+    // ── Resolve automation from window_messages (single source of truth) ──
+    const automation = await getWindowMessage(serviceClient, "solicitar_pix");
+    if (!automation) {
+      return new Response(
+        JSON.stringify({ error: "Automação 'Solicitar PIX' não encontrada ou inativa. Cadastre em Configurações → Automações." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-
-    if (!unnichatUrl) {
-      console.warn("[request-pix] No active window_messages, falling back to integration_configs");
-      const { data: webhookConfig, error: configError } = await serviceClient
-        .from("integration_configs")
-        .select("value")
-        .eq("key", "UNNICHAT_PIX")
-        .maybeSingle();
-
-      if (configError || !webhookConfig?.value) {
-        return new Response(
-          JSON.stringify({ error: "Webhook não configurado. Configure em Configurações → Mensagens de Janela ou Integrações." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      unnichatUrl = webhookConfig.value;
-    }
+    console.log(`[request-pix] Using automation: "${automation.name}" (type: solicitar_pix)`);
 
     // Auth client (respects RLS)
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -97,22 +79,12 @@ Deno.serve(async (req) => {
 
     const userId = user.id;
 
-    // Get user profile for audit
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("signature, display_name")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const [{ data: profile }, { data: roleData }] = await Promise.all([
+      serviceClient.from("profiles").select("signature, display_name").eq("user_id", userId).maybeSingle(),
+      serviceClient.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+    ]);
 
     const userName = profile?.signature || profile?.display_name || user.email || "Sistema";
-
-    // Get user role
-    const { data: roleData } = await serviceClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
-
     const userRole = roleData?.role || null;
 
     const { winners } = await req.json() as { winners: WinnerPayload[] };
@@ -124,14 +96,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate that all referenced actions are not in planning status
+    // Validate actions not in planning
     const actionIds = [...new Set(winners.map((w) => w.action_id))];
     for (const actionId of actionIds) {
       const { data: actionData } = await serviceClient
-        .from("actions")
-        .select("status")
-        .eq("id", actionId)
-        .maybeSingle();
+        .from("actions").select("status").eq("id", actionId).maybeSingle();
 
       if (actionData?.status === "planning") {
         return new Response(
@@ -145,73 +114,53 @@ Deno.serve(async (req) => {
 
     for (const w of winners) {
       try {
-        // --- Idempotency check: re-read current status from DB ---
+        // Idempotency check
         const { data: currentWinner, error: fetchErr } = await serviceClient
-          .from("winners")
-          .select("status, last_pix_request_at")
-          .eq("id", w.winner_id)
-          .maybeSingle();
+          .from("winners").select("status, last_pix_request_at").eq("id", w.winner_id).maybeSingle();
 
-        if (fetchErr || !currentWinner) {
-          throw new Error("Ganhador não encontrado no banco.");
-        }
+        if (fetchErr || !currentWinner) throw new Error("Ganhador não encontrado no banco.");
 
         if (!ALLOWED_STATUSES.includes(currentWinner.status)) {
-          throw new Error(
-            `Status "${currentWinner.status}" não permite solicitar PIX. Permitidos: ${ALLOWED_STATUSES.join(", ")}.`
-          );
+          throw new Error(`Status "${currentWinner.status}" não permite solicitar PIX. Permitidos: ${ALLOWED_STATUSES.join(", ")}.`);
         }
 
-        // Duplicate prevention: block if last request was < 30 seconds ago
+        // Duplicate prevention: 30s cooldown
         if (currentWinner.last_pix_request_at) {
           const lastReq = new Date(currentWinner.last_pix_request_at).getTime();
-          const now = Date.now();
-          if (now - lastReq < 30_000) {
+          if (Date.now() - lastReq < 30_000) {
             throw new Error("Solicitação duplicada. Aguarde 30 segundos entre tentativas.");
           }
         }
 
-        // --- Normalize phone and send in plain digits (55...) ---
+        // Build payload
         const normalizedPhone = normalizePhoneE164(w.winner_phone) || w.winner_phone;
-        const phoneDigits = (normalizedPhone || "").replace(/\D/g, "");
-        const tel = phoneDigits
-          ? (phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`)
-          : "";
-
-        // --- Send to UnniChat ---
-        const unnichatResponse = await fetch(unnichatUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nome: w.winner_name,
-            tel,
-            acao: w.action_name,
-            tipo_premio: w.prize_title,
-            valor: w.prize_value,
-            receipt_url: "",
-          }),
+        const payloadBody = buildPayload({
+          nome: w.winner_name,
+          tel: normalizedPhone,
+          acao: w.action_name,
+          tipo_premio: w.prize_title,
+          valor: w.prize_value,
+          receipt_url: "",
         });
 
-        if (!unnichatResponse.ok) {
-          const errText = await unnichatResponse.text();
-          const shortErr = `${unnichatResponse.status} ${unnichatResponse.statusText}`.substring(0, 100);
-          throw new Error(`UnniChat: ${shortErr}`);
+        // Dispatch via unified automation system
+        const { success, statusCode, responseBody } = await dispatchAutomation(
+          serviceClient, automation, payloadBody,
+          { winnerId: w.winner_id, actionId: w.action_id, actionName: w.action_name, triggerSource: "manual" }
+        );
+
+        if (!success) {
+          throw new Error(`UnniChat: ${statusCode} - ${responseBody.substring(0, 100)}`);
         }
 
-        // Consume response body
-        await unnichatResponse.text();
-
-        // --- Success: Update winner status + tracking fields + clear error ---
+        // Success: Update winner status
         const now = new Date().toISOString();
-        
-        // Try automatic status transition first
         const { data: transitionResult } = await serviceClient.rpc(
           "apply_automatic_status_transition",
           { _winner_id: w.winner_id, _trigger_event: "pix_request_sent" }
         );
-        
         const newStatus = transitionResult?.changed ? transitionResult.to : "pix_requested";
-        
+
         const { error: updateError } = await serviceClient
           .from("winners")
           .update({
@@ -224,27 +173,18 @@ Deno.serve(async (req) => {
           })
           .eq("id", w.winner_id);
 
-        if (updateError) {
-          throw new Error(`DB update error: ${updateError.message}`);
-        }
+        if (updateError) throw new Error(`DB update error: ${updateError.message}`);
 
-        // --- Audit log (success) ---
+        // Audit log
         await serviceClient.from("action_audit_log").insert({
-          action_id: w.action_id,
-          action_name: w.action_name,
-          table_name: "winners",
-          record_id: w.winner_id,
+          action_id: w.action_id, action_name: w.action_name,
+          table_name: "winners", record_id: w.winner_id,
           operation: "pix_solicitado",
-          user_id: userId,
-          user_name: userName,
-          user_role: userRole,
+          user_id: userId, user_name: userName, user_role: userRole,
           changes: {
-            winner_name: w.winner_name,
-            prize_title: w.prize_title,
-            prize_value: w.prize_value,
-            channel: "UnniChat",
-            status_before: currentWinner.status,
-            status_after: "pix_requested",
+            winner_name: w.winner_name, prize_title: w.prize_title, prize_value: w.prize_value,
+            channel: "UnniChat", automation_used: automation.name,
+            status_before: currentWinner.status, status_after: newStatus,
           },
         });
 
@@ -253,42 +193,25 @@ Deno.serve(async (req) => {
         console.error(`Error processing winner ${w.winner_id}:`, err);
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
 
-        // Save error on winner record (do NOT change status on failure)
         try {
-          await serviceClient
-            .from("winners")
-            .update({
-              last_pix_error: errorMsg,
-              last_pix_request_at: new Date().toISOString(),
-              last_pix_requested_by: userName,
-            })
-            .eq("id", w.winner_id);
+          await serviceClient.from("winners").update({
+            last_pix_error: errorMsg,
+            last_pix_request_at: new Date().toISOString(),
+            last_pix_requested_by: userName,
+          }).eq("id", w.winner_id);
         } catch (_) { /* ignore */ }
 
-        // Audit log (failure)
         try {
           await serviceClient.from("action_audit_log").insert({
-            action_id: w.action_id,
-            action_name: w.action_name,
-            table_name: "winners",
-            record_id: w.winner_id,
+            action_id: w.action_id, action_name: w.action_name,
+            table_name: "winners", record_id: w.winner_id,
             operation: "pix_solicitado_erro",
-            user_id: userId,
-            user_name: userName,
-            user_role: userRole,
-            changes: {
-              winner_name: w.winner_name,
-              error: errorMsg,
-              channel: "UnniChat",
-            },
+            user_id: userId, user_name: userName, user_role: userRole,
+            changes: { winner_name: w.winner_name, error: errorMsg, channel: "UnniChat" },
           });
-        } catch (_) { /* ignore audit log error */ }
+        } catch (_) { /* ignore */ }
 
-        results.push({
-          winner_id: w.winner_id,
-          success: false,
-          error: errorMsg,
-        });
+        results.push({ winner_id: w.winner_id, success: false, error: errorMsg });
       }
     }
 
