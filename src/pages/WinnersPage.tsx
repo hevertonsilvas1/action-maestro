@@ -200,6 +200,12 @@ export default function WinnersPage() {
               <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
               Novo
             </Button>
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportActionSelectorOpen(true)}>
+                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                Importar
+              </Button>
+            )}
             {selected.size > 0 && (
               <>
                 <Button size="sm" className="h-8 text-xs" onClick={() => setPixModalOpen(true)}>
