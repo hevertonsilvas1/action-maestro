@@ -101,6 +101,17 @@ interface FormData {
   priority: number;
 }
 
+interface TestAutomationResult {
+  success: boolean;
+  url_called?: string;
+  http_method?: string;
+  payload_sent?: Record<string, unknown>;
+  status_code?: number;
+  status_text?: string;
+  response_body?: string;
+  error?: string;
+}
+
 const emptyForm: FormData = {
   name: '',
   type: 'abertura_janela',
