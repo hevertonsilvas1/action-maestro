@@ -41,6 +41,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [fileName, setFileName] = useState('');
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [rawExcelRows, setRawExcelRows] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { parsePdf, parseExcel, checkDuplicatesAndValidate, importWinners, isLoading, isParsing } = useImportWinners(actionId, actionName);
@@ -52,6 +53,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     setFileName('');
     setExcelColumns([]);
     setColumnMapping({});
+    setRawExcelRows([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
@@ -87,7 +89,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
             setStats(result.stats);
             setStep('preview');
           } else {
-            // Need manual mapping
+            // Need manual mapping — re-read raw rows and store in state
             const XLSX = await import('xlsx');
             const buffer = await file.arrayBuffer();
             const workbook = XLSX.read(buffer, { type: 'array' });
@@ -95,6 +97,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
             const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
             if (rawRows.length > 0) {
               setExcelColumns(Object.keys(rawRows[0]));
+              setRawExcelRows(rawRows);
             }
             setParsedWinners(winners);
             setStep('mapping');
@@ -114,26 +117,19 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   };
 
   const handleApplyMapping = async () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      toast.error('Arquivo não encontrado. Por favor, selecione novamente.');
+    if (rawExcelRows.length === 0) {
+      toast.error('Dados da planilha não encontrados. Por favor, selecione o arquivo novamente.');
       reset();
       return;
     }
 
     try {
-      const XLSX = await import('xlsx');
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
       const col = (key: string): string | undefined => {
         const v = columnMapping[key];
         return v && v !== '__none__' ? v : undefined;
       };
 
-      const mapped: ParsedWinner[] = rawRows.map((row) => ({
+      const mapped: ParsedWinner[] = rawExcelRows.map((row) => ({
         name: String(col('name') ? row[col('name')!] : '').trim(),
         cpf: String(col('cpf') ? row[col('cpf')!] : '').trim() || null,
         phone: String(col('phone') ? row[col('phone')!] : '').trim() || null,
