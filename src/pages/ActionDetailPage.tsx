@@ -148,6 +148,14 @@ export default function ActionDetailPage() {
     [filteredWinners, winnersPage, winnersPageSize]
   );
 
+  // Time in status
+  const winnerIds = useMemo(() => paginatedWinners.map(w => w.id), [paginatedWinners]);
+  const { data: baseTimeInStatus = {} } = useTimeInStatus(winnerIds);
+  const liveTimeInStatus = useLiveTimeInStatus(baseTimeInStatus);
+  const { data: timeConfig } = useStatusTimeConfig();
+  const warningMin = timeConfig?.warning_minutes ?? 10;
+  const criticalMin = timeConfig?.critical_minutes ?? 30;
+
   const handleWinnersFiltersChange = useCallback((f: typeof winnersFilters) => {
     setWinnersFilters(f);
     setWinnersPage(1);
