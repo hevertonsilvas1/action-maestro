@@ -61,12 +61,11 @@ const OPERATIONAL_CONTEXT_OPTIONS = [
 
 const PAYLOAD_PREVIEW = `{
   "nome": "João",
-  "telefone": "5573999999999",
+  "tel": "5573999999999",
   "acao": "153 - Corolla Altis + 100 mil",
+  "tipo_premio": "Giro da Sorte",
   "valor": 200,
-  "premio": "Giro da Sorte",
-  "ganhador_id": "uuid",
-  "action_id": "uuid"
+  "receipt_url": "https://seusistema.com/storage/comprovante.pdf"
 }`;
 
 /* ───────── types ───────── */
