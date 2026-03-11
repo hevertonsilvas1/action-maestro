@@ -89,7 +89,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
             setStats(result.stats);
             setStep('preview');
           } else {
-            // Need manual mapping
+            // Need manual mapping — re-read raw rows and store in state
             const XLSX = await import('xlsx');
             const buffer = await file.arrayBuffer();
             const workbook = XLSX.read(buffer, { type: 'array' });
@@ -97,6 +97,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
             const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
             if (rawRows.length > 0) {
               setExcelColumns(Object.keys(rawRows[0]));
+              setRawExcelRows(rawRows);
             }
             setParsedWinners(winners);
             setStep('mapping');
