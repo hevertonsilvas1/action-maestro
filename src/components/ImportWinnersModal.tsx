@@ -14,6 +14,18 @@ import { useImportWinners, ParsedWinner } from '@/hooks/useImportWinners';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
 
+function convertExcelDate(value: any): string | null {
+  if (value == null || value === '') return null;
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+  if (isNaN(num) || num < 1) {
+    return typeof value === 'string' ? value : null;
+  }
+  const epoch = new Date(Date.UTC(1899, 11, 30));
+  const d = new Date(epoch.getTime() + num * 86400000);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 interface ImportWinnersModalProps {
   open: boolean;
   onClose: () => void;
