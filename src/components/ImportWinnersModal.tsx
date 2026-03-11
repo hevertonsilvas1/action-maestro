@@ -155,6 +155,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
       setStep('done');
     } catch (error: any) {
       console.error('Import failed:', error);
+      toast.error('Erro ao importar: ' + (error?.message || 'Erro desconhecido'));
     }
   };
 
