@@ -9,6 +9,7 @@ import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { formatCurrency, formatPercent, formatDate, formatPhone } from '@/lib/format';
+import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
