@@ -133,9 +133,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Resolve UnniChat URL and content from window_messages ──
+    // ── Resolve UnniChat URL from window_messages (orchestrator only — no content stored) ──
     let unnichatUrl: string | null = null;
-    let messageContent: string | null = null;
 
     if (isConfirmation) {
       // Template reopen = "abrir janela" (window closed, need to stimulate response)
@@ -143,23 +142,9 @@ Deno.serve(async (req) => {
 
       if (windowMsg) {
         unnichatUrl = windowMsg.unnichat_trigger_url;
-        if (windowMsg.allow_variables) {
-          messageContent = replaceVariables(windowMsg.content, {
-            nome: winner_name,
-            acao: action_name,
-            valor: String(prize_value),
-            premio: prize_title,
-          });
-        } else {
-          messageContent = windowMsg.content;
-        }
-        console.log(`[send-receipt] Using window_messages config: "${windowMsg.name}" (type: abrir_janela)`);
+        console.log(`[send-receipt] Using window_messages trigger: "${windowMsg.name}" (type: abrir_janela)`);
       } else {
-        // Fallback to legacy integration_configs
         console.warn("[send-receipt] No active window_messages for type 'abrir_janela', falling back to integration_configs");
-        const { data: templateConfig } = await svc
-          .from("integration_configs").select("value").eq("key", "RECEIPT_CONFIRMATION_TEMPLATE").maybeSingle();
-        messageContent = templateConfig?.value || "Olá! Temos seu comprovante de pagamento. Responda esta mensagem para recebê-lo.";
       }
     }
 
@@ -176,7 +161,7 @@ Deno.serve(async (req) => {
     }
 
     if (!unnichatUrl) {
-      const errMsg = "Webhook de envio não configurado. Configure em Configurações → Mensagens de Janela ou Integrações.";
+      const errMsg = "Webhook de envio não configurado. Configure em Configurações → Automações de Janela ou Integrações.";
       if (isAuto) {
         await saveError(svc, winner_id, `Auto-envio bloqueado: ${errMsg}`);
         return jsonRes({ success: false, skipped: true, reason: "no_webhook" });
@@ -184,16 +169,18 @@ Deno.serve(async (req) => {
       return jsonRes({ error: errMsg }, 500);
     }
 
-    // Build payload
+    // Build payload — operational data sent to the automation platform
     let payloadBody: Record<string, unknown>;
     if (isConfirmation) {
-      payloadBody = {
-        tel: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164,
+      payloadBody = buildPayload({
         nome: winner_name,
+        telefone: normalizePhoneE164(winner_phone || w.phone_e164 || "") || winner_phone || w.phone_e164 || '',
         acao: action_name,
-        mensagem: messageContent,
-        row_number: 0,
-      };
+        valor: prize_value,
+        premio: prize_title,
+        ganhador_id: winner_id,
+        action_id: w.action_id,
+      });
     } else {
       // Use short proxy URL via download-receipt function with filename in path
       const receiptName = w.receipt_filename || "comprovante.pdf";
