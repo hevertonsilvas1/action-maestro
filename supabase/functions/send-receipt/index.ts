@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
         action_id, action_name, table_name: "winners", record_id: winner_id,
         operation: isConfirmation ? "template_reopen_falha" : opFail,
         user_id: user.id, user_name: isAuto ? `${userName} (auto)` : userName, user_role: userRole,
-        changes: { winner_name, error: errorMsg, trigger: triggerSource || "manual" },
+        changes: { winner_name, error: errorMsg, upstream_response: errText.substring(0, 500), trigger: triggerSource || "manual" },
       });
       await saveError(svc, winner_id, `Erro envio: ${errorMsg}`);
       return jsonRes({ success: false, error: errorMsg });
