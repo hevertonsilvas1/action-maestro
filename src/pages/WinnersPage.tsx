@@ -589,6 +589,46 @@ export default function WinnersPage() {
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
       <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} />
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
+
+      {/* Import: Action Selector Dialog */}
+      <Dialog open={importActionSelectorOpen} onOpenChange={setImportActionSelectorOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Selecionar Ação para Importação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <Select value={importActionId} onValueChange={setImportActionId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma ação..." />
+              </SelectTrigger>
+              <SelectContent>
+                {actions.filter(a => a.status !== 'planning' && a.status !== 'archived').map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!importActionId}
+              onClick={() => {
+                setImportActionSelectorOpen(false);
+                setImportModalOpen(true);
+              }}
+            >
+              Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {importActionId && (
+        <ImportWinnersModal
+          open={importModalOpen}
+          onClose={() => { setImportModalOpen(false); setImportActionId(''); }}
+          actionId={importActionId}
+          actionName={actionsMap[importActionId] || ''}
+        />
+      )}
     </AppLayout>
   );
 }
