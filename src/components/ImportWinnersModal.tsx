@@ -117,26 +117,19 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   };
 
   const handleApplyMapping = async () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      toast.error('Arquivo não encontrado. Por favor, selecione novamente.');
+    if (rawExcelRows.length === 0) {
+      toast.error('Dados da planilha não encontrados. Por favor, selecione o arquivo novamente.');
       reset();
       return;
     }
 
     try {
-      const XLSX = await import('xlsx');
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
       const col = (key: string): string | undefined => {
         const v = columnMapping[key];
         return v && v !== '__none__' ? v : undefined;
       };
 
-      const mapped: ParsedWinner[] = rawRows.map((row) => ({
+      const mapped: ParsedWinner[] = rawExcelRows.map((row) => ({
         name: String(col('name') ? row[col('name')!] : '').trim(),
         cpf: String(col('cpf') ? row[col('cpf')!] : '').trim() || null,
         phone: String(col('phone') ? row[col('phone')!] : '').trim() || null,
