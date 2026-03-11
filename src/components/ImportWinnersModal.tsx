@@ -53,6 +53,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     setFileName('');
     setExcelColumns([]);
     setColumnMapping({});
+    setRawExcelRows([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
