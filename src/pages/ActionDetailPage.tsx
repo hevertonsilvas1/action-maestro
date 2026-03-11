@@ -25,7 +25,8 @@ import {
   PlusCircle, Download, Send, FileSpreadsheet, CheckCircle2,
   Target, Loader2, Pencil, Copy, Trash2, Archive, RotateCcw, Clock,
   History, User, CalendarIcon, X, Search, FileText, AlertCircle, RefreshCw,
-  CreditCard, ShieldCheck, AlertTriangle, Paperclip,
+  CreditCard, ShieldCheck, AlertTriangle, Paperclip, MessageSquare, Info,
+  XCircle, Phone, UserX,
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
