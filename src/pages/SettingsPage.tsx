@@ -59,8 +59,8 @@ export default function SettingsPage() {
             )}
             {isAdmin && (
               <TabsTrigger value="window-messages" className="gap-1.5">
-                <MessageSquare className="h-3.5 w-3.5" />
-                Mensagens
+                <Zap className="h-3.5 w-3.5" />
+                Automações
               </TabsTrigger>
             )}
           </TabsList>
