@@ -101,8 +101,45 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
         console.error('Auto-send exception:', err);
       }
     } else {
-      // Window closed → just mark as pending, don't try to send anything
-      toast.info('Comprovante anexado. Envio pendente — será enviado automaticamente quando o cliente interagir.');
+      // Window closed → send "abrir_janela" template to reopen window
+      try {
+        const { data, error } = await supabase.functions.invoke('send-receipt', {
+          body: {
+            winner_id: winner.id,
+            winner_name: winner.name,
+            winner_phone: winner.phoneE164,
+            action_id: actionId,
+            action_name: actionName,
+            prize_title: winner.prizeTitle,
+            prize_value: winner.value,
+            receipt_path: receiptPath,
+            mode: 'confirmation',
+            trigger: 'auto_attach_template',
+          },
+        });
+
+        if (error) {
+          console.error('Auto template error:', error);
+          toast.info('Comprovante anexado. Envio pendente — será enviado quando o cliente interagir.');
+          return;
+        }
+
+        if (data?.success) {
+          await queryClient.invalidateQueries({ queryKey: ['winners'] });
+          toast.success('Comprovante anexado. Mensagem enviada ao cliente para abrir a janela de conversa.');
+        } else if (data?.skipped) {
+          const reasons: Record<string, string> = {
+            max_templates_reached: 'Limite de mensagens de reabertura atingido.',
+            template_cooldown: 'Aguarde antes de enviar outra mensagem de reabertura.',
+          };
+          toast.info(`Comprovante anexado. ${reasons[data.reason] || 'Envio pendente.'}`);
+        } else {
+          toast.info('Comprovante anexado. Envio pendente — será enviado quando o cliente interagir.');
+        }
+      } catch (err) {
+        console.error('Auto template exception:', err);
+        toast.info('Comprovante anexado. Envio pendente — será enviado quando o cliente interagir.');
+      }
     }
   };
 
