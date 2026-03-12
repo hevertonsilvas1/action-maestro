@@ -128,11 +128,13 @@ Deno.serve(async (req) => {
 
     // ── Resolve automation from window_messages (single source of truth) ──
     const automationType = isConfirmation ? "abrir_janela" : "enviar_comprovante";
-    const automation = await getWindowMessage(svc, automationType, { autoOnly: isAuto });
+    // For confirmation (template reopen), don't require auto_use flag
+    const automationQuery = isConfirmation ? {} : { autoOnly: isAuto };
+    const automation = await getWindowMessage(svc, automationType, automationQuery);
 
     if (!automation) {
       const errMsg = `Automação '${automationType}' não encontrada ou inativa. Cadastre em Configurações → Automações.`;
-      if (isAuto) {
+      if (isAuto || isConfirmation) {
         await saveError(svc, winner_id, `Auto-envio bloqueado: ${errMsg}`);
         return jsonRes({ success: false, skipped: true, reason: "no_automation" });
       }
