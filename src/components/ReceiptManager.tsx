@@ -345,6 +345,10 @@ export function ReceiptManager({ open, onOpenChange, winner, userName, actionId,
           receipt_already_sent: 'Comprovante já foi enviado anteriormente.',
           max_templates_reached: 'Limite de templates de reabertura atingido (máx. 3).',
           template_cooldown: 'Aguarde pelo menos 1h entre envios de template.',
+          no_automation: 'Automação não encontrada ou inativa. Configure em Configurações → Automações.',
+          no_phone_e164: 'Telefone E.164 não cadastrado para este ganhador.',
+          no_inbound: 'Sem interação inbound registrada.',
+          window_closed: 'Janela de atendimento fechada.',
         };
         toast.warning(reasons[data.reason] || 'Envio ignorado.');
       } else {
