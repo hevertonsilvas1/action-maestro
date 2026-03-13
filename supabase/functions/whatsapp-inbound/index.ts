@@ -31,6 +31,13 @@ const FALLBACK_STATUSES = [
   "pix_requested",
   "cliente_nao_responde",
   "numero_inexistente",
+  "forcar_pix",
+];
+
+/** Statuses that should revert to awaiting_pix when the client responds */
+const REVERT_TO_AWAITING_STATUSES = [
+  "cliente_nao_responde",
+  "forcar_pix",
 ];
 
 Deno.serve(async (req) => {
