@@ -28,9 +28,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 2. Build slug → id map from winner_statuses
+    const { data: allStatuses, error: statusesError } = await supabase
+      .from('winner_statuses')
+      .select('id, slug');
+    if (statusesError) throw statusesError;
+
+    const slugToId: Record<string, string> = {};
+    (allStatuses || []).forEach((s: any) => { slugToId[s.slug] = s.id; });
+
     let totalChanged = 0;
 
     for (const rule of rules) {
+      const fromStatusId = slugToId[rule.from_status];
+      const toStatusId = slugToId[rule.to_status];
+
+      if (!fromStatusId || !toStatusId) {
+        console.warn(`Rule "${rule.name}": status slug not found (from=${rule.from_status}, to=${rule.to_status})`);
+        continue;
+      }
+
       // Calculate the cutoff time
       const limitMs = rule.time_unit === 'hours'
         ? rule.time_limit * 60 * 60 * 1000
@@ -38,12 +55,11 @@ Deno.serve(async (req) => {
 
       const cutoff = new Date(Date.now() - limitMs).toISOString();
 
-      // Find winners in from_status that have been there since before cutoff
-      // We need to find winners whose last status change was before the cutoff
+      // Find winners in from_status using status_id (supports custom statuses)
       const { data: winners, error: winnersError } = await supabase
         .from('winners')
         .select('id')
-        .eq('status', rule.from_status)
+        .eq('status_id', fromStatusId)
         .is('deleted_at', null);
 
       if (winnersError) {
@@ -56,7 +72,6 @@ Deno.serve(async (req) => {
       const winnerIds = winners.map((w: any) => w.id);
 
       // Check which of these winners have their latest status history entry before cutoff
-      // We need to do this in batches to avoid query limits
       const eligibleIds: string[] = [];
 
       for (let i = 0; i < winnerIds.length; i += 100) {
@@ -89,12 +104,12 @@ Deno.serve(async (req) => {
 
       if (eligibleIds.length === 0) continue;
 
-      // Apply status change for eligible winners
+      // Apply status change using status_id (supports custom statuses)
       for (const wid of eligibleIds) {
         const { error: updateError } = await supabase
           .from('winners')
           .update({
-            status: rule.to_status,
+            status_id: toStatusId,
             updated_at: new Date().toISOString(),
           })
           .eq('id', wid);
