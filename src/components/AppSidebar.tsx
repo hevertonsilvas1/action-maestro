@@ -8,6 +8,7 @@ import {
   Settings,
   Zap,
   LogOut,
+  ListChecks,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -31,12 +32,14 @@ const adminMainNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Ações', url: '/actions', icon: Megaphone },
   { title: 'Ganhadores', url: '/winners', icon: Trophy },
+  { title: 'Modo Operação', url: '/operation', icon: ListChecks },
   { title: 'Excluídos', url: '/winners/deleted', icon: Trash2 },
 ];
 
 const supportMainNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Ganhadores', url: '/winners', icon: Trophy },
+  { title: 'Modo Operação', url: '/operation', icon: ListChecks },
 ];
 
 const adminSettingsNav = [
