@@ -1102,6 +1102,7 @@ export type Database = {
         | "receipt_attached"
         | "numero_inexistente"
         | "cliente_nao_responde"
+        | "forcar_pix"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1261,6 +1262,7 @@ export const Constants = {
         "receipt_attached",
         "numero_inexistente",
         "cliente_nao_responde",
+        "forcar_pix",
       ],
     },
   },

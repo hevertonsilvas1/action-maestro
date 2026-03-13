@@ -94,7 +94,8 @@ export type WinnerStatus =
   | 'pix_refused'
   | 'receipt_attached'
   | 'numero_inexistente'
-  | 'cliente_nao_responde';
+  | 'cliente_nao_responde'
+  | 'forcar_pix';
 
 export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
   imported: 'Importado',
@@ -110,6 +111,7 @@ export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
   receipt_attached: 'Comprovante Anexado',
   numero_inexistente: 'Número Inexistente',
   cliente_nao_responde: 'Cliente Não Responde',
+  forcar_pix: 'Forçar PIX',
 };
 
 export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
@@ -126,6 +128,7 @@ export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
   receipt_attached: 'bg-warning/15 text-warning',
   numero_inexistente: 'bg-destructive/15 text-destructive',
   cliente_nao_responde: 'bg-destructive/15 text-destructive',
+  forcar_pix: 'bg-warning/15 text-warning',
 };
 
 export const ACTION_STATUS_LABELS: Record<Action['status'], string> = {

@@ -35,6 +35,18 @@ interface BatchGeneratorModalProps {
 }
 
 function isEligibleForBatch(w: Winner): boolean {
+  const isForcarPix = w.status === 'forcar_pix';
+
+  // For forcar_pix: allow entry using CPF or phone as operational key, even without pixKey
+  if (isForcarPix) {
+    return (
+      w.value > 0 &&
+      (!!w.cpf || !!w.phone) &&
+      !w.batchId
+    );
+  }
+
+  // Standard flow: requires pixKey
   return (
     !!w.pixKey &&
     !!w.pixType &&
@@ -42,6 +54,17 @@ function isEligibleForBatch(w: Winner): boolean {
     !['receipt_attached', 'receipt_sent'].includes(w.status) &&
     !w.batchId
   );
+}
+
+/** For forcar_pix winners without explicit pixKey, derive operational key from CPF or phone */
+function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } {
+  if (w.pixKey && w.pixType) return { pixKey: w.pixKey, pixType: w.pixType };
+  if (w.cpf) return { pixKey: w.cpf.replace(/\D/g, ''), pixType: 'cpf' };
+  if (w.phone) {
+    const digits = w.phone.replace(/\D/g, '');
+    return { pixKey: digits, pixType: 'phone' };
+  }
+  return { pixKey: '', pixType: 'cpf' };
 }
 
 export function BatchGeneratorModal({
@@ -124,14 +147,16 @@ export function BatchGeneratorModal({
 
         const description = `AÇÃO - ${aId.slice(0, 8)} - ${aName}`.slice(0, 240);
         for (const w of group) {
+          const { pixKey, pixType } = getOperationalPixData(w);
           allRows.push({
             'Apelido': w.name,
-            'Tipo de Transação': PIX_TRANSACTION_TYPES[w.pixType || ''] || 'Pix - Celular',
-            'Dados de Pagamento (Número do Boleto ou Chave Pix)': w.pixKey || '',
+            'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
+            'Dados de Pagamento (Número do Boleto ou Chave Pix)': pixKey,
             'Valor (R$)': w.value,
             'Categoria (Opcional)': w.prizeTitle || w.prizeType || '',
             'Centro de Custo (Opcional)': 'Premiações Instantâneas',
             'Descrição (Opcional) (Max. 240 Caractéres)': description,
+            ...(w.status === 'forcar_pix' ? { 'Observação': 'FORÇAR PIX - Dados operacionais' } : {}),
           });
         }
 
@@ -269,7 +294,13 @@ export function BatchGeneratorModal({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{w.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {w.pixType ? PIX_TYPE_LABELS[w.pixType as PixType] : '—'} · {w.prizeTitle}
+                        {(() => {
+                          const { pixType } = getOperationalPixData(w);
+                          const label = PIX_TYPE_LABELS[pixType];
+                          return w.status === 'forcar_pix' && !w.pixKey
+                            ? `${label} (operacional)` 
+                            : label;
+                        })()} · {w.prizeTitle}
                       </p>
                     </div>
                     <span className="text-sm font-medium shrink-0">{formatCurrency(w.value)}</span>
