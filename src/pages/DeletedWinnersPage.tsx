@@ -56,7 +56,7 @@ export default function DeletedWinnersPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('winners')
-        .select('*')
+        .select('*, winner_statuses!winners_status_id_fkey(slug)')
         .not('deleted_at', 'is', null)
         .order('deleted_at', { ascending: false });
       if (error) throw error;
