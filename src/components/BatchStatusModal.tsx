@@ -59,9 +59,13 @@ export function BatchStatusModal({ open, onOpenChange, winnerIds, currentStatuse
     if (!status || winnerIds.length === 0) return;
     setSaving(true);
     try {
+      // Use status_id to support custom statuses not in the DB enum
+      const statusConfig = bySlug[status];
+      if (!statusConfig) throw new Error('Status não encontrado');
+      
       const { error } = await supabase
         .from('winners')
-        .update({ status: status as any, updated_at: new Date().toISOString() })
+        .update({ status_id: statusConfig.id, updated_at: new Date().toISOString() } as any)
         .in('id', winnerIds);
 
       if (error) throw error;
