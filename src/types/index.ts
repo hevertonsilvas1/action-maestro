@@ -94,7 +94,8 @@ export type WinnerStatus =
   | 'pix_refused'
   | 'receipt_attached'
   | 'numero_inexistente'
-  | 'cliente_nao_responde';
+  | 'cliente_nao_responde'
+  | 'forcar_pix';
 
 export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
   imported: 'Importado',
