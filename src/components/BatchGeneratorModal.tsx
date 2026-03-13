@@ -35,6 +35,18 @@ interface BatchGeneratorModalProps {
 }
 
 function isEligibleForBatch(w: Winner): boolean {
+  const isForcarPix = w.status === 'forcar_pix';
+
+  // For forcar_pix: allow entry using CPF or phone as operational key, even without pixKey
+  if (isForcarPix) {
+    return (
+      w.value > 0 &&
+      (!!w.cpf || !!w.phone) &&
+      !w.batchId
+    );
+  }
+
+  // Standard flow: requires pixKey
   return (
     !!w.pixKey &&
     !!w.pixType &&
@@ -42,6 +54,17 @@ function isEligibleForBatch(w: Winner): boolean {
     !['receipt_attached', 'receipt_sent'].includes(w.status) &&
     !w.batchId
   );
+}
+
+/** For forcar_pix winners without explicit pixKey, derive operational key from CPF or phone */
+function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } {
+  if (w.pixKey && w.pixType) return { pixKey: w.pixKey, pixType: w.pixType };
+  if (w.cpf) return { pixKey: w.cpf.replace(/\D/g, ''), pixType: 'cpf' };
+  if (w.phone) {
+    const digits = w.phone.replace(/\D/g, '');
+    return { pixKey: digits, pixType: 'phone' };
+  }
+  return { pixKey: '', pixType: 'cpf' };
 }
 
 export function BatchGeneratorModal({
