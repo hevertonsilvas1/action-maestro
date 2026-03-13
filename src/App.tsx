@@ -94,6 +94,7 @@ const AppRoutes = () => (
     <Route path="/actions/:id/edit" element={<AdminRoute><EditActionPage /></AdminRoute>} />
     <Route path="/winners" element={<ProtectedRoute><WinnersPage /></ProtectedRoute>} />
     <Route path="/winners/deleted" element={<AdminRoute><DeletedWinnersPage /></AdminRoute>} />
+    <Route path="/operation" element={<ProtectedRoute><OperationModePage /></ProtectedRoute>} />
     <Route path="/team" element={<AdminRoute><TeamPage /></AdminRoute>} />
     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
