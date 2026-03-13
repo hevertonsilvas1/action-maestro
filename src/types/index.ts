@@ -111,6 +111,7 @@ export const WINNER_STATUS_LABELS: Record<WinnerStatus, string> = {
   receipt_attached: 'Comprovante Anexado',
   numero_inexistente: 'Número Inexistente',
   cliente_nao_responde: 'Cliente Não Responde',
+  forcar_pix: 'Forçar PIX',
 };
 
 export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
