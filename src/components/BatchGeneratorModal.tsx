@@ -303,7 +303,6 @@ export function BatchGeneratorModal({
                         })()} · {w.prizeTitle}
                       </p>
                     </div>
-                    </div>
                     <span className="text-sm font-medium shrink-0">{formatCurrency(w.value)}</span>
                   </label>
                 ))}
