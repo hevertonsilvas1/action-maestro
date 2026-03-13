@@ -32,6 +32,7 @@ const adminMainNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Ações', url: '/actions', icon: Megaphone },
   { title: 'Ganhadores', url: '/winners', icon: Trophy },
+  { title: 'Modo Operação', url: '/operation', icon: ListChecks },
   { title: 'Excluídos', url: '/winners/deleted', icon: Trash2 },
 ];
 
