@@ -70,7 +70,7 @@ export function useWinners(actionId?: string) {
   return useQuery({
     queryKey: ['winners', actionId ?? 'all'],
     queryFn: async () => {
-      let query = supabase.from('winners').select('*').is('deleted_at', null).order('created_at', { ascending: false });
+      let query = supabase.from('winners').select('*, winner_statuses!winners_status_id_fkey(slug)').is('deleted_at', null).order('created_at', { ascending: false });
       if (actionId) query = query.eq('action_id', actionId);
       const { data, error } = await query;
       if (error) throw error;
