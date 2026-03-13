@@ -128,6 +128,7 @@ export const WINNER_STATUS_COLORS: Record<WinnerStatus, string> = {
   receipt_attached: 'bg-warning/15 text-warning',
   numero_inexistente: 'bg-destructive/15 text-destructive',
   cliente_nao_responde: 'bg-destructive/15 text-destructive',
+  forcar_pix: 'bg-warning/15 text-warning',
 };
 
 export const ACTION_STATUS_LABELS: Record<Action['status'], string> = {
