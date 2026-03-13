@@ -11,7 +11,7 @@ function mapWinner(row: any): Winner {
     prizeType: row.prize_type,
     prizeTitle: row.prize_title,
     value: Number(row.value),
-    status: row.status_slug ?? row.status,
+    status: row.winner_statuses?.slug ?? row.status,
     pixKey: row.pix_key ?? undefined,
     pixType: row.pix_type ?? undefined,
     fullName: row.full_name ?? undefined,
