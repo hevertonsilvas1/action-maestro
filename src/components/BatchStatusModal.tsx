@@ -24,7 +24,7 @@ export function BatchStatusModal({ open, onOpenChange, winnerIds, currentStatuse
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
-  const { activeOrdered, getAllowedTransitions } = useWinnerStatusMap();
+  const { activeOrdered, getAllowedTransitions, bySlug } = useWinnerStatusMap();
 
   // Compute allowed target statuses based on current statuses of selected winners
   const availableStatuses = useMemo(() => {
