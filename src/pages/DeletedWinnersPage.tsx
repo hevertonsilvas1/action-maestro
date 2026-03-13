@@ -22,7 +22,7 @@ function mapWinner(row: any): Winner & { deletedAt: string; deletedBy: string } 
     prizeType: row.prize_type,
     prizeTitle: row.prize_title,
     value: Number(row.value),
-    status: row.status,
+    status: row.winner_statuses?.slug ?? row.status,
     phone: row.phone ?? undefined,
     cpf: row.cpf ?? undefined,
     fullName: row.full_name ?? undefined,
@@ -56,7 +56,7 @@ export default function DeletedWinnersPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('winners')
-        .select('*')
+        .select('*, winner_statuses!winners_status_id_fkey(slug)')
         .not('deleted_at', 'is', null)
         .order('deleted_at', { ascending: false });
       if (error) throw error;
