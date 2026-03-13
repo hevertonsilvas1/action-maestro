@@ -8,6 +8,7 @@ import {
   Settings,
   Zap,
   LogOut,
+  ListChecks,
 } from 'lucide-react';
 import {
   Sidebar,
