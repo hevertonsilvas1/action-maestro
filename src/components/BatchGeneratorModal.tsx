@@ -147,14 +147,16 @@ export function BatchGeneratorModal({
 
         const description = `AÇÃO - ${aId.slice(0, 8)} - ${aName}`.slice(0, 240);
         for (const w of group) {
+          const { pixKey, pixType } = getOperationalPixData(w);
           allRows.push({
             'Apelido': w.name,
-            'Tipo de Transação': PIX_TRANSACTION_TYPES[w.pixType || ''] || 'Pix - Celular',
-            'Dados de Pagamento (Número do Boleto ou Chave Pix)': w.pixKey || '',
+            'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
+            'Dados de Pagamento (Número do Boleto ou Chave Pix)': pixKey,
             'Valor (R$)': w.value,
             'Categoria (Opcional)': w.prizeTitle || w.prizeType || '',
             'Centro de Custo (Opcional)': 'Premiações Instantâneas',
             'Descrição (Opcional) (Max. 240 Caractéres)': description,
+            ...(w.status === 'forcar_pix' ? { 'Observação': 'FORÇAR PIX - Dados operacionais' } : {}),
           });
         }
 
