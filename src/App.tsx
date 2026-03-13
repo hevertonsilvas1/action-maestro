@@ -18,6 +18,7 @@ import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DeletedWinnersPage from "./pages/DeletedWinnersPage";
+import OperationModePage from "./pages/OperationModePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
