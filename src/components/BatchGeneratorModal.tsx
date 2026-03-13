@@ -294,8 +294,15 @@ export function BatchGeneratorModal({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{w.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {w.pixType ? PIX_TYPE_LABELS[w.pixType as PixType] : '—'} · {w.prizeTitle}
+                        {(() => {
+                          const { pixType } = getOperationalPixData(w);
+                          const label = PIX_TYPE_LABELS[pixType];
+                          return w.status === 'forcar_pix' && !w.pixKey
+                            ? `${label} (operacional)` 
+                            : label;
+                        })()} · {w.prizeTitle}
                       </p>
+                    </div>
                     </div>
                     <span className="text-sm font-medium shrink-0">{formatCurrency(w.value)}</span>
                   </label>
