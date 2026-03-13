@@ -145,11 +145,28 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true, matched: 0, normalized_phone: phoneE164, fallback_used: fallbackUsed, winner_id: null, action_id_resolved: null });
     }
 
-    // Update inbound timestamps
+    // Update inbound timestamps + revert status if client was unresponsive
     for (const winner of winners) {
-      await serviceClient.from("winners").update({
+      const updateData: Record<string, unknown> = {
         ultima_interacao_whatsapp: now, last_inbound_at: now, last_pix_error: null,
-      }).eq("id", winner.id);
+      };
+
+      // If winner was in "not responding" statuses, revert to awaiting_pix
+      if (REVERT_TO_AWAITING_STATUSES.includes(winner.status)) {
+        const { data: awaitingStatus } = await serviceClient
+          .from("winner_statuses")
+          .select("id")
+          .eq("slug", "awaiting_pix")
+          .single();
+
+        if (awaitingStatus) {
+          updateData.status_id = awaitingStatus.id;
+          updateData.updated_at = now;
+          console.log(`[INBOUND] ↩️ Reverting winner ${winner.id} from "${winner.status}" to "awaiting_pix" (client responded)`);
+        }
+      }
+
+      await serviceClient.from("winners").update(updateData).eq("id", winner.id);
     }
 
     // Check auto-send config
