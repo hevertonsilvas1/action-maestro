@@ -40,6 +40,10 @@ export default function SettingsPage() {
               <User className="h-3.5 w-3.5" />
               Usuário
             </TabsTrigger>
+            <TabsTrigger value="quick-filters" className="gap-1.5">
+              <Filter className="h-3.5 w-3.5" />
+              Filtros Rápidos
+            </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="integrations" className="gap-1.5">
                 <Webhook className="h-3.5 w-3.5" />
