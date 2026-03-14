@@ -612,6 +612,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_quick_filters: {
+        Row: {
+          created_at: string
+          filter_type: string
+          filter_value: string
+          id: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filter_type?: string
+          filter_value: string
+          id?: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filter_type?: string
+          filter_value?: string
+          id?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
