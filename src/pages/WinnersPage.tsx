@@ -37,6 +37,7 @@ import {
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
