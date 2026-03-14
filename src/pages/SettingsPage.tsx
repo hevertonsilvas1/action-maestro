@@ -8,6 +8,7 @@ import { IntegrationsTab } from '@/components/settings/IntegrationsTab';
 import { WinnerStatusesTab } from '@/components/settings/WinnerStatusesTab';
 import { TimeConfigTab } from '@/components/settings/TimeConfigTab';
 import { WindowMessagesTab } from '@/components/settings/WindowMessagesTab';
+import { QuickFiltersTab } from '@/components/settings/QuickFiltersTab';
 import { useSearchParams } from 'react-router-dom';
 
 export default function SettingsPage() {
