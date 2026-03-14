@@ -232,15 +232,49 @@ export default function WinnersPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
-        {/* Quick Filter Chips */}
+        {/* Status Queue Chips */}
         <div className="flex flex-wrap gap-2">
-          {QUICK_FILTERS.map(qf => {
-            const active = isQuickActive(qf);
-            const QfIcon = qf.icon;
+          {activeOrdered.map(status => {
+            const count = statusCounts[status.slug] || 0;
+            const active = filters.status === status.slug;
             return (
               <button
-                key={qf.key}
-                onClick={() => toggleQuick(qf)}
+                key={status.slug}
+                onClick={() => toggleStatusChip(status.slug)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                  active
+                    ? 'text-white border-transparent'
+                    : 'bg-card text-muted-foreground border-border hover:bg-muted',
+                )}
+                style={active ? { backgroundColor: status.color, borderColor: status.color } : undefined}
+              >
+                <div
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: active ? 'white' : status.color }}
+                />
+                {status.name}
+                <span className={cn(
+                  'text-[10px] font-bold px-1.5 py-0 rounded-full',
+                  active ? 'bg-white/25' : 'bg-muted'
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Separator */}
+          <div className="w-px h-7 bg-border self-center mx-1" />
+
+          {/* Window filters */}
+          {WINDOW_FILTERS.map(wf => {
+            const active = filters.whatsappWindow === wf.windowValue;
+            const WfIcon = wf.icon;
+            return (
+              <button
+                key={wf.key}
+                onClick={() => toggleWindowChip(wf.windowValue)}
                 className={cn(
                   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
                   active
@@ -248,8 +282,8 @@ export default function WinnersPage() {
                     : 'bg-card text-muted-foreground border-border hover:bg-muted',
                 )}
               >
-                <QfIcon className="h-3 w-3" />
-                {qf.label}
+                <WfIcon className="h-3 w-3" />
+                {wf.label}
               </button>
             );
           })}
