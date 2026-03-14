@@ -80,6 +80,10 @@ export default function SettingsPage() {
             <UserTab />
           </TabsContent>
 
+          <TabsContent value="quick-filters">
+            <QuickFiltersTab />
+          </TabsContent>
+
           {isAdmin && (
             <TabsContent value="integrations">
               <IntegrationsTab />
