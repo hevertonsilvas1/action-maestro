@@ -163,27 +163,20 @@ export default function WinnersPage() {
     setPixModalOpen(true);
   };
 
-  const isQuickActive = (qf: typeof QUICK_FILTERS[number]) => {
-    if ('statusValue' in qf && qf.statusValue) return filters.status === qf.statusValue;
-    if ('windowValue' in qf && qf.windowValue) return filters.whatsappWindow === qf.windowValue;
-    return false;
-  };
+  // Status counts for queue chips
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    winners.forEach(w => { counts[w.status] = (counts[w.status] || 0) + 1; });
+    return counts;
+  }, [winners]);
 
-  const toggleQuick = (qf: typeof QUICK_FILTERS[number]) => {
-    if (isQuickActive(qf)) {
-      handleFiltersChange({
-        ...filters,
-        ...('statusValue' in qf && qf.statusValue ? { status: 'all' } : {}),
-        ...('windowValue' in qf && qf.windowValue ? { whatsappWindow: 'all' as const } : {}),
-      });
-    } else {
-      handleFiltersChange({
-        ...filters,
-        ...('statusValue' in qf && qf.statusValue ? { status: qf.statusValue } : {}),
-        ...('windowValue' in qf && qf.windowValue ? { whatsappWindow: qf.windowValue as 'open' | 'closed' } : {}),
-      });
-    }
-  };
+  const toggleStatusChip = useCallback((slug: string) => {
+    handleFiltersChange({ ...filters, status: filters.status === slug ? 'all' : slug });
+  }, [filters, handleFiltersChange]);
+
+  const toggleWindowChip = useCallback((value: 'open' | 'closed') => {
+    handleFiltersChange({ ...filters, whatsappWindow: filters.whatsappWindow === value ? 'all' : value });
+  }, [filters, handleFiltersChange]);
 
   const userName = user?.user_metadata?.display_name || user?.email || 'Sistema';
 
