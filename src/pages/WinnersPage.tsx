@@ -65,6 +65,7 @@ export default function WinnersPage() {
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
   const { isAdmin } = useUserRole();
+  const { activeOrdered } = useWinnerStatusMap();
   const { user } = useAuth();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { data: actions = [], isLoading: loadingActions } = useActions();
