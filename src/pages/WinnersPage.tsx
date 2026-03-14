@@ -38,14 +38,15 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
+import { useQuickFilters } from '@/hooks/useQuickFilters';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
 
-const WINDOW_FILTERS = [
-  { key: 'window_open', label: 'Janela Aberta', windowValue: 'open' as const, icon: MessageSquare },
-  { key: 'window_closed', label: 'Janela Fechada', windowValue: 'closed' as const, icon: MessageSquare },
-] as const;
+const WINDOW_FILTERS_MAP: Record<string, { label: string; windowValue: 'open' | 'closed' }> = {
+  open: { label: 'Janela Aberta', windowValue: 'open' },
+  closed: { label: 'Janela Fechada', windowValue: 'closed' },
+};
 
 export default function WinnersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
