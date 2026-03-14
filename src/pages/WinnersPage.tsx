@@ -41,13 +41,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
 
-const QUICK_FILTERS = [
-  { key: 'pix_refused', label: 'Recusado', statusValue: 'pix_refused', icon: XCircle },
-  { key: 'numero_inexistente', label: 'Nº Inexist.', statusValue: 'numero_inexistente', icon: Phone },
-  { key: 'cliente_nao_responde', label: 'Não Resp.', statusValue: 'cliente_nao_responde', icon: UserX },
-  { key: 'receipt_attached', label: 'Comp. Pendente', statusValue: 'receipt_attached', icon: Paperclip },
-  { key: 'window_open', label: 'Janela Aberta', windowValue: 'open', icon: MessageSquare },
-  { key: 'window_closed', label: 'Janela Fechada', windowValue: 'closed', icon: MessageSquare },
+const WINDOW_FILTERS = [
+  { key: 'window_open', label: 'Janela Aberta', windowValue: 'open' as const, icon: MessageSquare },
+  { key: 'window_closed', label: 'Janela Fechada', windowValue: 'closed' as const, icon: MessageSquare },
 ] as const;
 
 export default function WinnersPage() {
