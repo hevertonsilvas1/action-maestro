@@ -38,7 +38,6 @@ const adminMainNav = [
 const supportMainNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Ganhadores', url: '/winners', icon: Trophy },
-  { title: 'Modo Operação', url: '/operation', icon: ListChecks },
 ];
 
 const adminSettingsNav = [
