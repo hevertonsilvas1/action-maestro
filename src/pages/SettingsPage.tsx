@@ -1,13 +1,14 @@
 import { AppLayout } from '@/components/AppLayout';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings2, User, Webhook, Tags, Clock, Zap } from 'lucide-react';
+import { Settings2, User, Webhook, Tags, Clock, Zap, Filter } from 'lucide-react';
 import { GeneralTab } from '@/components/settings/GeneralTab';
 import { UserTab } from '@/components/settings/UserTab';
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab';
 import { WinnerStatusesTab } from '@/components/settings/WinnerStatusesTab';
 import { TimeConfigTab } from '@/components/settings/TimeConfigTab';
 import { WindowMessagesTab } from '@/components/settings/WindowMessagesTab';
+import { QuickFiltersTab } from '@/components/settings/QuickFiltersTab';
 import { useSearchParams } from 'react-router-dom';
 
 export default function SettingsPage() {
@@ -38,6 +39,10 @@ export default function SettingsPage() {
             <TabsTrigger value="user" className="gap-1.5">
               <User className="h-3.5 w-3.5" />
               Usuário
+            </TabsTrigger>
+            <TabsTrigger value="quick-filters" className="gap-1.5">
+              <Filter className="h-3.5 w-3.5" />
+              Filtros Rápidos
             </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="integrations" className="gap-1.5">
@@ -73,6 +78,10 @@ export default function SettingsPage() {
 
           <TabsContent value="user">
             <UserTab />
+          </TabsContent>
+
+          <TabsContent value="quick-filters">
+            <QuickFiltersTab />
           </TabsContent>
 
           {isAdmin && (
