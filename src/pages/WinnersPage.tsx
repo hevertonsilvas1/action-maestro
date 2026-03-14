@@ -234,62 +234,73 @@ export default function WinnersPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
-        {/* Status Queue Chips */}
-        <div className="flex flex-wrap gap-2">
-          {activeOrdered.map(status => {
-            const count = statusCounts[status.slug] || 0;
-            const active = filters.status === status.slug;
-            return (
-              <button
-                key={status.slug}
-                onClick={() => toggleStatusChip(status.slug)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
-                  active
-                    ? 'text-white border-transparent'
-                    : 'bg-card text-muted-foreground border-border hover:bg-muted',
-                )}
-                style={active ? { backgroundColor: status.color, borderColor: status.color } : undefined}
-              >
-                <div
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: active ? 'white' : status.color }}
-                />
-                {status.name}
-                <span className={cn(
-                  'text-[10px] font-bold px-1.5 py-0 rounded-full',
-                  active ? 'bg-white/25' : 'bg-muted'
-                )}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-
-          {/* Separator */}
-          <div className="w-px h-7 bg-border self-center mx-1" />
-
-          {/* Window filters */}
-          {WINDOW_FILTERS.map(wf => {
-            const active = filters.whatsappWindow === wf.windowValue;
-            const WfIcon = wf.icon;
-            return (
-              <button
-                key={wf.key}
-                onClick={() => toggleWindowChip(wf.windowValue)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
-                  active
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-muted-foreground border-border hover:bg-muted',
-                )}
-              >
-                <WfIcon className="h-3 w-3" />
-                {wf.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Configurable Quick Filter Chips */}
+        {quickFilterConfig.length > 0 ? (
+          <div className="flex flex-wrap gap-2 items-center">
+            {quickFilterConfig.map(qf => {
+              if (qf.filter_type === 'status') {
+                const status = activeOrdered.find(s => s.slug === qf.filter_value);
+                if (!status) return null;
+                const count = statusCounts[status.slug] || 0;
+                const active = filters.status === status.slug;
+                return (
+                  <button
+                    key={`status-${status.slug}`}
+                    onClick={() => toggleStatusChip(status.slug)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                      active
+                        ? 'text-white border-transparent'
+                        : 'bg-card text-muted-foreground border-border hover:bg-muted',
+                    )}
+                    style={active ? { backgroundColor: status.color, borderColor: status.color } : undefined}
+                  >
+                    <div
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: active ? 'white' : status.color }}
+                    />
+                    {status.name}
+                    <span className={cn(
+                      'text-[10px] font-bold px-1.5 py-0 rounded-full',
+                      active ? 'bg-white/25' : 'bg-muted'
+                    )}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              }
+              if (qf.filter_type === 'window') {
+                const wf = WINDOW_FILTERS_MAP[qf.filter_value];
+                if (!wf) return null;
+                const active = filters.whatsappWindow === wf.windowValue;
+                return (
+                  <button
+                    key={`window-${qf.filter_value}`}
+                    onClick={() => toggleWindowChip(wf.windowValue)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground border-border hover:bg-muted',
+                    )}
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                    {wf.label}
+                  </button>
+                );
+              }
+              return null;
+            })}
+          </div>
+        ) : !quickFiltersLoading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <Filter className="h-3.5 w-3.5" />
+            <span>Nenhum filtro rápido configurado.</span>
+            <a href="/settings?tab=quick-filters" className="text-primary hover:underline font-medium">
+              Configurar
+            </a>
+          </div>
+        ) : null}
 
         <WinnersFilters
           filters={filters}
