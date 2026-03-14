@@ -32,22 +32,19 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Download, Loader2, Send, PlusCircle, Trash2, AlertCircle, Info,
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
-  XCircle, Phone, UserX, History, Clock,
+  History, Clock,
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
 
-const QUICK_FILTERS = [
-  { key: 'pix_refused', label: 'Recusado', statusValue: 'pix_refused', icon: XCircle },
-  { key: 'numero_inexistente', label: 'Nº Inexist.', statusValue: 'numero_inexistente', icon: Phone },
-  { key: 'cliente_nao_responde', label: 'Não Resp.', statusValue: 'cliente_nao_responde', icon: UserX },
-  { key: 'receipt_attached', label: 'Comp. Pendente', statusValue: 'receipt_attached', icon: Paperclip },
-  { key: 'window_open', label: 'Janela Aberta', windowValue: 'open', icon: MessageSquare },
-  { key: 'window_closed', label: 'Janela Fechada', windowValue: 'closed', icon: MessageSquare },
+const WINDOW_FILTERS = [
+  { key: 'window_open', label: 'Janela Aberta', windowValue: 'open' as const, icon: MessageSquare },
+  { key: 'window_closed', label: 'Janela Fechada', windowValue: 'closed' as const, icon: MessageSquare },
 ] as const;
 
 export default function WinnersPage() {
@@ -68,6 +65,7 @@ export default function WinnersPage() {
   const [pageSize, setPageSize] = useState(20);
   const { filters, setFilters } = useWinnersFilters();
   const { isAdmin } = useUserRole();
+  const { activeOrdered } = useWinnerStatusMap();
   const { user } = useAuth();
   const { data: winners = [], isLoading: loadingWinners } = useWinners();
   const { data: actions = [], isLoading: loadingActions } = useActions();
@@ -165,27 +163,20 @@ export default function WinnersPage() {
     setPixModalOpen(true);
   };
 
-  const isQuickActive = (qf: typeof QUICK_FILTERS[number]) => {
-    if ('statusValue' in qf && qf.statusValue) return filters.status === qf.statusValue;
-    if ('windowValue' in qf && qf.windowValue) return filters.whatsappWindow === qf.windowValue;
-    return false;
-  };
+  // Status counts for queue chips
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    winners.forEach(w => { counts[w.status] = (counts[w.status] || 0) + 1; });
+    return counts;
+  }, [winners]);
 
-  const toggleQuick = (qf: typeof QUICK_FILTERS[number]) => {
-    if (isQuickActive(qf)) {
-      handleFiltersChange({
-        ...filters,
-        ...('statusValue' in qf && qf.statusValue ? { status: 'all' } : {}),
-        ...('windowValue' in qf && qf.windowValue ? { whatsappWindow: 'all' as const } : {}),
-      });
-    } else {
-      handleFiltersChange({
-        ...filters,
-        ...('statusValue' in qf && qf.statusValue ? { status: qf.statusValue } : {}),
-        ...('windowValue' in qf && qf.windowValue ? { whatsappWindow: qf.windowValue as 'open' | 'closed' } : {}),
-      });
-    }
-  };
+  const toggleStatusChip = useCallback((slug: string) => {
+    handleFiltersChange({ ...filters, status: filters.status === slug ? 'all' : slug });
+  }, [filters, handleFiltersChange]);
+
+  const toggleWindowChip = useCallback((value: 'open' | 'closed') => {
+    handleFiltersChange({ ...filters, whatsappWindow: filters.whatsappWindow === value ? 'all' : value });
+  }, [filters, handleFiltersChange]);
 
   const userName = user?.user_metadata?.display_name || user?.email || 'Sistema';
 
@@ -241,15 +232,49 @@ export default function WinnersPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
-        {/* Quick Filter Chips */}
+        {/* Status Queue Chips */}
         <div className="flex flex-wrap gap-2">
-          {QUICK_FILTERS.map(qf => {
-            const active = isQuickActive(qf);
-            const QfIcon = qf.icon;
+          {activeOrdered.map(status => {
+            const count = statusCounts[status.slug] || 0;
+            const active = filters.status === status.slug;
             return (
               <button
-                key={qf.key}
-                onClick={() => toggleQuick(qf)}
+                key={status.slug}
+                onClick={() => toggleStatusChip(status.slug)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                  active
+                    ? 'text-white border-transparent'
+                    : 'bg-card text-muted-foreground border-border hover:bg-muted',
+                )}
+                style={active ? { backgroundColor: status.color, borderColor: status.color } : undefined}
+              >
+                <div
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: active ? 'white' : status.color }}
+                />
+                {status.name}
+                <span className={cn(
+                  'text-[10px] font-bold px-1.5 py-0 rounded-full',
+                  active ? 'bg-white/25' : 'bg-muted'
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Separator */}
+          <div className="w-px h-7 bg-border self-center mx-1" />
+
+          {/* Window filters */}
+          {WINDOW_FILTERS.map(wf => {
+            const active = filters.whatsappWindow === wf.windowValue;
+            const WfIcon = wf.icon;
+            return (
+              <button
+                key={wf.key}
+                onClick={() => toggleWindowChip(wf.windowValue)}
                 className={cn(
                   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
                   active
@@ -257,8 +282,8 @@ export default function WinnersPage() {
                     : 'bg-card text-muted-foreground border-border hover:bg-muted',
                 )}
               >
-                <QfIcon className="h-3 w-3" />
-                {qf.label}
+                <WfIcon className="h-3 w-3" />
+                {wf.label}
               </button>
             );
           })}
