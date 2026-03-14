@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/AppLayout';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings2, User, Webhook, Tags, Clock, Zap } from 'lucide-react';
+import { Settings2, User, Webhook, Tags, Clock, Zap, Filter } from 'lucide-react';
 import { GeneralTab } from '@/components/settings/GeneralTab';
 import { UserTab } from '@/components/settings/UserTab';
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab';
