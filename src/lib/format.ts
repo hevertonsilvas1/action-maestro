@@ -41,10 +41,9 @@ export function formatCpf(cpf: string | undefined | null): string {
   return cpf;
 }
 
-export function formatPixKey(pixKey: string | undefined | null, pixType?: string): string {
+export function formatPixKey(pixKey: string | undefined | null): string {
   if (!pixKey) return '—';
-  if (pixKey.length <= 8) return pixKey;
-  return `${pixKey.slice(0, 4)}…${pixKey.slice(-4)}`;
+  return pixKey;
 }
 
 export function formatNumber(value: number): string {
