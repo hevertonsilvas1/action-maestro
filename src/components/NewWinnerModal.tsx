@@ -47,6 +47,7 @@ export function NewWinnerModal({
     cpf: '',
     value: '',
     observation: '',
+    prizeDatetime: new Date().toISOString().slice(0, 16), // default to now (datetime-local format)
   });
 
   // Load prizes and winners for the selected action to check limits
