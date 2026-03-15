@@ -34,6 +34,7 @@ import {
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
   History, Clock, Filter,
 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -43,6 +44,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
 import { PIX_TYPE_LABELS } from '@/types';
+import { CheckCircle2 } from 'lucide-react';
 
 const WINDOW_FILTERS_MAP: Record<string, { label: string; windowValue: 'open' | 'closed' }> = {
   open: { label: 'Janela Aberta', windowValue: 'open' },
