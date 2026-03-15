@@ -389,8 +389,19 @@ export default function WinnersPage() {
                           <td className="px-3 py-2.5 text-right text-sm font-medium">
                             {formatCurrency(w.value)}
                           </td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
-                            {formatPixKey(w.pixKey)}
+                          <td className="px-3 py-2.5 text-xs font-mono">
+                            {opPix.key ? (
+                              <span className={cn(
+                                opPix.source === 'pix' ? 'text-muted-foreground' : 'text-warning',
+                              )}>
+                                {opPix.key}
+                                {opPix.source !== 'pix' && (
+                                  <span className="text-[9px] ml-1 opacity-70">({opPix.source === 'cpf' ? 'CPF' : 'Tel'})</span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                             {formatDateTime(w.prizeDatetime)}
