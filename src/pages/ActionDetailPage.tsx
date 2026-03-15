@@ -139,9 +139,19 @@ export default function ActionDetailPage() {
 
   const { requestPix, isPending: isRequestingPix } = useRequestPix(id ?? '', action?.name ?? '');
 
+  const COMPLETED_STATUSES = ['paid', 'receipt_sent'];
+  const completedWinnersCount = useMemo(() => winners.filter(w => COMPLETED_STATUSES.includes(w.status)).length, [winners]);
+  const pendingWinnersCount = useMemo(() => winners.length - completedWinnersCount, [winners, completedWinnersCount]);
+
+  const tabbedWinners = useMemo(() => winners.filter(w =>
+    winnersTab === 'completed'
+      ? COMPLETED_STATUSES.includes(w.status)
+      : !COMPLETED_STATUSES.includes(w.status)
+  ), [winners, winnersTab]);
+
   const filteredWinners = useMemo(
-    () => applyWinnersFilters(winners, winnersFilters),
-    [winners, winnersFilters]
+    () => applyWinnersFilters(tabbedWinners, winnersFilters),
+    [tabbedWinners, winnersFilters]
   );
 
   const paginatedWinners = useMemo(
