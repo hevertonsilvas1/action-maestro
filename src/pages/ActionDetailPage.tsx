@@ -707,7 +707,7 @@ export default function ActionDetailPage() {
                             <td className="px-3 py-2.5 text-xs text-muted-foreground">{w.prizeTitle}</td>
                             {isAdmin && <td className="px-3 py-2.5 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
                             <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
-                              {formatPixKey(w.pixKey, w.pixType)}
+                              {formatPixKey(w.pixKey)}
                             </td>
                             <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                               {formatDateTime(w.prizeDatetime)}
