@@ -281,16 +281,27 @@ export function NewWinnerModal({
             </div>
           </div>
 
-          {/* Value */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Valor do Prêmio (R$) *</Label>
-            <Input
-              value={form.value}
-              onChange={(e) => update({ value: e.target.value })}
-              placeholder="0,00"
-              className="h-9 text-xs"
-              type="text"
-            />
+          {/* Value + Prize DateTime */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Valor do Prêmio (R$) *</Label>
+              <Input
+                value={form.value}
+                onChange={(e) => update({ value: e.target.value })}
+                placeholder="0,00"
+                className="h-9 text-xs"
+                type="text"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data/Hora da Premiação</Label>
+              <Input
+                type="datetime-local"
+                value={form.prizeDatetime}
+                onChange={(e) => update({ prizeDatetime: e.target.value })}
+                className="h-9 text-xs"
+              />
+            </div>
           </div>
 
           {/* Observation */}
