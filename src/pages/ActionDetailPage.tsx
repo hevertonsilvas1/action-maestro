@@ -12,7 +12,7 @@ import { formatCurrency, formatPercent, formatDate, formatPhone, formatDateTime,
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
-import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
+import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, PIX_TYPE_LABELS, WinnerStatus } from '@/types';
 import type { Action } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
