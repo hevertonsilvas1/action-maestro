@@ -714,13 +714,13 @@ export default function ActionDetailPage() {
                                   opPix.source === 'pix' ? 'text-muted-foreground' : 'text-warning',
                                 )}>
                                   {opPix.key}
-                                  {opPix.source !== 'pix' && (
-                                    <span className="text-[9px] ml-1 opacity-70">({opPix.source === 'cpf' ? 'CPF' : 'Tel'})</span>
-                                  )}
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                              {opPix.source === 'pix' && w.pixType ? PIX_TYPE_LABELS[w.pixType] : opPix.source === 'cpf' ? 'CPF' : opPix.source === 'phone' ? 'Telefone' : '—'}
                             </td>
                             <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                               {formatDateTime(w.prizeDatetime)}
