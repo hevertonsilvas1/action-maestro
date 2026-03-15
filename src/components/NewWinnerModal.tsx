@@ -115,6 +115,15 @@ export function NewWinnerModal({
         }
       }
 
+      // Build prize_datetime: if user provided date but no time, append current time
+      let prizeDt: string | null = null;
+      if (form.prizeDatetime) {
+        const dt = new Date(form.prizeDatetime);
+        if (!isNaN(dt.getTime())) {
+          prizeDt = dt.toISOString();
+        }
+      }
+
       const { error } = await supabase.from('winners').insert({
         action_id: form.actionId,
         name: form.name.trim(),
@@ -124,6 +133,7 @@ export function NewWinnerModal({
         value: valueNum,
         prize_type: form.prizeType as any,
         prize_title: form.prizeTitle.trim() || PRIZE_TYPES.find(p => p.value === form.prizeType)?.label || form.prizeType,
+        prize_datetime: prizeDt,
         status: 'imported' as any,
       });
 
