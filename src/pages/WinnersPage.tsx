@@ -376,12 +376,23 @@ export default function WinnersPage() {
                           <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
                             {formatPhone(w.phone)}
                           </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                            {formatCpf(w.cpf)}
+                          </td>
                           <td className="px-3 py-2.5">
                             <p className="text-xs text-muted-foreground truncate max-w-[140px]">{w.actionName}</p>
-                            <p className="text-[10px] text-muted-foreground">{w.prizeTitle}</p>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                            {w.prizeTitle}
                           </td>
                           <td className="px-3 py-2.5 text-right text-sm font-medium">
                             {formatCurrency(w.value)}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                            {formatPixKey(w.pixKey, w.pixType)}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                            {formatDateTime(w.prizeDatetime)}
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <StatusBadge status={w.status} className="text-[11px]" />
