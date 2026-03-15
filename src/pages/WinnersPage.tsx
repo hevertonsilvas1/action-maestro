@@ -34,6 +34,7 @@ import {
   RefreshCw, CreditCard, Paperclip, FileSpreadsheet, MessageSquare,
   History, Clock, Filter,
 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -43,6 +44,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
 import { PIX_TYPE_LABELS } from '@/types';
+import { CheckCircle2 } from 'lucide-react';
 
 const WINDOW_FILTERS_MAP: Record<string, { label: string; windowValue: 'open' | 'closed' }> = {
   open: { label: 'Janela Aberta', windowValue: 'open' },
@@ -67,6 +69,7 @@ export default function WinnersPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [winnersTab, setWinnersTab] = useState<'pending' | 'completed'>('pending');
   const { filters, setFilters } = useWinnersFilters();
   const { isAdmin } = useUserRole();
   const { activeOrdered } = useWinnerStatusMap();
@@ -108,12 +111,17 @@ export default function WinnersPage() {
 
   const { requestPix, isPending } = useRequestPixBatch(actionsMap);
 
+  const completedCount = useMemo(() => winners.filter(w => COMPLETED_STATUSES.includes(w.status)).length, [winners]);
+  const pendingCount = useMemo(() => winners.length - completedCount, [winners, completedCount]);
+
   const allWinners = useMemo(() => winners
-    .filter(w => filters.status !== 'all' || !COMPLETED_STATUSES.includes(w.status))
+    .filter(w => winnersTab === 'completed'
+      ? COMPLETED_STATUSES.includes(w.status)
+      : !COMPLETED_STATUSES.includes(w.status))
     .map((w) => ({
       ...w,
       actionName: actionsMap[w.actionId] ?? '',
-    })), [winners, actionsMap, filters.status]);
+    })), [winners, actionsMap, winnersTab]);
 
   const filtered = useMemo(
     () => applyWinnersFilters(allWinners, filters),
@@ -239,6 +247,20 @@ export default function WinnersPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
+        {/* Pendentes / Concluídos Tabs */}
+        <Tabs value={winnersTab} onValueChange={(v) => { setWinnersTab(v as 'pending' | 'completed'); setPage(1); }}>
+          <TabsList>
+            <TabsTrigger value="pending" className="text-xs">
+              <Clock className="h-3.5 w-3.5 mr-1.5" />
+              Pendentes ({pendingCount})
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs">
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+              Concluídos ({completedCount})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {/* Configurable Quick Filter Chips */}
         {quickFilterConfig.length > 0 ? (
           <div className="flex flex-wrap gap-2 items-center">

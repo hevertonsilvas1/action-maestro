@@ -93,6 +93,7 @@ export default function ActionDetailPage() {
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [winnersPage, setWinnersPage] = useState(1);
   const [winnersPageSize, setWinnersPageSize] = useState(20);
+  const [winnersTab, setWinnersTab] = useState<'pending' | 'completed'>('pending');
   const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
@@ -138,9 +139,19 @@ export default function ActionDetailPage() {
 
   const { requestPix, isPending: isRequestingPix } = useRequestPix(id ?? '', action?.name ?? '');
 
+  const COMPLETED_STATUSES = ['paid', 'receipt_sent'];
+  const completedWinnersCount = useMemo(() => winners.filter(w => COMPLETED_STATUSES.includes(w.status)).length, [winners]);
+  const pendingWinnersCount = useMemo(() => winners.length - completedWinnersCount, [winners, completedWinnersCount]);
+
+  const tabbedWinners = useMemo(() => winners.filter(w =>
+    winnersTab === 'completed'
+      ? COMPLETED_STATUSES.includes(w.status)
+      : !COMPLETED_STATUSES.includes(w.status)
+  ), [winners, winnersTab]);
+
   const filteredWinners = useMemo(
-    () => applyWinnersFilters(winners, winnersFilters),
-    [winners, winnersFilters]
+    () => applyWinnersFilters(tabbedWinners, winnersFilters),
+    [tabbedWinners, winnersFilters]
   );
 
   const paginatedWinners = useMemo(
@@ -596,6 +607,20 @@ export default function ActionDetailPage() {
                 Exportar
               </Button>
             </div>
+
+            {/* Pendentes / Concluídos Tabs */}
+            <Tabs value={winnersTab} onValueChange={(v) => { setWinnersTab(v as 'pending' | 'completed'); setWinnersPage(1); }}>
+              <TabsList>
+                <TabsTrigger value="pending" className="text-xs">
+                  <Clock className="h-3.5 w-3.5 mr-1.5" />
+                  Pendentes ({pendingWinnersCount})
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="text-xs">
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                  Concluídos ({completedWinnersCount})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             {/* Quick Filter Chips */}
             <div className="flex flex-wrap gap-2">
