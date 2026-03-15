@@ -247,6 +247,20 @@ export default function WinnersPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
+        {/* Pendentes / Concluídos Tabs */}
+        <Tabs value={winnersTab} onValueChange={(v) => { setWinnersTab(v as 'pending' | 'completed'); setPage(1); }}>
+          <TabsList>
+            <TabsTrigger value="pending" className="text-xs">
+              <Clock className="h-3.5 w-3.5 mr-1.5" />
+              Pendentes ({pendingCount})
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs">
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+              Concluídos ({completedCount})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {/* Configurable Quick Filter Chips */}
         {quickFilterConfig.length > 0 ? (
           <div className="flex flex-wrap gap-2 items-center">
