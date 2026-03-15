@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
-import { formatCurrency, formatPhone, formatDateTime, formatCpf, formatPixKey } from '@/lib/format';
+import { formatCurrency, formatPhone, formatDateTime, formatCpf, formatPixKey, resolveOperationalPixKey } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { formatDate } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
