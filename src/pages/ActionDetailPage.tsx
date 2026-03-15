@@ -665,7 +665,7 @@ export default function ActionDetailPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">CPF</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>}
-                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave Operacional PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Data/Hora Premiação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
