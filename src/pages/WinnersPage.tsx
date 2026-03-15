@@ -69,6 +69,7 @@ export default function WinnersPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [winnersTab, setWinnersTab] = useState<'pending' | 'completed'>('pending');
   const { filters, setFilters } = useWinnersFilters();
   const { isAdmin } = useUserRole();
   const { activeOrdered } = useWinnerStatusMap();
