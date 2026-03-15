@@ -42,6 +42,7 @@ import { useQuickFilters } from '@/hooks/useQuickFilters';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
+import { PIX_TYPE_LABELS } from '@/types';
 
 const WINDOW_FILTERS_MAP: Record<string, { label: string; windowValue: 'open' | 'closed' }> = {
   open: { label: 'Janela Aberta', windowValue: 'open' },
@@ -341,7 +342,8 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Ação</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Tipo</th>
                       <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>
-                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave Operacional PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Tipo do PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Data/Hora Premiação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
@@ -395,13 +397,13 @@ export default function WinnersPage() {
                                 opPix.source === 'pix' ? 'text-muted-foreground' : 'text-warning',
                               )}>
                                 {opPix.key}
-                                {opPix.source !== 'pix' && (
-                                  <span className="text-[9px] ml-1 opacity-70">({opPix.source === 'cpf' ? 'CPF' : 'Tel'})</span>
-                                )}
                               </span>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                            {opPix.source === 'pix' && w.pixType ? PIX_TYPE_LABELS[w.pixType] : opPix.source === 'cpf' ? 'CPF' : opPix.source === 'phone' ? 'Telefone' : '—'}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                             {formatDateTime(w.prizeDatetime)}

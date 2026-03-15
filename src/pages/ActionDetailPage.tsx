@@ -12,7 +12,7 @@ import { formatCurrency, formatPercent, formatDate, formatPhone, formatDateTime,
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
-import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, WinnerStatus } from '@/types';
+import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, PIX_TYPE_LABELS, WinnerStatus } from '@/types';
 import type { Action } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -665,7 +665,8 @@ export default function ActionDetailPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">CPF</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>}
-                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave Operacional PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Tipo do PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Data/Hora Premiação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
@@ -677,7 +678,7 @@ export default function ActionDetailPage() {
                   </thead>
                   <tbody>
                     {paginatedWinners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 13 : 12} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 14 : 13} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
                     ) : (
                       paginatedWinners.map((w, i) => {
                         const windowOpen = isWindowOpen(w.lastInboundAt);
@@ -713,13 +714,13 @@ export default function ActionDetailPage() {
                                   opPix.source === 'pix' ? 'text-muted-foreground' : 'text-warning',
                                 )}>
                                   {opPix.key}
-                                  {opPix.source !== 'pix' && (
-                                    <span className="text-[9px] ml-1 opacity-70">({opPix.source === 'cpf' ? 'CPF' : 'Tel'})</span>
-                                  )}
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                              {opPix.source === 'pix' && w.pixType ? PIX_TYPE_LABELS[w.pixType] : opPix.source === 'cpf' ? 'CPF' : opPix.source === 'phone' ? 'Telefone' : '—'}
                             </td>
                             <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                               {formatDateTime(w.prizeDatetime)}
