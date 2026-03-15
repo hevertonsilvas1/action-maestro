@@ -111,12 +111,17 @@ export default function WinnersPage() {
 
   const { requestPix, isPending } = useRequestPixBatch(actionsMap);
 
+  const completedCount = useMemo(() => winners.filter(w => COMPLETED_STATUSES.includes(w.status)).length, [winners]);
+  const pendingCount = useMemo(() => winners.length - completedCount, [winners, completedCount]);
+
   const allWinners = useMemo(() => winners
-    .filter(w => filters.status !== 'all' || !COMPLETED_STATUSES.includes(w.status))
+    .filter(w => winnersTab === 'completed'
+      ? COMPLETED_STATUSES.includes(w.status)
+      : !COMPLETED_STATUSES.includes(w.status))
     .map((w) => ({
       ...w,
       actionName: actionsMap[w.actionId] ?? '',
-    })), [winners, actionsMap, filters.status]);
+    })), [winners, actionsMap, winnersTab]);
 
   const filtered = useMemo(
     () => applyWinnersFilters(allWinners, filters),
