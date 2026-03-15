@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
-import { formatCurrency, formatPhone, formatDateTime, formatCpf, formatPixKey } from '@/lib/format';
+import { formatCurrency, formatPhone, formatDateTime, formatCpf, formatPixKey, resolveOperationalPixKey } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { formatDate } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -341,7 +341,7 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Ação</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Tipo</th>
                       <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>
-                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave Operacional PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Data/Hora Premiação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
@@ -355,6 +355,7 @@ export default function WinnersPage() {
                     {paginated.map((w, i) => {
                        const windowOpen = isWindowOpen(w.lastInboundAt);
                       const canRequestPix = ['imported', 'pix_refused'].includes(w.status);
+                      const opPix = resolveOperationalPixKey(w.pixKey, w.cpf, w.phone, w.status);
                       return (
                         <tr
                           key={w.id}
@@ -388,8 +389,19 @@ export default function WinnersPage() {
                           <td className="px-3 py-2.5 text-right text-sm font-medium">
                             {formatCurrency(w.value)}
                           </td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
-                            {formatPixKey(w.pixKey)}
+                          <td className="px-3 py-2.5 text-xs font-mono">
+                            {opPix.key ? (
+                              <span className={cn(
+                                opPix.source === 'pix' ? 'text-muted-foreground' : 'text-warning',
+                              )}>
+                                {opPix.key}
+                                {opPix.source !== 'pix' && (
+                                  <span className="text-[9px] ml-1 opacity-70">({opPix.source === 'cpf' ? 'CPF' : 'Tel'})</span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                             {formatDateTime(w.prizeDatetime)}
