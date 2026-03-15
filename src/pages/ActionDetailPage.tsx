@@ -682,6 +682,7 @@ export default function ActionDetailPage() {
                       paginatedWinners.map((w, i) => {
                         const windowOpen = isWindowOpen(w.lastInboundAt);
                         const canRequestPix = ['imported', 'pix_refused'].includes(w.status);
+                        const opPix = resolveOperationalPixKey(w.pixKey, w.cpf, w.phone, w.status);
                         return (
                           <tr
                             key={w.id}
