@@ -56,14 +56,22 @@ function isEligibleForBatch(w: Winner): boolean {
   );
 }
 
-/** For forcar_pix winners without explicit pixKey, derive operational key from CPF or phone */
+/** For batch export, derive operational PIX key using shared logic */
 function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } {
+  const resolved = resolveOperationalPixKey(w.pixKey, w.cpf, w.phone, w.status);
+  if (resolved.key && resolved.source === 'pix' && w.pixType) {
+    return { pixKey: resolved.key, pixType: w.pixType };
+  }
+  if (resolved.key && resolved.source === 'cpf') {
+    return { pixKey: resolved.key, pixType: 'cpf' };
+  }
+  if (resolved.key && resolved.source === 'phone') {
+    return { pixKey: resolved.key, pixType: 'phone' };
+  }
+  // Fallback
   if (w.pixKey && w.pixType) return { pixKey: w.pixKey, pixType: w.pixType };
   if (w.cpf) return { pixKey: w.cpf.replace(/\D/g, ''), pixType: 'cpf' };
-  if (w.phone) {
-    const digits = w.phone.replace(/\D/g, '');
-    return { pixKey: digits, pixType: 'phone' };
-  }
+  if (w.phone) return { pixKey: w.phone.replace(/\D/g, ''), pixType: 'phone' };
   return { pixKey: '', pixType: 'cpf' };
 }
 
