@@ -17,6 +17,36 @@ export function formatDate(date: string): string {
   }).format(new Date(date));
 }
 
+export function formatDateTime(date: string | undefined | null): string {
+  if (!date) return '—';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(d);
+}
+
+export function formatCpf(cpf: string | undefined | null): string {
+  if (!cpf) return '—';
+  const digits = cpf.replace(/\D/g, '');
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  }
+  return cpf;
+}
+
+export function formatPixKey(pixKey: string | undefined | null, pixType?: string): string {
+  if (!pixKey) return '—';
+  if (pixKey.length <= 8) return pixKey;
+  return `${pixKey.slice(0, 4)}…${pixKey.slice(-4)}`;
+}
+
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat('pt-BR').format(value);
 }

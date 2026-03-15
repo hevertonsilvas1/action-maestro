@@ -8,7 +8,7 @@ import { useWinners } from '@/hooks/useWinners';
 import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
 import { useAuditLog } from '@/hooks/useAuditLog';
-import { formatCurrency, formatPercent, formatDate, formatPhone } from '@/lib/format';
+import { formatCurrency, formatPercent, formatDate, formatPhone, formatDateTime, formatCpf, formatPixKey } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
@@ -662,9 +662,11 @@ export default function ActionDetailPage() {
                       </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Nome</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Telefone</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">CPF</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Prêmio</th>
                       {isAdmin && <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>}
-                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Data/Hora</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Data/Hora Premiação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">
@@ -675,7 +677,7 @@ export default function ActionDetailPage() {
                   </thead>
                   <tbody>
                     {paginatedWinners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 10 : 9} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 13 : 12} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
                     ) : (
                       paginatedWinners.map((w, i) => {
                         const windowOpen = isWindowOpen(w.lastInboundAt);
@@ -699,10 +701,16 @@ export default function ActionDetailPage() {
                             <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
                               {formatPhone(w.phone)}
                             </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                              {formatCpf(w.cpf)}
+                            </td>
                             <td className="px-3 py-2.5 text-xs text-muted-foreground">{w.prizeTitle}</td>
                             {isAdmin && <td className="px-3 py-2.5 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                              {w.prizeDatetime ? new Date(w.prizeDatetime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                              {formatPixKey(w.pixKey, w.pixType)}
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                              {formatDateTime(w.prizeDatetime)}
                             </td>
                             <td className="px-3 py-2.5 text-center">
                               <StatusBadge status={w.status} className="text-[11px]" />

@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
 import { useWinners } from '@/hooks/useWinners';
 import { useActions } from '@/hooks/useActions';
-import { formatCurrency, formatPhone } from '@/lib/format';
+import { formatCurrency, formatPhone, formatDateTime, formatCpf, formatPixKey } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { formatDate } from '@/lib/format';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -47,6 +47,8 @@ const WINDOW_FILTERS_MAP: Record<string, { label: string; windowValue: 'open' | 
   open: { label: 'Janela Aberta', windowValue: 'open' },
   closed: { label: 'Janela Fechada', windowValue: 'closed' },
 };
+
+const COMPLETED_STATUSES = ['paid', 'receipt_sent'];
 
 export default function WinnersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -105,10 +107,12 @@ export default function WinnersPage() {
 
   const { requestPix, isPending } = useRequestPixBatch(actionsMap);
 
-  const allWinners = useMemo(() => winners.map((w) => ({
-    ...w,
-    actionName: actionsMap[w.actionId] ?? '',
-  })), [winners, actionsMap]);
+  const allWinners = useMemo(() => winners
+    .filter(w => filters.status !== 'all' || !COMPLETED_STATUSES.includes(w.status))
+    .map((w) => ({
+      ...w,
+      actionName: actionsMap[w.actionId] ?? '',
+    })), [winners, actionsMap, filters.status]);
 
   const filtered = useMemo(
     () => applyWinnersFilters(allWinners, filters),
@@ -333,8 +337,12 @@ export default function WinnersPage() {
                       </th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Nome</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Telefone</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">CPF</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Ação</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Tipo</th>
                       <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave PIX</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Data/Hora Premiação</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Status</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">Janela</th>
                       <th className="text-center text-xs font-semibold text-muted-foreground px-3 py-3">
@@ -368,12 +376,23 @@ export default function WinnersPage() {
                           <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
                             {formatPhone(w.phone)}
                           </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                            {formatCpf(w.cpf)}
+                          </td>
                           <td className="px-3 py-2.5">
                             <p className="text-xs text-muted-foreground truncate max-w-[140px]">{w.actionName}</p>
-                            <p className="text-[10px] text-muted-foreground">{w.prizeTitle}</p>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                            {w.prizeTitle}
                           </td>
                           <td className="px-3 py-2.5 text-right text-sm font-medium">
                             {formatCurrency(w.value)}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                            {formatPixKey(w.pixKey, w.pixType)}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                            {formatDateTime(w.prizeDatetime)}
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <StatusBadge status={w.status} className="text-[11px]" />

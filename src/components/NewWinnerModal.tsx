@@ -47,6 +47,7 @@ export function NewWinnerModal({
     cpf: '',
     value: '',
     observation: '',
+    prizeDatetime: new Date().toISOString().slice(0, 16), // default to now (datetime-local format)
   });
 
   // Load prizes and winners for the selected action to check limits
@@ -69,6 +70,7 @@ export function NewWinnerModal({
       cpf: '',
       value: '',
       observation: '',
+      prizeDatetime: new Date().toISOString().slice(0, 16),
     });
     setDupWarning(false);
   };
@@ -113,6 +115,15 @@ export function NewWinnerModal({
         }
       }
 
+      // Build prize_datetime: if user provided date but no time, append current time
+      let prizeDt: string | null = null;
+      if (form.prizeDatetime) {
+        const dt = new Date(form.prizeDatetime);
+        if (!isNaN(dt.getTime())) {
+          prizeDt = dt.toISOString();
+        }
+      }
+
       const { error } = await supabase.from('winners').insert({
         action_id: form.actionId,
         name: form.name.trim(),
@@ -122,6 +133,7 @@ export function NewWinnerModal({
         value: valueNum,
         prize_type: form.prizeType as any,
         prize_title: form.prizeTitle.trim() || PRIZE_TYPES.find(p => p.value === form.prizeType)?.label || form.prizeType,
+        prize_datetime: prizeDt,
         status: 'imported' as any,
       });
 
@@ -269,16 +281,27 @@ export function NewWinnerModal({
             </div>
           </div>
 
-          {/* Value */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Valor do Prêmio (R$) *</Label>
-            <Input
-              value={form.value}
-              onChange={(e) => update({ value: e.target.value })}
-              placeholder="0,00"
-              className="h-9 text-xs"
-              type="text"
-            />
+          {/* Value + Prize DateTime */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Valor do Prêmio (R$) *</Label>
+              <Input
+                value={form.value}
+                onChange={(e) => update({ value: e.target.value })}
+                placeholder="0,00"
+                className="h-9 text-xs"
+                type="text"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data/Hora da Premiação</Label>
+              <Input
+                type="datetime-local"
+                value={form.prizeDatetime}
+                onChange={(e) => update({ prizeDatetime: e.target.value })}
+                className="h-9 text-xs"
+              />
+            </div>
           </div>
 
           {/* Observation */}
