@@ -48,6 +48,8 @@ const WINDOW_FILTERS_MAP: Record<string, { label: string; windowValue: 'open' | 
   closed: { label: 'Janela Fechada', windowValue: 'closed' },
 };
 
+const COMPLETED_STATUSES = ['paid', 'receipt_sent'];
+
 export default function WinnersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pixModalOpen, setPixModalOpen] = useState(false);
