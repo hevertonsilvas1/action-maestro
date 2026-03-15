@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { insertAuditLog } from '@/hooks/useAuditLogger';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, resolveOperationalPixKey } from '@/lib/format';
 import { PIX_TYPE_LABELS } from '@/types';
 import type { Winner, PixType } from '@/types';
 import * as XLSX from 'xlsx';
