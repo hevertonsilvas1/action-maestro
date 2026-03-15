@@ -107,10 +107,12 @@ export default function WinnersPage() {
 
   const { requestPix, isPending } = useRequestPixBatch(actionsMap);
 
-  const allWinners = useMemo(() => winners.map((w) => ({
-    ...w,
-    actionName: actionsMap[w.actionId] ?? '',
-  })), [winners, actionsMap]);
+  const allWinners = useMemo(() => winners
+    .filter(w => filters.status !== 'all' || !COMPLETED_STATUSES.includes(w.status))
+    .map((w) => ({
+      ...w,
+      actionName: actionsMap[w.actionId] ?? '',
+    })), [winners, actionsMap, filters.status]);
 
   const filtered = useMemo(
     () => applyWinnersFilters(allWinners, filters),
