@@ -8,7 +8,7 @@ import { useWinners } from '@/hooks/useWinners';
 import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
 import { useAuditLog } from '@/hooks/useAuditLog';
-import { formatCurrency, formatPercent, formatDate, formatPhone, formatDateTime, formatCpf, formatPixKey } from '@/lib/format';
+import { formatCurrency, formatPercent, formatDate, formatPhone, formatDateTime, formatCpf, formatPixKey, resolveOperationalPixKey } from '@/lib/format';
 import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
