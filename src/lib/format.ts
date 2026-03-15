@@ -46,6 +46,31 @@ export function formatPixKey(pixKey: string | undefined | null): string {
   return pixKey;
 }
 
+/**
+ * Resolve the operational PIX key for payment.
+ * - Always use explicit pixKey if available.
+ * - Only fallback to CPF/phone when status is "forcar_pix".
+ */
+export function resolveOperationalPixKey(
+  pixKey: string | undefined | null,
+  cpf: string | undefined | null,
+  phone: string | undefined | null,
+  status: string,
+): { key: string | null; source: 'pix' | 'cpf' | 'phone' | null } {
+  if (pixKey) return { key: pixKey, source: 'pix' };
+  if (status === 'forcar_pix') {
+    if (cpf) {
+      const digits = cpf.replace(/\D/g, '');
+      if (digits.length === 11) return { key: digits, source: 'cpf' };
+    }
+    if (phone) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length >= 10) return { key: digits, source: 'phone' };
+    }
+  }
+  return { key: null, source: null };
+}
+
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat('pt-BR').format(value);
 }
