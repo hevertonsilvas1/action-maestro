@@ -93,6 +93,7 @@ export default function ActionDetailPage() {
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
   const [winnersPage, setWinnersPage] = useState(1);
   const [winnersPageSize, setWinnersPageSize] = useState(20);
+  const [winnersTab, setWinnersTab] = useState<'pending' | 'completed'>('pending');
   const [auditOpFilter, setAuditOpFilter] = useState<string>('all');
   const [auditDateFrom, setAuditDateFrom] = useState<Date | undefined>();
   const [auditDateTo, setAuditDateTo] = useState<Date | undefined>();
