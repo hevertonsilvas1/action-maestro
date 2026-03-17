@@ -14,7 +14,7 @@ import type { Winner } from '@/types';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const RECEIPT_ELIGIBLE_STATUSES = ['sent_to_batch', 'pix_received', 'pix_refused', 'receipt_attached', 'receipt_sent'];
+const RECEIPT_ELIGIBLE_STATUSES = ['pix_received', 'ready_to_pay', 'sent_to_batch', 'awaiting_receipt', 'pix_refused', 'receipt_attached', 'receipt_sent', 'paid'];
 
 interface ReceiptManagerProps {
   open: boolean;
