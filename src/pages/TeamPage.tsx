@@ -465,8 +465,9 @@ export default function TeamPage() {
                       isSelf={m.userId === user?.id}
                       isBanned={true}
                       permProfiles={permProfiles}
-                      onAction={confirmAction}
-                    />
+                    onAction={confirmAction}
+                    onPermissions={setPermsMember}
+                  />
                   ))}
                 </div>
               </div>
