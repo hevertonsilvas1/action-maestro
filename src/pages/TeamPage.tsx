@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
+import { UserPermissionsDialog } from '@/components/UserPermissionsDialog';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,13 +28,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Shield, Headset, DollarSign, MoreVertical, UserX, UserCheck } from 'lucide-react';
+import { Loader2, UserPlus, Shield, Headset, DollarSign, MoreVertical, UserX, UserCheck, KeyRound } from 'lucide-react';
 
 interface TeamMember {
   userId: string;
   displayName: string;
   email: string;
   role: string;
+  profileId: string | null;
   profileSlug: string | null;
   profileName: string | null;
 }
@@ -64,6 +66,7 @@ function useTeamMembers() {
           displayName: profileMap[r.user_id] || 'Sem nome',
           email: '',
           role: r.role,
+          profileId: r.profile_id ?? null,
           profileSlug: permProfile?.slug ?? null,
           profileName: permProfile?.name ?? null,
         };
@@ -118,12 +121,14 @@ function TeamMemberCard({
   isBanned,
   permProfiles,
   onAction,
+  onPermissions,
 }: {
   member: TeamMember;
   isSelf: boolean;
   isBanned: boolean;
   permProfiles: { id: string; name: string; slug: string }[];
   onAction: (title: string, description: string, action: () => Promise<void>) => void;
+  onPermissions: (member: TeamMember) => void;
 }) {
   const Icon = PROFILE_ICONS[member.profileSlug || ''] || Headset;
   const colorClass = PROFILE_COLORS[member.profileSlug || ''] || PROFILE_COLORS.operador;
@@ -182,6 +187,11 @@ function TeamMemberCard({
                         Tornar {profile.name}
                       </DropdownMenuItem>
                     ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onPermissions(member)}>
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Gerenciar Permissões
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -258,6 +268,7 @@ export default function TeamPage() {
   }>({ open: false, title: '', description: '', action: async () => {} });
 
   const [actionLoading, setActionLoading] = useState(false);
+  const [permsMember, setPermsMember] = useState<TeamMember | null>(null);
 
   const bannedSet = new Set(bannedIds);
   const activeMembers = members.filter((m) => !bannedSet.has(m.userId));
@@ -434,6 +445,7 @@ export default function TeamPage() {
                     isBanned={false}
                     permProfiles={permProfiles}
                     onAction={confirmAction}
+                    onPermissions={setPermsMember}
                   />
                 ))}
               </div>
@@ -453,8 +465,9 @@ export default function TeamPage() {
                       isSelf={m.userId === user?.id}
                       isBanned={true}
                       permProfiles={permProfiles}
-                      onAction={confirmAction}
-                    />
+                    onAction={confirmAction}
+                    onPermissions={setPermsMember}
+                  />
                   ))}
                 </div>
               </div>
@@ -479,6 +492,17 @@ export default function TeamPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {permsMember && (
+        <UserPermissionsDialog
+          open={!!permsMember}
+          onOpenChange={(open) => { if (!open) setPermsMember(null); }}
+          userId={permsMember.userId}
+          displayName={permsMember.displayName}
+          profileId={permsMember.profileId}
+          profileName={permsMember.profileName}
+        />
+      )}
     </AppLayout>
   );
 }
