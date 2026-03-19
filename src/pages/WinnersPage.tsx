@@ -64,6 +64,7 @@ export default function WinnersPage() {
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [batchHistoryOpen, setBatchHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const [importActionSelectorOpen, setImportActionSelectorOpen] = useState(false);
   const [importActionId, setImportActionId] = useState<string>('');
