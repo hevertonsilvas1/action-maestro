@@ -121,7 +121,7 @@ export function BatchGeneratorModal({
       const allRows: Record<string, any>[] = [];
 
       for (const [aId, group] of byAction) {
-        const aName = actionId ? actionName : (group[0].prizeTitle || aId.slice(0, 8));
+        const aName = aId === actionId ? actionName : (group[0].prizeTitle || actionName);
         const groupTotal = group.reduce((s, w) => s + w.value, 0);
         const filename = `lote_pix_${aName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
