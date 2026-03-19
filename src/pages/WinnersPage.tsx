@@ -71,7 +71,7 @@ export default function WinnersPage() {
   const [pageSize, setPageSize] = useState(20);
   const [winnersTab, setWinnersTab] = useState<'pending' | 'completed'>('pending');
   const { filters, setFilters } = useWinnersFilters();
-  const { isAdmin } = useUserRole();
+  const { can } = usePermissions();
   const { activeOrdered } = useWinnerStatusMap();
   const { filters: quickFilterConfig, isLoading: quickFiltersLoading } = useQuickFilters();
   const { user } = useAuth();

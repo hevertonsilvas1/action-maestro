@@ -23,7 +23,7 @@ export default function ActionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const { data: actions = [], isLoading } = useActions();
-  const { isAdmin } = useUserRole();
+  const { can } = usePermissions();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();
   const { archive, isPending: isArchiving } = useArchiveAction();
