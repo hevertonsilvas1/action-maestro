@@ -41,6 +41,7 @@ import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { StatusHistorySheet } from '@/components/StatusHistorySheet';
+import { BatchHistorySheet } from '@/components/BatchHistorySheet';
 import { TimeInStatusBadge } from '@/components/TimeInStatusBadge';
 import { BulkDeleteWinnersDialog } from '@/components/BulkDeleteWinnersDialog';
 import { useTimeInStatus, useLiveTimeInStatus } from '@/hooks/useTimeInStatus';
@@ -89,6 +90,7 @@ export default function ActionDetailPage() {
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [batchHistoryOpen, setBatchHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const { filters: winnersFilters, setFilters: setWinnersFilters } = useWinnersFilters();
@@ -601,6 +603,10 @@ export default function ActionDetailPage() {
                       Gerar Lote PIX
                     </Button>
                   )}
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setBatchHistoryOpen(true)}>
+                    <History className="h-3.5 w-3.5 mr-1.5" />
+                    Histórico Lotes
+                  </Button>
                 </>
               )}
               <Button size="sm" variant="outline" className="h-8 text-xs">
@@ -1567,6 +1573,7 @@ export default function ActionDetailPage() {
       )}
 
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
+      <BatchHistorySheet open={batchHistoryOpen} onOpenChange={setBatchHistoryOpen} actionId={id} />
     </AppLayout>
   );
 }

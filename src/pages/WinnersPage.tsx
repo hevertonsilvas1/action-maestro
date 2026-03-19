@@ -22,6 +22,7 @@ import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { StatusHistorySheet } from '@/components/StatusHistorySheet';
+import { BatchHistorySheet } from '@/components/BatchHistorySheet';
 import { ImportWinnersModal } from '@/components/ImportWinnersModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,6 +64,7 @@ export default function WinnersPage() {
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [batchHistoryOpen, setBatchHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const [importActionSelectorOpen, setImportActionSelectorOpen] = useState(false);
   const [importActionId, setImportActionId] = useState<string>('');
@@ -236,6 +238,12 @@ export default function WinnersPage() {
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
                 <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
                 Lote
+              </Button>
+            )}
+            {can(PERMISSIONS.FINANCEIRO_VER_LOTES) && (
+              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setBatchHistoryOpen(true)}>
+                <History className="h-3.5 w-3.5 mr-1.5" />
+                Histórico Lotes
               </Button>
             )}
             <Button size="sm" variant="outline" className="h-8 text-xs">
@@ -683,6 +691,7 @@ export default function WinnersPage() {
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
       <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} />
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
+      <BatchHistorySheet open={batchHistoryOpen} onOpenChange={setBatchHistoryOpen} />
 
       {/* Import: Action Selector Dialog */}
       <Dialog open={importActionSelectorOpen} onOpenChange={setImportActionSelectorOpen}>
