@@ -31,7 +31,8 @@ function fmtQuota(n: number) {
 
 export default function NewActionPage() {
   const navigate = useNavigate();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { can, loading: roleLoading } = usePermissions();
+  const isAdmin = can(PERMISSIONS.ACAO_CRIAR);
   const { data: prizeTypes = [], isLoading: ptLoading } = usePrizeTypeConfigs();
   const { data: costTypes = [], isLoading: ctLoading } = useCostTypeConfigs();
   const createPrizeType = useCreatePrizeType();

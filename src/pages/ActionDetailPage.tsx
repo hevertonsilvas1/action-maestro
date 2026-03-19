@@ -69,7 +69,8 @@ export default function ActionDetailPage() {
   const { data: prizes = [], isLoading: loadingPrizes } = usePrizes(id ?? '');
   const { data: costs = [], isLoading: loadingCosts } = useCosts(id ?? '');
   const { data: auditLog = [] } = useAuditLog(id);
-  const { isAdmin } = useUserRole();
+  const { can } = usePermissions();
+  const isAdmin = can(PERMISSIONS.ACAO_EDITAR); // backward compat for many UI checks
   const { user } = useAuth();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();
