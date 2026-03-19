@@ -51,68 +51,55 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { userId, new_password, email, force_change } = await req.json();
-
-    // Support both userId and email lookup
-    let targetUserId = userId;
-    if (!targetUserId && email) {
-      const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
-      if (listError) throw listError;
-      const found = users.find((u) => u.email === email);
-      if (!found) {
-        return new Response(JSON.stringify({ error: "User not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      targetUserId = found.id;
-    }
-
-    if (!targetUserId || !new_password) {
-      return new Response(JSON.stringify({ error: "userId/email and new_password required" }), {
+    const { userId } = await req.json();
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "userId required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (new_password.length < 6) {
-      return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+    // Prevent impersonating self
+    if (userId === caller.id) {
+      return new Response(JSON.stringify({ error: "Cannot impersonate yourself" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Prevent self-reset
-    if (targetUserId === caller.id) {
-      return new Response(JSON.stringify({ error: "Cannot reset your own password here" }), {
-        status: 400,
+    // Get user email
+    const { data: { user: targetUser }, error: userError } = await adminClient.auth.admin.getUserById(userId);
+    if (userError || !targetUser) {
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Update password
-    const { error: updateError } = await adminClient.auth.admin.updateUserById(targetUserId, {
-      password: new_password,
+    // Generate magic link for the target user
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email: targetUser.email!,
     });
-    if (updateError) throw updateError;
 
-    // Set force_password_change flag if requested
-    if (force_change) {
-      const { error: profileError } = await adminClient
-        .from("profiles")
-        .update({ force_password_change: true })
-        .eq("user_id", targetUserId);
-      if (profileError) throw profileError;
-    } else {
-      // Clear flag if not forcing
-      const { error: profileError } = await adminClient
-        .from("profiles")
-        .update({ force_password_change: false })
-        .eq("user_id", targetUserId);
-      if (profileError) throw profileError;
+    if (linkError || !linkData) {
+      throw linkError || new Error("Failed to generate link");
     }
 
-    return new Response(JSON.stringify({ success: true, message: "Password updated" }), {
+    // Extract the token from the generated link properties
+    const tokenHash = linkData.properties?.hashed_token;
+    if (!tokenHash) {
+      throw new Error("No token generated");
+    }
+
+    // Build the verification URL that the frontend can use
+    const verifyUrl = `${supabaseUrl}/auth/v1/verify?token=${tokenHash}&type=magiclink`;
+
+    return new Response(JSON.stringify({
+      success: true,
+      url: verifyUrl,
+      email: targetUser.email,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
