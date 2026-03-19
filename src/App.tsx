@@ -109,7 +109,7 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
-    <Route path="/force-password-change" element={<ProtectedRoute><ForcePasswordChangePage /></ProtectedRoute>} />
+    <Route path="/force-password-change" element={<AuthOnlyRoute><ForcePasswordChangePage /></AuthOnlyRoute>} />
     <Route path="/" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
     <Route path="/actions" element={<PermissionRoute permission={PERMISSIONS.ACAO_VER}><ActionsPage /></PermissionRoute>} />
     <Route path="/actions/new" element={<PermissionRoute permission={PERMISSIONS.ACAO_CRIAR}><NewActionPage /></PermissionRoute>} />
