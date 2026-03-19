@@ -28,7 +28,7 @@ import {
   CreditCard, ShieldCheck, AlertTriangle, Paperclip, MessageSquare, Info,
   XCircle, Phone, UserX,
 } from 'lucide-react';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
