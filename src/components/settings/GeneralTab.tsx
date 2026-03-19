@@ -66,6 +66,7 @@ export function GeneralTab() {
 
   const getWindowConfig = () => configs.find(c => c.key === 'INBOUND_WINDOW_HOURS');
   const getAutoSendConfig = () => configs.find(c => c.key === 'AUTO_SEND_RECEIPT_ON_INBOUND');
+  const getTransitionModeConfig = () => configs.find(c => c.key === 'STATUS_TRANSITION_MODE');
 
   if (loading) {
     return (
