@@ -99,7 +99,10 @@ function useBannedUsers() {
       });
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
-      return (res.data?.bannedIds ?? []) as string[];
+      return {
+        bannedIds: (res.data?.bannedIds ?? []) as string[],
+        emailMap: (res.data?.emailMap ?? {}) as Record<string, string>,
+      };
     },
   });
 }
