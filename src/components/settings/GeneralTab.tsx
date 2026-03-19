@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Settings2, Clock, Send } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Loader2, Save, Settings2, Clock, Send, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ParamConfig {
@@ -17,7 +18,7 @@ interface ParamConfig {
   description: string | null;
 }
 
-const GENERAL_PARAMS = ['INBOUND_WINDOW_HOURS', 'AUTO_SEND_RECEIPT_ON_INBOUND'];
+const GENERAL_PARAMS = ['INBOUND_WINDOW_HOURS', 'AUTO_SEND_RECEIPT_ON_INBOUND', 'STATUS_TRANSITION_MODE'];
 
 export function GeneralTab() {
   const { user } = useAuth();
