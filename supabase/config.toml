@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.apply-time-rules]
 verify_jwt = false
+
+[functions.impersonate-user]
+verify_jwt = false

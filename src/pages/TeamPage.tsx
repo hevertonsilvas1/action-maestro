@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { UserPermissionsDialog } from '@/components/UserPermissionsDialog';
+import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Shield, Headset, DollarSign, MoreVertical, UserX, UserCheck, KeyRound } from 'lucide-react';
+import { Loader2, UserPlus, Shield, Headset, DollarSign, MoreVertical, UserX, UserCheck, KeyRound, LogIn } from 'lucide-react';
 
 interface TeamMember {
   userId: string;
@@ -122,6 +123,8 @@ function TeamMemberCard({
   permProfiles,
   onAction,
   onPermissions,
+  onResetPassword,
+  onImpersonate,
 }: {
   member: TeamMember;
   isSelf: boolean;
@@ -129,6 +132,8 @@ function TeamMemberCard({
   permProfiles: { id: string; name: string; slug: string }[];
   onAction: (title: string, description: string, action: () => Promise<void>) => void;
   onPermissions: (member: TeamMember) => void;
+  onResetPassword: (member: TeamMember) => void;
+  onImpersonate: (member: TeamMember) => void;
 }) {
   const Icon = PROFILE_ICONS[member.profileSlug || ''] || Headset;
   const colorClass = PROFILE_COLORS[member.profileSlug || ''] || PROFILE_COLORS.operador;
@@ -187,10 +192,18 @@ function TeamMemberCard({
                         Tornar {profile.name}
                       </DropdownMenuItem>
                     ))}
-                  <DropdownMenuSeparator />
+                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onPermissions(member)}>
                     <KeyRound className="h-4 w-4 mr-2" />
                     Gerenciar Permissões
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onResetPassword(member)}>
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Redefinir Senha
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onImpersonate(member)}>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Login como Usuário
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -269,6 +282,8 @@ export default function TeamPage() {
 
   const [actionLoading, setActionLoading] = useState(false);
   const [permsMember, setPermsMember] = useState<TeamMember | null>(null);
+  const [resetPwMember, setResetPwMember] = useState<TeamMember | null>(null);
+  const [impersonating, setImpersonating] = useState(false);
 
   const bannedSet = new Set(bannedIds);
   const activeMembers = members.filter((m) => !bannedSet.has(m.userId));
@@ -333,6 +348,27 @@ export default function TeamPage() {
     } finally {
       setActionLoading(false);
       setConfirmDialog((prev) => ({ ...prev, open: false }));
+    }
+  };
+
+  const handleImpersonate = async (member: TeamMember) => {
+    setImpersonating(true);
+    try {
+      const res = await supabase.functions.invoke('impersonate-user', {
+        body: { userId: member.userId },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      if (res.data?.url) {
+        // Open impersonation URL in a new tab
+        window.open(res.data.url, '_blank');
+        toast.success(`Sessão aberta como ${member.displayName} em nova aba`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao acessar como usuário');
+    } finally {
+      setImpersonating(false);
     }
   };
 
@@ -446,6 +482,8 @@ export default function TeamPage() {
                     permProfiles={permProfiles}
                     onAction={confirmAction}
                     onPermissions={setPermsMember}
+                    onResetPassword={setResetPwMember}
+                    onImpersonate={handleImpersonate}
                   />
                 ))}
               </div>
@@ -465,9 +503,11 @@ export default function TeamPage() {
                       isSelf={m.userId === user?.id}
                       isBanned={true}
                       permProfiles={permProfiles}
-                    onAction={confirmAction}
-                    onPermissions={setPermsMember}
-                  />
+                      onAction={confirmAction}
+                      onPermissions={setPermsMember}
+                      onResetPassword={setResetPwMember}
+                      onImpersonate={handleImpersonate}
+                    />
                   ))}
                 </div>
               </div>
@@ -501,6 +541,15 @@ export default function TeamPage() {
           displayName={permsMember.displayName}
           profileId={permsMember.profileId}
           profileName={permsMember.profileName}
+        />
+      )}
+
+      {resetPwMember && (
+        <ResetPasswordDialog
+          open={!!resetPwMember}
+          onOpenChange={(open) => { if (!open) setResetPwMember(null); }}
+          userId={resetPwMember.userId}
+          displayName={resetPwMember.displayName}
         />
       )}
     </AppLayout>
