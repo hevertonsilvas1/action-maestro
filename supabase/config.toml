@@ -11,3 +11,21 @@ verify_jwt = false
 
 [functions.whatsapp-inbound]
 verify_jwt = false
+
+[functions.manage-user]
+verify_jwt = false
+
+[functions.invite-user]
+verify_jwt = false
+
+[functions.test-webhook]
+verify_jwt = false
+
+[functions.parse-winners-pdf]
+verify_jwt = false
+
+[functions.reset-admin-password]
+verify_jwt = false
+
+[functions.apply-time-rules]
+verify_jwt = false
