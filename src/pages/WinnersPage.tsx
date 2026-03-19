@@ -547,7 +547,7 @@ export default function WinnersPage() {
                                 </TooltipTrigger>
                                 <TooltipContent>Histórico de Status</TooltipContent>
                               </Tooltip>
-                              {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
+                              {can(PERMISSIONS.GANHADOR_EXCLUIR) && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
