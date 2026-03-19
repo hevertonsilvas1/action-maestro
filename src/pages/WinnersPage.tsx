@@ -37,7 +37,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { useQuickFilters } from '@/hooks/useQuickFilters';
 import { useAuth } from '@/hooks/useAuth';
