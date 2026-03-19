@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
+import { PermissionsProvider, usePermissions, PERMISSIONS } from "@/hooks/usePermissions";
 import Index from "./pages/Index";
 import SupportDashboard from "./pages/SupportDashboard";
 import ActionsPage from "./pages/ActionsPage";
@@ -39,11 +39,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function AdminRoute({ children }: { children: React.ReactNode }) {
+function PermissionRoute({ children, permission }: { children: React.ReactNode; permission: string }) {
   const { user, loading: authLoading } = useAuth();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { can, loading: permLoading } = usePermissions();
 
-  if (authLoading || roleLoading) {
+  if (authLoading || permLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -52,12 +52,12 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/auth" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!can(permission as any)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
 function RoleDashboard() {
-  const { isAdmin, loading } = useUserRole();
+  const { can, loading } = usePermissions();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -65,7 +65,7 @@ function RoleDashboard() {
       </div>
     );
   }
-  return isAdmin ? <Index /> : <SupportDashboard />;
+  return can(PERMISSIONS.FINANCEIRO_VER_DASHBOARD) ? <Index /> : <SupportDashboard />;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -88,14 +88,13 @@ const AppRoutes = () => (
     <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
-    <Route path="/actions" element={<AdminRoute><ActionsPage /></AdminRoute>} />
-    <Route path="/actions/new" element={<AdminRoute><NewActionPage /></AdminRoute>} />
+    <Route path="/actions" element={<PermissionRoute permission={PERMISSIONS.ACAO_VER}><ActionsPage /></PermissionRoute>} />
+    <Route path="/actions/new" element={<PermissionRoute permission={PERMISSIONS.ACAO_CRIAR}><NewActionPage /></PermissionRoute>} />
     <Route path="/actions/:id" element={<ProtectedRoute><ActionDetailPage /></ProtectedRoute>} />
-    <Route path="/actions/:id/edit" element={<AdminRoute><EditActionPage /></AdminRoute>} />
-    <Route path="/winners" element={<ProtectedRoute><WinnersPage /></ProtectedRoute>} />
-    <Route path="/winners/deleted" element={<AdminRoute><DeletedWinnersPage /></AdminRoute>} />
-    
-    <Route path="/team" element={<AdminRoute><TeamPage /></AdminRoute>} />
+    <Route path="/actions/:id/edit" element={<PermissionRoute permission={PERMISSIONS.ACAO_EDITAR}><EditActionPage /></PermissionRoute>} />
+    <Route path="/winners" element={<PermissionRoute permission={PERMISSIONS.GANHADOR_VER}><WinnersPage /></PermissionRoute>} />
+    <Route path="/winners/deleted" element={<PermissionRoute permission={PERMISSIONS.GANHADOR_EXCLUIR}><DeletedWinnersPage /></PermissionRoute>} />
+    <Route path="/team" element={<PermissionRoute permission={PERMISSIONS.USUARIO_VER}><TeamPage /></PermissionRoute>} />
     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
@@ -108,7 +107,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <PermissionsProvider>
+            <AppRoutes />
+          </PermissionsProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

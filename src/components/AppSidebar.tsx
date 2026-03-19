@@ -22,50 +22,52 @@ import {
   SidebarFooter,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS, type Permission } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
-const adminMainNav = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permission?: Permission;
+}
+
+const mainNav: NavItem[] = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Ações', url: '/actions', icon: Megaphone },
-  { title: 'Ganhadores', url: '/winners', icon: Trophy },
-  { title: 'Excluídos', url: '/winners/deleted', icon: Trash2 },
+  { title: 'Ações', url: '/actions', icon: Megaphone, permission: PERMISSIONS.ACAO_VER },
+  { title: 'Ganhadores', url: '/winners', icon: Trophy, permission: PERMISSIONS.GANHADOR_VER },
+  { title: 'Excluídos', url: '/winners/deleted', icon: Trash2, permission: PERMISSIONS.GANHADOR_EXCLUIR },
 ];
 
-const supportMainNav = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Ganhadores', url: '/winners', icon: Trophy },
-];
-
-const adminSettingsNav = [
-  { title: 'Equipe', url: '/team', icon: Users },
+const settingsNav: NavItem[] = [
+  { title: 'Equipe', url: '/team', icon: Users, permission: PERMISSIONS.USUARIO_VER },
   { title: 'Configurações', url: '/settings', icon: Settings },
 ];
 
-const supportSettingsNav = [
-  { title: 'Configurações', url: '/settings', icon: Settings },
-];
+const PROFILE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  operador: 'Operador',
+  financeiro: 'Financeiro',
+};
 
 export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
-  const { isAdmin } = useUserRole();
+  const { can, profileSlug } = usePermissions();
   const { user, signOut } = useAuth();
   const collapsed = state === 'collapsed';
 
-  const mainNav = isAdmin ? adminMainNav : supportMainNav;
-  const settingsNav = isAdmin ? adminSettingsNav : supportSettingsNav;
+  const visibleMain = mainNav.filter(item => !item.permission || can(item.permission));
+  const visibleSettings = settingsNav.filter(item => !item.permission || can(item.permission));
+
+  const profileLabel = profileSlug ? (PROFILE_LABELS[profileSlug] ?? profileSlug) : '—';
 
   const isActive = (url: string) =>
     url === '/' ? location.pathname === '/' : location.pathname.startsWith(url);
 
   return (
-    <Sidebar
-      className="border-r-0"
-      collapsible="icon"
-    >
+    <Sidebar className="border-r-0" collapsible="icon">
       <SidebarHeader className="p-4">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-primary">
@@ -86,13 +88,9 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => (
+              {visibleMain.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <Link to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -110,13 +108,9 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {settingsNav.map((item) => (
+              {visibleSettings.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <Link to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -133,7 +127,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="rounded-lg bg-sidebar-accent p-3 space-y-2">
             <p className="text-[11px] font-medium text-sidebar-accent-foreground">
-              {isAdmin ? 'Admin' : 'Suporte'}
+              {profileLabel}
             </p>
             <p className="text-[10px] text-sidebar-muted truncate">{user?.email}</p>
             <Button
