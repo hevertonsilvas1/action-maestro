@@ -333,7 +333,7 @@ export default function WinnersPage() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           actionsMap={actionsMap}
-          showValueFilter={isAdmin}
+          showValueFilter={can(PERMISSIONS.FINANCEIRO_VER_DASHBOARD)}
         />
 
         {isLoading ? (
