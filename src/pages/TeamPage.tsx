@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { UserPermissionsDialog } from '@/components/UserPermissionsDialog';
+import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
