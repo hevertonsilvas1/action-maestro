@@ -232,7 +232,7 @@ export default function WinnersPage() {
                 )}
               </>
             )}
-            {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
+            {can(PERMISSIONS.GANHADOR_GERAR_LOTE) && (
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
                 <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
                 Lote
