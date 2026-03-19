@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
 import { useArchiveAction } from '@/hooks/useArchiveAction';
