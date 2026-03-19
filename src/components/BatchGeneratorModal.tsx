@@ -32,12 +32,12 @@ interface BatchGeneratorModalProps {
   actionId: string;
   actionName: string;
   userName: string;
+  actionsMap?: Record<string, string>;
 }
 
 function isEligibleForBatch(w: Winner): boolean {
   const isForcarPix = w.status === 'forcar_pix';
 
-  // For forcar_pix: allow entry using CPF or phone as operational key, even without pixKey
   if (isForcarPix) {
     return (
       w.value > 0 &&
@@ -46,7 +46,6 @@ function isEligibleForBatch(w: Winner): boolean {
     );
   }
 
-  // Standard flow: requires pixKey
   return (
     !!w.pixKey &&
     !!w.pixType &&
@@ -56,7 +55,6 @@ function isEligibleForBatch(w: Winner): boolean {
   );
 }
 
-/** For batch export, derive operational PIX key using shared logic */
 function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } {
   const resolved = resolveOperationalPixKey(w.pixKey, w.cpf, w.phone, w.status);
   if (resolved.key && resolved.source === 'pix' && w.pixType) {
@@ -68,7 +66,6 @@ function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } 
   if (resolved.key && resolved.source === 'phone') {
     return { pixKey: resolved.key, pixType: 'phone' };
   }
-  // Fallback
   if (w.pixKey && w.pixType) return { pixKey: w.pixKey, pixType: w.pixType };
   if (w.cpf) return { pixKey: w.cpf.replace(/\D/g, ''), pixType: 'cpf' };
   if (w.phone) return { pixKey: w.phone.replace(/\D/g, ''), pixType: 'phone' };
@@ -76,7 +73,7 @@ function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } 
 }
 
 export function BatchGeneratorModal({
-  open, onOpenChange, winners, actionId, actionName, userName,
+  open, onOpenChange, winners, actionId, actionName, userName, actionsMap,
 }: BatchGeneratorModalProps) {
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
@@ -109,9 +106,8 @@ export function BatchGeneratorModal({
 
     try {
       const now = new Date().toISOString();
-
-      // Group winners by actionId to create one batch per action
       const byAction = new Map<string, Winner[]>();
+
       for (const w of selected) {
         const group = byAction.get(w.actionId) || [];
         group.push(w);
@@ -121,9 +117,9 @@ export function BatchGeneratorModal({
       const allRows: Record<string, any>[] = [];
 
       for (const [aId, group] of byAction) {
-        const aName = aId === actionId ? actionName : (group[0].prizeTitle || actionName);
+        const resolvedActionName = actionsMap?.[aId] || (aId === actionId ? actionName : actionName);
         const groupTotal = group.reduce((s, w) => s + w.value, 0);
-        const filename = `lote_pix_${aName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const filename = `lote_pix_${resolvedActionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
         const { data: batch, error: batchError } = await supabase
           .from('pix_batches')
@@ -153,15 +149,17 @@ export function BatchGeneratorModal({
 
         if (updateError) throw updateError;
 
-        const description = `AÇÃO - ${aName}`.slice(0, 240);
         for (const w of group) {
           const { pixKey, pixType } = getOperationalPixData(w);
+          const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
+          const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}`.slice(0, 240);
+
           allRows.push({
             'Apelido': w.name,
             'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
             'Dados de Pagamento (Número do Boleto ou Chave Pix)': pixKey,
             'Valor (R$)': w.value,
-            'Categoria (Opcional)': w.prizeTitle || w.prizeType || '',
+            'Categoria (Opcional)': prizeLabel,
             'Centro de Custo (Opcional)': 'Premiações Instantâneas',
             'Descrição (Opcional) (Max. 240 Caractéres)': description,
             ...(w.status === 'forcar_pix' ? { 'Observação': 'FORÇAR PIX - Dados operacionais' } : {}),
@@ -170,7 +168,7 @@ export function BatchGeneratorModal({
 
         await insertAuditLog({
           actionId: aId,
-          actionName: aName,
+          actionName: resolvedActionName,
           tableName: 'winners',
           operation: 'lote_pix_gerado',
           changes: {
@@ -183,8 +181,7 @@ export function BatchGeneratorModal({
         });
       }
 
-      // Generate XLSX files, splitting if > 2MB
-      const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+      const MAX_SIZE = 2 * 1024 * 1024;
       const baseFilename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
       const buildWorkbook = (rows: Record<string, any>[]) => {
@@ -198,27 +195,26 @@ export function BatchGeneratorModal({
         return wb;
       };
 
-      // Try full file first
       const fullWb = buildWorkbook(allRows);
       const fullBuf = XLSX.write(fullWb, { type: 'array', bookType: 'xlsx' });
 
       if (fullBuf.byteLength <= MAX_SIZE) {
         XLSX.writeFile(fullWb, `${baseFilename}.xlsx`);
       } else {
-        // Split into chunks that fit under 2MB
         let chunkStart = 0;
         let part = 1;
+
         while (chunkStart < allRows.length) {
           let chunkEnd = allRows.length;
           let buf: ArrayBuffer;
-          // Binary search for max rows that fit
+
           while (chunkEnd > chunkStart + 1) {
             const mid = Math.floor((chunkStart + chunkEnd) / 2);
             const testWb = buildWorkbook(allRows.slice(chunkStart, mid));
             buf = XLSX.write(testWb, { type: 'array', bookType: 'xlsx' });
+
             if (buf.byteLength <= MAX_SIZE) {
               chunkEnd = mid;
-              // Try more rows
               const testWb2 = buildWorkbook(allRows.slice(chunkStart, chunkEnd + Math.floor((allRows.length - chunkEnd) / 2)));
               const buf2 = XLSX.write(testWb2, { type: 'array', bookType: 'xlsx' });
               if (buf2.byteLength <= MAX_SIZE) {
@@ -229,11 +225,13 @@ export function BatchGeneratorModal({
               chunkEnd = mid;
             }
           }
+
           const chunkWb = buildWorkbook(allRows.slice(chunkStart, chunkEnd));
           XLSX.writeFile(chunkWb, `${baseFilename}_parte${part}.xlsx`);
           chunkStart = chunkEnd;
           part++;
         }
+
         toast.info(`Arquivo dividido em ${part - 1} partes (limite 2MB por arquivo).`);
       }
 
@@ -306,7 +304,7 @@ export function BatchGeneratorModal({
                           const { pixType } = getOperationalPixData(w);
                           const label = PIX_TYPE_LABELS[pixType];
                           return w.status === 'forcar_pix' && !w.pixKey
-                            ? `${label} (operacional)` 
+                            ? `${label} (operacional)`
                             : label;
                         })()} · {w.prizeTitle}
                       </p>
