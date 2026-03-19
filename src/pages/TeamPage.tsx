@@ -99,7 +99,10 @@ function useBannedUsers() {
       });
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
-      return (res.data?.bannedIds ?? []) as string[];
+      return {
+        bannedIds: (res.data?.bannedIds ?? []) as string[],
+        emailMap: (res.data?.emailMap ?? {}) as Record<string, string>,
+      };
     },
   });
 }
@@ -147,6 +150,9 @@ function TeamMemberCard({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{member.displayName}</p>
+          {member.email && (
+            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+          )}
           <div className="flex items-center gap-1.5 mt-1">
             <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${colorClass}`}>
               {label}
@@ -259,7 +265,9 @@ function TeamMemberCard({
 
 export default function TeamPage() {
   const { data: members = [], isLoading } = useTeamMembers();
-  const { data: bannedIds = [], isLoading: bannedLoading } = useBannedUsers();
+  const { data: bannedData, isLoading: bannedLoading } = useBannedUsers();
+  const bannedIds = bannedData?.bannedIds ?? [];
+  const emailMap = bannedData?.emailMap ?? {};
   const { data: permProfiles = [] } = usePermissionProfiles();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -286,8 +294,9 @@ export default function TeamPage() {
   const [impersonating, setImpersonating] = useState(false);
 
   const bannedSet = new Set(bannedIds);
-  const activeMembers = members.filter((m) => !bannedSet.has(m.userId));
-  const inactiveMembers = members.filter((m) => bannedSet.has(m.userId));
+  const membersWithEmail = members.map((m) => ({ ...m, email: emailMap[m.userId] || '' }));
+  const activeMembers = membersWithEmail.filter((m) => !bannedSet.has(m.userId));
+  const inactiveMembers = membersWithEmail.filter((m) => bannedSet.has(m.userId));
 
   // Default to operador profile
   const defaultProfileId = permProfiles.find(p => p.slug === 'operador')?.id || '';

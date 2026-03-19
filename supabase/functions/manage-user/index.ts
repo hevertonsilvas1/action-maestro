@@ -73,7 +73,13 @@ Deno.serve(async (req) => {
         .filter((u) => u.banned_until && new Date(u.banned_until) > new Date())
         .map((u) => u.id);
 
-      return new Response(JSON.stringify({ bannedIds }), {
+      // Build email map for all users
+      const emailMap: Record<string, string> = {};
+      users.forEach((u) => {
+        if (u.email) emailMap[u.id] = u.email;
+      });
+
+      return new Response(JSON.stringify({ bannedIds, emailMap }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
