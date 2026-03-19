@@ -1573,6 +1573,7 @@ export default function ActionDetailPage() {
       )}
 
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
+      <BatchHistorySheet open={batchHistoryOpen} onOpenChange={setBatchHistoryOpen} actionId={id} />
     </AppLayout>
   );
 }

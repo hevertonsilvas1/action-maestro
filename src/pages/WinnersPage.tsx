@@ -691,6 +691,7 @@ export default function WinnersPage() {
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
       <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} />
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
+      <BatchHistorySheet open={batchHistoryOpen} onOpenChange={setBatchHistoryOpen} />
 
       {/* Import: Action Selector Dialog */}
       <Dialog open={importActionSelectorOpen} onOpenChange={setImportActionSelectorOpen}>
