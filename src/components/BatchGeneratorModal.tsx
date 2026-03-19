@@ -153,7 +153,8 @@ export function BatchGeneratorModal({
 
         if (updateError) throw updateError;
 
-        const description = `AÇÃO - ${aId.slice(0, 8)} - ${aName}`.slice(0, 240);
+        const resolvedName = actionsMap?.[aId] || aName;
+        const description = `AÇÃO - ${resolvedName}`.slice(0, 240);
         for (const w of group) {
           const { pixKey, pixType } = getOperationalPixData(w);
           allRows.push({
