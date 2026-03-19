@@ -114,6 +114,15 @@ export function BatchGeneratorModal({
         byAction.set(w.actionId, group);
       }
 
+      const actionIds = Array.from(byAction.keys());
+      const { data: actionsData, error: actionsError } = await supabase
+        .from('actions')
+        .select('id, name')
+        .in('id', actionIds);
+
+      if (actionsError) throw actionsError;
+
+      const actionNamesById = new Map((actionsData || []).map(action => [action.id, action.name]));
       const allRows: Record<string, any>[] = [];
 
       for (const [aId, group] of byAction) {
