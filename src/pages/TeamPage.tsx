@@ -543,6 +543,15 @@ export default function TeamPage() {
           profileName={permsMember.profileName}
         />
       )}
+
+      {resetPwMember && (
+        <ResetPasswordDialog
+          open={!!resetPwMember}
+          onOpenChange={(open) => { if (!open) setResetPwMember(null); }}
+          userId={resetPwMember.userId}
+          displayName={resetPwMember.displayName}
+        />
+      )}
     </AppLayout>
   );
 }
