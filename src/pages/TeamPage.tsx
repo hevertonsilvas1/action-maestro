@@ -27,13 +27,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Shield, Headset, MoreVertical, ShieldAlert, ShieldCheck, UserX, UserCheck } from 'lucide-react';
+import { Loader2, UserPlus, Shield, Headset, DollarSign, MoreVertical, UserX, UserCheck } from 'lucide-react';
 
 interface TeamMember {
   userId: string;
   displayName: string;
   email: string;
   role: string;
+  profileSlug: string | null;
+  profileName: string | null;
 }
 
 function useTeamMembers() {
@@ -42,7 +44,7 @@ function useTeamMembers() {
     queryFn: async () => {
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('user_id, role');
+        .select('user_id, role, profile_id, permission_profiles!user_roles_profile_id_fkey(slug, name)');
       if (rolesError) throw rolesError;
 
       const { data: profiles, error: profilesError } = await supabase
@@ -55,12 +57,31 @@ function useTeamMembers() {
         profileMap[p.user_id] = p.display_name || 'Sem nome';
       });
 
-      return roles.map((r): TeamMember => ({
-        userId: r.user_id,
-        displayName: profileMap[r.user_id] || 'Sem nome',
-        email: '',
-        role: r.role,
-      }));
+      return roles.map((r): TeamMember => {
+        const permProfile = r.permission_profiles as unknown as { slug: string; name: string } | null;
+        return {
+          userId: r.user_id,
+          displayName: profileMap[r.user_id] || 'Sem nome',
+          email: '',
+          role: r.role,
+          profileSlug: permProfile?.slug ?? null,
+          profileName: permProfile?.name ?? null,
+        };
+      });
+    },
+  });
+}
+
+function usePermissionProfiles() {
+  return useQuery({
+    queryKey: ['permission-profiles'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('permission_profiles')
+        .select('id, name, slug, description')
+        .order('name');
+      if (error) throw error;
+      return data;
     },
   });
 }
@@ -79,44 +100,46 @@ function useBannedUsers() {
   });
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin',
-  support: 'Suporte',
+const PROFILE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  admin: Shield,
+  operador: Headset,
+  financeiro: DollarSign,
 };
 
-const ROLE_COLORS: Record<string, string> = {
+const PROFILE_COLORS: Record<string, string> = {
   admin: 'bg-primary/10 text-primary border-primary/20',
-  support: 'bg-accent/10 text-accent-foreground border-accent/20',
+  operador: 'bg-accent/10 text-accent-foreground border-accent/20',
+  financeiro: 'bg-success/10 text-success border-success/20',
 };
 
 function TeamMemberCard({
   member,
   isSelf,
   isBanned,
+  permProfiles,
   onAction,
 }: {
   member: TeamMember;
   isSelf: boolean;
   isBanned: boolean;
+  permProfiles: { id: string; name: string; slug: string }[];
   onAction: (title: string, description: string, action: () => Promise<void>) => void;
 }) {
-  const newRole = member.role === 'admin' ? 'support' : 'admin';
+  const Icon = PROFILE_ICONS[member.profileSlug || ''] || Headset;
+  const colorClass = PROFILE_COLORS[member.profileSlug || ''] || PROFILE_COLORS.operador;
+  const label = member.profileName || member.role;
 
   return (
     <Card className={`animate-fade-in ${isBanned ? 'opacity-60' : ''}`}>
       <CardContent className="p-4 flex items-center gap-4">
         <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-          {member.role === 'admin' ? (
-            <Shield className="h-5 w-5 text-primary" />
-          ) : (
-            <Headset className="h-5 w-5 text-muted-foreground" />
-          )}
+          <Icon className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{member.displayName}</p>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${ROLE_COLORS[member.role] || ''}`}>
-              {ROLE_LABELS[member.role] || member.role}
+            <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${colorClass}`}>
+              {label}
             </span>
             {isBanned && (
               <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border bg-destructive/10 text-destructive border-destructive/20">
@@ -136,29 +159,29 @@ function TeamMemberCard({
             <DropdownMenuContent align="end">
               {!isBanned && (
                 <>
-                  <DropdownMenuItem
-                    onClick={() =>
-                      onAction(
-                        'Alterar Função',
-                        `Deseja alterar ${member.displayName} de ${ROLE_LABELS[member.role]} para ${ROLE_LABELS[newRole]}?`,
-                        async () => {
-                          const res = await supabase.functions.invoke('manage-user', {
-                            body: { action: 'change_role', userId: member.userId, role: newRole },
-                          });
-                          if (res.error) throw new Error(res.error.message);
-                          if (res.data?.error) throw new Error(res.data.error);
-                          toast.success(res.data?.message || 'Role atualizada');
+                  {permProfiles
+                    .filter((p) => p.slug !== member.profileSlug)
+                    .map((profile) => (
+                      <DropdownMenuItem
+                        key={profile.id}
+                        onClick={() =>
+                          onAction(
+                            'Alterar Perfil',
+                            `Deseja alterar ${member.displayName} para ${profile.name}?`,
+                            async () => {
+                              const res = await supabase.functions.invoke('manage-user', {
+                                body: { action: 'change_profile', userId: member.userId, profileId: profile.id },
+                              });
+                              if (res.error) throw new Error(res.error.message);
+                              if (res.data?.error) throw new Error(res.data.error);
+                              toast.success(`Perfil alterado para ${profile.name}`);
+                            }
+                          )
                         }
-                      )
-                    }
-                  >
-                    {newRole === 'admin' ? (
-                      <ShieldCheck className="h-4 w-4 mr-2" />
-                    ) : (
-                      <ShieldAlert className="h-4 w-4 mr-2" />
-                    )}
-                    Tornar {ROLE_LABELS[newRole]}
-                  </DropdownMenuItem>
+                      >
+                        Tornar {profile.name}
+                      </DropdownMenuItem>
+                    ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -214,6 +237,7 @@ function TeamMemberCard({
 export default function TeamPage() {
   const { data: members = [], isLoading } = useTeamMembers();
   const { data: bannedIds = [], isLoading: bannedLoading } = useBannedUsers();
+  const { data: permProfiles = [] } = usePermissionProfiles();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -223,7 +247,7 @@ export default function TeamPage() {
     email: '',
     password: '',
     displayName: '',
-    role: 'support' as 'admin' | 'support',
+    profileId: '',
   });
 
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -239,6 +263,9 @@ export default function TeamPage() {
   const activeMembers = members.filter((m) => !bannedSet.has(m.userId));
   const inactiveMembers = members.filter((m) => bannedSet.has(m.userId));
 
+  // Default to operador profile
+  const defaultProfileId = permProfiles.find(p => p.slug === 'operador')?.id || '';
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email || !form.password || !form.displayName) {
@@ -250,6 +277,10 @@ export default function TeamPage() {
       return;
     }
 
+    const selectedProfile = permProfiles.find(p => p.id === (form.profileId || defaultProfileId));
+    const roleMap: Record<string, string> = { admin: 'admin', operador: 'support', financeiro: 'support' };
+    const role = selectedProfile ? (roleMap[selectedProfile.slug] || 'support') : 'support';
+
     setSaving(true);
     try {
       const res = await supabase.functions.invoke('invite-user', {
@@ -257,7 +288,8 @@ export default function TeamPage() {
           email: form.email,
           password: form.password,
           displayName: form.displayName,
-          role: form.role,
+          role,
+          profileId: form.profileId || defaultProfileId,
         },
       });
 
@@ -265,7 +297,7 @@ export default function TeamPage() {
       if (res.data?.error) throw new Error(res.data.error);
 
       toast.success(`Usuário ${form.displayName} criado com sucesso!`);
-      setForm({ email: '', password: '', displayName: '', role: 'support' });
+      setForm({ email: '', password: '', displayName: '', profileId: '' });
       setShowForm(false);
       qc.invalidateQueries({ queryKey: ['team-members'] });
     } catch (err: any) {
@@ -355,14 +387,15 @@ export default function TeamPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Função</Label>
-                  <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as 'admin' | 'support' })}>
+                  <Label>Perfil</Label>
+                  <Select value={form.profileId || defaultProfileId} onValueChange={(v) => setForm({ ...form, profileId: v })}>
                     <SelectTrigger className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="support">Suporte</SelectItem>
+                      {permProfiles.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -391,7 +424,6 @@ export default function TeamPage() {
           </div>
         ) : (
           <>
-            {/* Active Members */}
             {activeMembers.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {activeMembers.map((m) => (
@@ -400,13 +432,13 @@ export default function TeamPage() {
                     member={m}
                     isSelf={m.userId === user?.id}
                     isBanned={false}
+                    permProfiles={permProfiles}
                     onAction={confirmAction}
                   />
                 ))}
               </div>
             )}
 
-            {/* Inactive Members */}
             {inactiveMembers.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
@@ -420,6 +452,7 @@ export default function TeamPage() {
                       member={m}
                       isSelf={m.userId === user?.id}
                       isBanned={true}
+                      permProfiles={permProfiles}
                       onAction={confirmAction}
                     />
                   ))}

@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, userId, role } = await req.json();
+    const { action, userId, role, profileId } = await req.json();
 
     if (!action) {
       return new Response(JSON.stringify({ error: "action é obrigatório" }), {
@@ -102,9 +102,16 @@ Deno.serve(async (req) => {
         });
       }
 
+      const updateData: Record<string, unknown> = { role };
+
+      // If profileId is provided, update it too
+      if (profileId) {
+        updateData.profile_id = profileId;
+      }
+
       const { error } = await adminClient
         .from("user_roles")
-        .update({ role })
+        .update(updateData)
         .eq("user_id", userId);
 
       if (error) {
@@ -115,6 +122,42 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true, message: "Role atualizada" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "change_profile") {
+      if (!profileId) {
+        return new Response(JSON.stringify({ error: "profileId é obrigatório" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get the profile to determine the matching role
+      const { data: profile } = await adminClient
+        .from("permission_profiles")
+        .select("slug")
+        .eq("id", profileId)
+        .maybeSingle();
+
+      const roleMap: Record<string, string> = { admin: "admin", operador: "support", financeiro: "support" };
+      const mappedRole = profile ? (roleMap[profile.slug] || "support") : "support";
+
+      const { error } = await adminClient
+        .from("user_roles")
+        .update({ profile_id: profileId, role: mappedRole })
+        .eq("user_id", userId);
+
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, message: "Perfil atualizado" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

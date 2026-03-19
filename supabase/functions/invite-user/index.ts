@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request
-    const { email, password, displayName, role } = await req.json();
+    const { email, password, displayName, role, profileId } = await req.json();
 
     if (!email || !password || !displayName || !role) {
       return new Response(JSON.stringify({ error: "Campos obrigatórios: email, password, displayName, role" }), {
@@ -85,9 +85,11 @@ Deno.serve(async (req) => {
     }
 
     // Assign role
+    const insertData: Record<string, unknown> = { user_id: newUser.user.id, role };
+    if (profileId) insertData.profile_id = profileId;
     const { error: roleError } = await adminClient
       .from("user_roles")
-      .insert({ user_id: newUser.user.id, role });
+      .insert(insertData);
 
     if (roleError) {
       return new Response(JSON.stringify({ error: roleError.message }), {

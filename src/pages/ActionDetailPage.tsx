@@ -28,7 +28,7 @@ import {
   CreditCard, ShieldCheck, AlertTriangle, Paperclip, MessageSquare, Info,
   XCircle, Phone, UserX,
 } from 'lucide-react';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
@@ -69,7 +69,8 @@ export default function ActionDetailPage() {
   const { data: prizes = [], isLoading: loadingPrizes } = usePrizes(id ?? '');
   const { data: costs = [], isLoading: loadingCosts } = useCosts(id ?? '');
   const { data: auditLog = [] } = useAuditLog(id);
-  const { isAdmin } = useUserRole();
+  const { can } = usePermissions();
+  const isAdmin = can(PERMISSIONS.ACAO_EDITAR); // backward compat for many UI checks
   const { user } = useAuth();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();

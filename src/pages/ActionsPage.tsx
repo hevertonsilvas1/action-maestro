@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useDuplicateAction } from '@/hooks/useDuplicateAction';
 import { useDeleteAction, validateActionDeletion } from '@/hooks/useDeleteAction';
 import { useArchiveAction } from '@/hooks/useArchiveAction';
@@ -23,7 +23,7 @@ export default function ActionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const { data: actions = [], isLoading } = useActions();
-  const { isAdmin } = useUserRole();
+  const { can } = usePermissions();
   const { duplicate, isPending: isDuplicating } = useDuplicateAction();
   const { deleteAction, isPending: isDeleting } = useDeleteAction();
   const { archive, isPending: isArchiving } = useArchiveAction();
@@ -128,7 +128,7 @@ export default function ActionsPage() {
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Lucro</th>
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Margem</th>
                     <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Progresso</th>
-                    {isAdmin && <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Ações</th>}
+                    {can(PERMISSIONS.ACAO_EDITAR) && <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -165,7 +165,7 @@ export default function ActionsPage() {
                             <span className="text-[10px] text-muted-foreground w-8 text-right">{progress.toFixed(0)}%</span>
                           </div>
                         </td>
-                        {isAdmin && (
+                        {can(PERMISSIONS.ACAO_EDITAR) && (
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <Button

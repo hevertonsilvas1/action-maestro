@@ -4,7 +4,7 @@ import { StatsCard } from '@/components/StatsCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OperationalDashboard } from '@/components/operational/OperationalDashboard';
 import { useActions } from '@/hooks/useActions';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
 import {
   DollarSign, TrendingUp, Users, Megaphone, ArrowRight, Loader2,
@@ -16,11 +16,13 @@ import { Progress } from '@/components/ui/progress';
 
 const Index = () => {
   const { data: actions = [], isLoading: loadingActions } = useActions();
-  const { isAdmin, loading: loadingRole } = useUserRole();
-  const isLoading = loadingActions || loadingRole;
+  const { can, loading: loadingPerms } = usePermissions();
+  const isLoading = loadingActions || loadingPerms;
+
+  const canFinancial = can(PERMISSIONS.FINANCEIRO_VER_DASHBOARD);
+  const canCreateAction = can(PERMISSIONS.ACAO_CRIAR);
 
   const operationalActions = actions.filter(a => a.status !== 'archived');
-  // Financial totals: exclude planning actions (only realized/active/completed)
   const financialActions = operationalActions.filter(a => a.status !== 'planning');
   const totalRevenue = financialActions.reduce((s, a) => s + a.expectedRevenue, 0);
   const totalProfit = financialActions.reduce((s, a) => s + a.grossProfit, 0);
@@ -44,9 +46,9 @@ const Index = () => {
     <AppLayout>
       <AppHeader
         title="Dashboard"
-        subtitle={isAdmin ? 'Visão financeira e operacional' : 'Visão operacional da fila de trabalho'}
+        subtitle={canFinancial ? 'Visão financeira e operacional' : 'Visão operacional da fila de trabalho'}
         actions={
-          isAdmin ? (
+          canCreateAction ? (
             <Link to="/actions">
               <Button size="sm" className="gradient-primary text-primary-foreground hover:opacity-90 h-8 text-xs">
                 <Megaphone className="h-3.5 w-3.5 mr-1.5" />
@@ -58,8 +60,8 @@ const Index = () => {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-8">
-        {/* ═══ PAINEL FINANCEIRO (Admin only) ═══ */}
-        {isAdmin && (
+        {/* ═══ PAINEL FINANCEIRO ═══ */}
+        {canFinancial && (
           <section className="space-y-5">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-primary" />
@@ -138,7 +140,7 @@ const Index = () => {
         )}
 
         {/* Divider */}
-        {isAdmin && <div className="border-t border-border" />}
+        {canFinancial && <div className="border-t border-border" />}
 
         {/* ═══ PAINEL OPERACIONAL (Everyone) ═══ */}
         <section className="space-y-5">

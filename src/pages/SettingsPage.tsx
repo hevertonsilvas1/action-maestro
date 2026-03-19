@@ -1,5 +1,5 @@
 import { AppLayout } from '@/components/AppLayout';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings2, User, Webhook, Tags, Clock, Zap, Filter } from 'lucide-react';
 import { GeneralTab } from '@/components/settings/GeneralTab';
@@ -12,13 +12,19 @@ import { QuickFiltersTab } from '@/components/settings/QuickFiltersTab';
 import { useSearchParams } from 'react-router-dom';
 
 export default function SettingsPage() {
-  const { isAdmin } = useUserRole();
+  const { can } = usePermissions();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'user';
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });
   };
+
+  const canConfig = can(PERMISSIONS.CONFIG_VER);
+  const canEditConfig = can(PERMISSIONS.CONFIG_EDITAR);
+  const canStatuses = can(PERMISSIONS.CONFIG_GERENCIAR_STATUS);
+  const canAutomations = can(PERMISSIONS.CONFIG_GERENCIAR_AUTOMACOES);
+  const canMessages = can(PERMISSIONS.CONFIG_GERENCIAR_MENSAGENS);
 
   return (
     <AppLayout>
@@ -30,7 +36,7 @@ export default function SettingsPage() {
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="w-full justify-start">
-            {isAdmin && (
+            {canEditConfig && (
               <TabsTrigger value="general" className="gap-1.5">
                 <Settings2 className="h-3.5 w-3.5" />
                 Geral
@@ -44,25 +50,25 @@ export default function SettingsPage() {
               <Filter className="h-3.5 w-3.5" />
               Filtros Rápidos
             </TabsTrigger>
-            {isAdmin && (
+            {canEditConfig && (
               <TabsTrigger value="integrations" className="gap-1.5">
                 <Webhook className="h-3.5 w-3.5" />
                 Integrações
               </TabsTrigger>
             )}
-            {isAdmin && (
+            {canStatuses && (
               <TabsTrigger value="statuses" className="gap-1.5">
                 <Tags className="h-3.5 w-3.5" />
                 Status
               </TabsTrigger>
             )}
-            {isAdmin && (
+            {canAutomations && (
               <TabsTrigger value="time" className="gap-1.5">
                 <Clock className="h-3.5 w-3.5" />
                 Tempo
               </TabsTrigger>
             )}
-            {isAdmin && (
+            {canMessages && (
               <TabsTrigger value="window-messages" className="gap-1.5">
                 <Zap className="h-3.5 w-3.5" />
                 Automações
@@ -70,7 +76,7 @@ export default function SettingsPage() {
             )}
           </TabsList>
 
-          {isAdmin && (
+          {canEditConfig && (
             <TabsContent value="general">
               <GeneralTab />
             </TabsContent>
@@ -84,25 +90,25 @@ export default function SettingsPage() {
             <QuickFiltersTab />
           </TabsContent>
 
-          {isAdmin && (
+          {canEditConfig && (
             <TabsContent value="integrations">
               <IntegrationsTab />
             </TabsContent>
           )}
 
-          {isAdmin && (
+          {canStatuses && (
             <TabsContent value="statuses">
               <WinnerStatusesTab />
             </TabsContent>
           )}
 
-          {isAdmin && (
+          {canAutomations && (
             <TabsContent value="time">
               <TimeConfigTab />
             </TabsContent>
           )}
 
-          {isAdmin && (
+          {canMessages && (
             <TabsContent value="window-messages">
               <WindowMessagesTab />
             </TabsContent>

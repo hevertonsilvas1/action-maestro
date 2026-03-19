@@ -37,7 +37,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useWinnerStatusMap } from '@/hooks/useWinnerStatusMap';
 import { useQuickFilters } from '@/hooks/useQuickFilters';
 import { useAuth } from '@/hooks/useAuth';
@@ -71,7 +71,7 @@ export default function WinnersPage() {
   const [pageSize, setPageSize] = useState(20);
   const [winnersTab, setWinnersTab] = useState<'pending' | 'completed'>('pending');
   const { filters, setFilters } = useWinnersFilters();
-  const { isAdmin } = useUserRole();
+  const { can } = usePermissions();
   const { activeOrdered } = useWinnerStatusMap();
   const { filters: quickFilterConfig, isLoading: quickFiltersLoading } = useQuickFilters();
   const { user } = useAuth();
@@ -206,7 +206,7 @@ export default function WinnersPage() {
               <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
               Novo
             </Button>
-            {isAdmin && (
+            {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportActionSelectorOpen(true)}>
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Importar
@@ -218,7 +218,7 @@ export default function WinnersPage() {
                   <Send className="h-3.5 w-3.5 mr-1.5" />
                   Pix ({selected.size})
                 </Button>
-                {isAdmin && (
+                {can(PERMISSIONS.GANHADOR_ALTERAR_STATUS) && (
                   <>
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchStatusOpen(true)}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
@@ -232,7 +232,7 @@ export default function WinnersPage() {
                 )}
               </>
             )}
-            {isAdmin && (
+            {can(PERMISSIONS.GANHADOR_GERAR_LOTE) && (
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
                 <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
                 Lote
@@ -333,7 +333,7 @@ export default function WinnersPage() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           actionsMap={actionsMap}
-          showValueFilter={isAdmin}
+          showValueFilter={can(PERMISSIONS.FINANCEIRO_VER_DASHBOARD)}
         />
 
         {isLoading ? (
@@ -547,7 +547,7 @@ export default function WinnersPage() {
                                 </TooltipTrigger>
                                 <TooltipContent>Histórico de Status</TooltipContent>
                               </Tooltip>
-                              {isAdmin && (
+                              {can(PERMISSIONS.GANHADOR_EXCLUIR) && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
@@ -651,7 +651,7 @@ export default function WinnersPage() {
                         <Paperclip className={cn('h-4 w-4 mr-1.5', w.receiptUrl ? 'text-success' : '')} />
                         Comp.
                       </Button>
-                      {isAdmin && (
+                      {can(PERMISSIONS.GANHADOR_EXCLUIR) && (
                         <Button variant="outline" size="sm" className="h-10 text-xs text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -674,12 +674,12 @@ export default function WinnersPage() {
       </div>
 
       {/* Modals */}
-      <RequestPixModal open={pixModalOpen} onOpenChange={setPixModalOpen} winners={selectedWinners} onConfirm={handleRequestPix} isPending={isPending} isAdmin={isAdmin} />
+      <RequestPixModal open={pixModalOpen} onOpenChange={setPixModalOpen} winners={selectedWinners} onConfirm={handleRequestPix} isPending={isPending} isAdmin={can(PERMISSIONS.GANHADOR_FORCAR_PIX)} />
       <NewWinnerModal open={newWinnerOpen} onOpenChange={setNewWinnerOpen} actionsMap={operationalActionsMap} />
       <DeleteWinnerDialog open={!!deleteWinner} onOpenChange={v => { if (!v) setDeleteWinner(null); }} winner={deleteWinner} actionName={deleteWinner ? (actionsMap[deleteWinner.actionId] || '') : ''} />
       <BulkDeleteWinnersDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen} winners={selectedWinners} actionsMap={actionsMap} onDone={() => setSelected(new Set())} />
       <BatchStatusModal open={batchStatusOpen} onOpenChange={setBatchStatusOpen} winnerIds={Array.from(selected)} currentStatuses={selectedWinners.map(w => w.status)} onDone={() => setSelected(new Set())} />
-      <PixDataModal open={!!pixTarget} onOpenChange={v => { if (!v) setPixTarget(null); }} winner={pixTarget} isAdmin={isAdmin} userName={userName} actionId={pixTarget?.actionId || ''} />
+      <PixDataModal open={!!pixTarget} onOpenChange={v => { if (!v) setPixTarget(null); }} winner={pixTarget} isAdmin={can(PERMISSIONS.GANHADOR_EDITAR)} userName={userName} actionId={pixTarget?.actionId || ''} />
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
       <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} />
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />

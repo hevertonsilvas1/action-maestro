@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { usePrizeTypeConfigs, useCostTypeConfigs, useCreatePrizeType, useCreateCostType } from '@/hooks/useTypeConfigs';
 import { useCreateAction, PrizeInput, CostInput } from '@/hooks/useCreateAction';
 import { formatCurrency, formatPercent, formatNumber } from '@/lib/format';
@@ -31,7 +31,8 @@ function fmtQuota(n: number) {
 
 export default function NewActionPage() {
   const navigate = useNavigate();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { can, loading: roleLoading } = usePermissions();
+  const isAdmin = can(PERMISSIONS.ACAO_CRIAR);
   const { data: prizeTypes = [], isLoading: ptLoading } = usePrizeTypeConfigs();
   const { data: costTypes = [], isLoading: ctLoading } = useCostTypeConfigs();
   const createPrizeType = useCreatePrizeType();

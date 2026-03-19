@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -40,7 +40,8 @@ function formatPhone(value: string): string {
 
 export function UserTab() {
   const { user } = useAuth();
-  const { role, loading: roleLoading } = useUserRole();
+  const { profileSlug, loading: roleLoading } = usePermissions();
+  const role = profileSlug;
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<ProfileData>({

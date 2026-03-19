@@ -382,6 +382,33 @@ export type Database = {
         }
         Relationships: []
       }
+      permission_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pix_batches: {
         Row: {
           action_id: string
@@ -510,6 +537,35 @@ export type Database = {
           },
         ]
       }
+      profile_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_permissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "permission_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -612,6 +668,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permission_overrides: {
+        Row: {
+          created_at: string
+          granted: boolean
+          id: string
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_quick_filters: {
         Row: {
           created_at: string
@@ -643,22 +723,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          profile_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          profile_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          profile_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "permission_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       window_messages: {
         Row: {
@@ -1077,6 +1168,7 @@ export type Database = {
         Args: { _status_id: string }
         Returns: string
       }
+      get_user_permissions: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1091,6 +1183,10 @@ export type Database = {
         Returns: boolean
       }
       normalize_phone_e164: { Args: { raw: string }; Returns: string }
+      user_has_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       action_status:

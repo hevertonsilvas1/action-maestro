@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useAction } from '@/hooks/useActions';
 import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
@@ -38,7 +38,8 @@ function fmtQuota(n: number) {
 export default function EditActionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { can, loading: roleLoading } = usePermissions();
+  const isAdmin = can(PERMISSIONS.ACAO_EDITAR);
   const { data: action, isLoading: actionLoading } = useAction(id);
   const { data: existingPrizes = [], isLoading: prizesLoading } = usePrizes(id ?? '');
   const { data: existingCosts = [], isLoading: costsLoading } = useCosts(id ?? '');
