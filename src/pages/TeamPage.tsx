@@ -294,8 +294,9 @@ export default function TeamPage() {
   const [impersonating, setImpersonating] = useState(false);
 
   const bannedSet = new Set(bannedIds);
-  const activeMembers = members.filter((m) => !bannedSet.has(m.userId));
-  const inactiveMembers = members.filter((m) => bannedSet.has(m.userId));
+  const membersWithEmail = members.map((m) => ({ ...m, email: emailMap[m.userId] || '' }));
+  const activeMembers = membersWithEmail.filter((m) => !bannedSet.has(m.userId));
+  const inactiveMembers = membersWithEmail.filter((m) => bannedSet.has(m.userId));
 
   // Default to operador profile
   const defaultProfileId = permProfiles.find(p => p.slug === 'operador')?.id || '';
