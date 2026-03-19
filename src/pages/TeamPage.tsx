@@ -29,7 +29,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Shield, Headset, DollarSign, MoreVertical, UserX, UserCheck, KeyRound } from 'lucide-react';
+import { Loader2, UserPlus, Shield, Headset, DollarSign, MoreVertical, UserX, UserCheck, KeyRound, LogIn } from 'lucide-react';
 
 interface TeamMember {
   userId: string;
