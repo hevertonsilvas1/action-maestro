@@ -166,7 +166,14 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchPermissions();
-  }, [fetchPermissions]);
+
+    // Refresh permissions every 60 seconds to pick up admin changes
+    const interval = setInterval(() => {
+      if (user) fetchPermissions();
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, [fetchPermissions, user]);
 
   const can = useCallback(
     (permission: Permission) => permissions.includes(permission),
