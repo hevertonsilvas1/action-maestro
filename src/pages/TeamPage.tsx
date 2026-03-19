@@ -66,6 +66,7 @@ function useTeamMembers() {
           displayName: profileMap[r.user_id] || 'Sem nome',
           email: '',
           role: r.role,
+          profileId: r.profile_id ?? null,
           profileSlug: permProfile?.slug ?? null,
           profileName: permProfile?.name ?? null,
         };
