@@ -265,7 +265,9 @@ function TeamMemberCard({
 
 export default function TeamPage() {
   const { data: members = [], isLoading } = useTeamMembers();
-  const { data: bannedIds = [], isLoading: bannedLoading } = useBannedUsers();
+  const { data: bannedData, isLoading: bannedLoading } = useBannedUsers();
+  const bannedIds = bannedData?.bannedIds ?? [];
+  const emailMap = bannedData?.emailMap ?? {};
   const { data: permProfiles = [] } = usePermissionProfiles();
   const { user } = useAuth();
   const qc = useQueryClient();
