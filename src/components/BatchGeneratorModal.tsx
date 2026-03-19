@@ -196,8 +196,10 @@ export function BatchGeneratorModal({
 
       const MAX_SIZE = 2 * 1024 * 1024;
       const filenameActionBase = selected.length === 1
-        ? (selected[0].actionName || actionsMap?.[selected[0].actionId] || actionName || 'lote_pix').trim()
-        : (actionName || 'lote_pix').trim();
+        ? (actionNamesById.get(selected[0].actionId)?.trim() || actionsMap?.[selected[0].actionId]?.trim() || selected[0].actionName || actionName || 'lote_pix').trim()
+        : byAction.size === 1
+          ? (actionNamesById.get(Array.from(byAction.keys())[0])?.trim() || actionName || 'lote_pix').trim()
+          : (actionName || 'lote_pix').trim();
       const baseFilename = `lote_pix_${filenameActionBase.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
       const buildWorkbook = (rows: Record<string, any>[]) => {
