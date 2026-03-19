@@ -218,7 +218,7 @@ export default function WinnersPage() {
                   <Send className="h-3.5 w-3.5 mr-1.5" />
                   Pix ({selected.size})
                 </Button>
-                {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
+                {can(PERMISSIONS.GANHADOR_ALTERAR_STATUS) && (
                   <>
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchStatusOpen(true)}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
