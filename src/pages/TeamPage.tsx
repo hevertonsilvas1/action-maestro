@@ -268,6 +268,7 @@ export default function TeamPage() {
   }>({ open: false, title: '', description: '', action: async () => {} });
 
   const [actionLoading, setActionLoading] = useState(false);
+  const [permsMember, setPermsMember] = useState<TeamMember | null>(null);
 
   const bannedSet = new Set(bannedIds);
   const activeMembers = members.filter((m) => !bannedSet.has(m.userId));
