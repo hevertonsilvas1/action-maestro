@@ -126,11 +126,11 @@ export function BatchGeneratorModal({
       const allRows: Record<string, any>[] = [];
 
       for (const [aId, group] of byAction) {
-        const winnerActionName = group.find(w => w.actionName?.trim())?.actionName?.trim();
         const fetchedActionName = actionNamesById.get(aId)?.trim();
         const mappedActionName = actionsMap?.[aId]?.trim();
+        const winnerActionName = group.find(w => w.actionName?.trim())?.actionName?.trim();
         const propActionName = aId === actionId ? actionName.trim() : '';
-        const resolvedActionName = winnerActionName || fetchedActionName || mappedActionName || propActionName || 'Ação';
+        const resolvedActionName = fetchedActionName || mappedActionName || winnerActionName || propActionName || 'Ação';
         const groupTotal = group.reduce((s, w) => s + w.value, 0);
         const filename = `lote_pix_${resolvedActionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
