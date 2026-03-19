@@ -32,136 +32,28 @@ interface BatchGeneratorModalProps {
   actionId: string;
   actionName: string;
   userName: string;
+  actionsMap?: Record<string, string>;
 }
-
-function isEligibleForBatch(w: Winner): boolean {
-  const isForcarPix = w.status === 'forcar_pix';
-
-  // For forcar_pix: allow entry using CPF or phone as operational key, even without pixKey
-  if (isForcarPix) {
-    return (
-      w.value > 0 &&
-      (!!w.cpf || !!w.phone) &&
-      !w.batchId
-    );
-  }
-
-  // Standard flow: requires pixKey
-  return (
-    !!w.pixKey &&
-    !!w.pixType &&
-    w.value > 0 &&
-    !['receipt_attached', 'receipt_sent'].includes(w.status) &&
-    !w.batchId
-  );
-}
-
-/** For batch export, derive operational PIX key using shared logic */
-function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } {
-  const resolved = resolveOperationalPixKey(w.pixKey, w.cpf, w.phone, w.status);
-  if (resolved.key && resolved.source === 'pix' && w.pixType) {
-    return { pixKey: resolved.key, pixType: w.pixType };
-  }
-  if (resolved.key && resolved.source === 'cpf') {
-    return { pixKey: resolved.key, pixType: 'cpf' };
-  }
-  if (resolved.key && resolved.source === 'phone') {
-    return { pixKey: resolved.key, pixType: 'phone' };
-  }
-  // Fallback
-  if (w.pixKey && w.pixType) return { pixKey: w.pixKey, pixType: w.pixType };
-  if (w.cpf) return { pixKey: w.cpf.replace(/\D/g, ''), pixType: 'cpf' };
-  if (w.phone) return { pixKey: w.phone.replace(/\D/g, ''), pixType: 'phone' };
-  return { pixKey: '', pixType: 'cpf' };
-}
-
+...
 export function BatchGeneratorModal({
-  open, onOpenChange, winners, actionId, actionName, userName,
+  open, onOpenChange, winners, actionId, actionName, userName, actionsMap,
 }: BatchGeneratorModalProps) {
-  const queryClient = useQueryClient();
-  const [generating, setGenerating] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  const eligible = useMemo(() => winners.filter(isEligibleForBatch), [winners]);
-
-  const toggleId = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    if (selectedIds.size === eligible.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(eligible.map(w => w.id)));
-    }
-  };
-
-  const selected = useMemo(() => eligible.filter(w => selectedIds.has(w.id)), [eligible, selectedIds]);
-  const totalValue = selected.reduce((s, w) => s + w.value, 0);
-
-  const handleGenerate = async () => {
-    if (selected.length === 0) return;
-    setGenerating(true);
-
-    try {
-      const now = new Date().toISOString();
-
-      // Group winners by actionId to create one batch per action
-      const byAction = new Map<string, Winner[]>();
-      for (const w of selected) {
-        const group = byAction.get(w.actionId) || [];
-        group.push(w);
-        byAction.set(w.actionId, group);
-      }
-
-      const allRows: Record<string, any>[] = [];
-
+...
       for (const [aId, group] of byAction) {
-        const aName = aId === actionId ? actionName : (group[0].prizeTitle || actionName);
+        const resolvedActionName = actionsMap?.[aId] || (aId === actionId ? actionName : group[0]?.prizeTitle || 'Ação');
         const groupTotal = group.reduce((s, w) => s + w.value, 0);
-        const filename = `lote_pix_${aName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-        const { data: batch, error: batchError } = await supabase
-          .from('pix_batches')
-          .insert({
-            action_id: aId,
-            generated_by: userName,
-            generated_at: now,
-            winner_count: group.length,
-            total_value: groupTotal,
-            filename,
-          } as any)
-          .select('id')
-          .single();
-
-        if (batchError) throw batchError;
-
-        const winnerIds = group.map(w => w.id);
-        const { error: updateError } = await supabase
-          .from('winners')
-          .update({
-            status: 'sent_to_batch' as any,
-            batch_id: batch.id,
-            payment_method: 'lote_pix' as any,
-            updated_at: now,
-          } as any)
-          .in('id', winnerIds);
-
-        if (updateError) throw updateError;
-
-        const description = `AÇÃO - ${aName}`.slice(0, 240);
+        const filename = `lote_pix_${resolvedActionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+...
         for (const w of group) {
           const { pixKey, pixType } = getOperationalPixData(w);
+          const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
+          const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}`.slice(0, 240);
           allRows.push({
             'Apelido': w.name,
             'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
             'Dados de Pagamento (Número do Boleto ou Chave Pix)': pixKey,
             'Valor (R$)': w.value,
-            'Categoria (Opcional)': w.prizeTitle || w.prizeType || '',
+            'Categoria (Opcional)': prizeLabel,
             'Centro de Custo (Opcional)': 'Premiações Instantâneas',
             'Descrição (Opcional) (Max. 240 Caractéres)': description,
             ...(w.status === 'forcar_pix' ? { 'Observação': 'FORÇAR PIX - Dados operacionais' } : {}),
