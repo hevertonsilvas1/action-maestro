@@ -128,7 +128,7 @@ export default function ActionsPage() {
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Lucro</th>
                     <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Margem</th>
                     <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Progresso</th>
-                    {isAdmin && <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Ações</th>}
+                    {can(PERMISSIONS.ACAO_EDITAR) && <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3">Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
