@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
-import { useUserRole } from '@/hooks/useUserRole';
+import { usePermissions, PERMISSIONS } from '@/hooks/usePermissions';
 import { useAction } from '@/hooks/useActions';
 import { usePrizes } from '@/hooks/usePrizes';
 import { useCosts } from '@/hooks/useCosts';
