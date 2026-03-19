@@ -114,10 +114,19 @@ export function BatchGeneratorModal({
         byAction.set(w.actionId, group);
       }
 
+      const actionIds = Array.from(byAction.keys());
+      const { data: actionsData, error: actionsError } = await supabase
+        .from('actions')
+        .select('id, name')
+        .in('id', actionIds);
+
+      if (actionsError) throw actionsError;
+
+      const actionNamesById = new Map((actionsData || []).map(action => [action.id, action.name]));
       const allRows: Record<string, any>[] = [];
 
       for (const [aId, group] of byAction) {
-        const resolvedActionName = actionsMap?.[aId] || (aId === actionId ? actionName : actionName);
+        const resolvedActionName = actionNamesById.get(aId) || actionsMap?.[aId] || (aId === actionId ? actionName : 'Ação');
         const groupTotal = group.reduce((s, w) => s + w.value, 0);
         const filename = `lote_pix_${resolvedActionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
