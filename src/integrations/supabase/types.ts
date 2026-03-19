@@ -571,6 +571,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          force_password_change: boolean
           id: string
           phone: string | null
           signature: string | null
@@ -581,6 +582,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          force_password_change?: boolean
           id?: string
           phone?: string | null
           signature?: string | null
@@ -591,6 +593,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          force_password_change?: boolean
           id?: string
           phone?: string | null
           signature?: string | null
