@@ -186,6 +186,11 @@ function TeamMemberCard({
                       </DropdownMenuItem>
                     ))}
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onPermissions(member)}>
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Gerenciar Permissões
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
                     onClick={() =>
