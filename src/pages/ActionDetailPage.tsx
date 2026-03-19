@@ -41,6 +41,7 @@ import { PixDataModal } from '@/components/PixDataModal';
 import { ReceiptManager } from '@/components/ReceiptManager';
 import { BatchGeneratorModal } from '@/components/BatchGeneratorModal';
 import { StatusHistorySheet } from '@/components/StatusHistorySheet';
+import { BatchHistorySheet } from '@/components/BatchHistorySheet';
 import { TimeInStatusBadge } from '@/components/TimeInStatusBadge';
 import { BulkDeleteWinnersDialog } from '@/components/BulkDeleteWinnersDialog';
 import { useTimeInStatus, useLiveTimeInStatus } from '@/hooks/useTimeInStatus';
