@@ -651,7 +651,7 @@ export default function WinnersPage() {
                         <Paperclip className={cn('h-4 w-4 mr-1.5', w.receiptUrl ? 'text-success' : '')} />
                         Comp.
                       </Button>
-                      {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
+                      {can(PERMISSIONS.GANHADOR_EXCLUIR) && (
                         <Button variant="outline" size="sm" className="h-10 text-xs text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
