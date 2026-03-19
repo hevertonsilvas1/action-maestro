@@ -165,7 +165,7 @@ export default function ActionsPage() {
                             <span className="text-[10px] text-muted-foreground w-8 text-right">{progress.toFixed(0)}%</span>
                           </div>
                         </td>
-                        {isAdmin && (
+                        {can(PERMISSIONS.ACAO_EDITAR) && (
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <Button
