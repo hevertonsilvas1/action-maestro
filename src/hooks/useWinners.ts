@@ -7,6 +7,7 @@ function mapWinner(row: any): Winner {
   return {
     id: row.id,
     actionId: row.action_id,
+    actionName: row.actions?.name ?? undefined,
     name: row.name,
     prizeType: row.prize_type,
     prizeTitle: row.prize_title,
@@ -49,7 +50,6 @@ function mapWinner(row: any): Winner {
 export function useWinners(actionId?: string) {
   const queryClient = useQueryClient();
 
-  // Realtime subscription for winners table
   useEffect(() => {
     const channel = supabase
       .channel('winners-realtime')
@@ -70,7 +70,12 @@ export function useWinners(actionId?: string) {
   return useQuery({
     queryKey: ['winners', actionId ?? 'all'],
     queryFn: async () => {
-      let query = supabase.from('winners').select('*, winner_statuses!winners_status_id_fkey(slug)').is('deleted_at', null).order('prize_datetime', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true });
+      let query = supabase
+        .from('winners')
+        .select('*, winner_statuses!winners_status_id_fkey(slug), actions!winners_action_id_fkey(name)')
+        .is('deleted_at', null)
+        .order('prize_datetime', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true });
       if (actionId) query = query.eq('action_id', actionId);
       const { data, error } = await query;
       if (error) throw error;

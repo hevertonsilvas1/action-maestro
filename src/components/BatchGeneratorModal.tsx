@@ -126,7 +126,11 @@ export function BatchGeneratorModal({
       const allRows: Record<string, any>[] = [];
 
       for (const [aId, group] of byAction) {
-        const resolvedActionName = actionNamesById.get(aId) || actionsMap?.[aId] || (aId === actionId ? actionName : 'Ação');
+        const winnerActionName = group.find(w => w.actionName?.trim())?.actionName?.trim();
+        const fetchedActionName = actionNamesById.get(aId)?.trim();
+        const mappedActionName = actionsMap?.[aId]?.trim();
+        const propActionName = aId === actionId ? actionName.trim() : '';
+        const resolvedActionName = winnerActionName || fetchedActionName || mappedActionName || propActionName || 'Ação';
         const groupTotal = group.reduce((s, w) => s + w.value, 0);
         const filename = `lote_pix_${resolvedActionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
@@ -191,7 +195,10 @@ export function BatchGeneratorModal({
       }
 
       const MAX_SIZE = 2 * 1024 * 1024;
-      const baseFilename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+      const filenameActionBase = selected.length === 1
+        ? (selected[0].actionName || actionsMap?.[selected[0].actionId] || actionName || 'lote_pix').trim()
+        : (actionName || 'lote_pix').trim();
+      const baseFilename = `lote_pix_${filenameActionBase.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
       const buildWorkbook = (rows: Record<string, any>[]) => {
         const ws = XLSX.utils.json_to_sheet(rows);
