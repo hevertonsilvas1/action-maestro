@@ -40,7 +40,8 @@ function formatPhone(value: string): string {
 
 export function UserTab() {
   const { user } = useAuth();
-  const { role, loading: roleLoading } = useUserRole();
+  const { profileSlug, loading: roleLoading } = usePermissions();
+  const role = profileSlug;
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<ProfileData>({
