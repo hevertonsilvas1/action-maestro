@@ -674,7 +674,7 @@ export default function WinnersPage() {
       </div>
 
       {/* Modals */}
-      <RequestPixModal open={pixModalOpen} onOpenChange={setPixModalOpen} winners={selectedWinners} onConfirm={handleRequestPix} isPending={isPending} isAdmin={isAdmin} />
+      <RequestPixModal open={pixModalOpen} onOpenChange={setPixModalOpen} winners={selectedWinners} onConfirm={handleRequestPix} isPending={isPending} isAdmin={can(PERMISSIONS.GANHADOR_FORCAR_PIX)} />
       <NewWinnerModal open={newWinnerOpen} onOpenChange={setNewWinnerOpen} actionsMap={operationalActionsMap} />
       <DeleteWinnerDialog open={!!deleteWinner} onOpenChange={v => { if (!v) setDeleteWinner(null); }} winner={deleteWinner} actionName={deleteWinner ? (actionsMap[deleteWinner.actionId] || '') : ''} />
       <BulkDeleteWinnersDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen} winners={selectedWinners} actionsMap={actionsMap} onDone={() => setSelected(new Set())} />
