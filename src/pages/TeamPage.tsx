@@ -119,12 +119,14 @@ function TeamMemberCard({
   isBanned,
   permProfiles,
   onAction,
+  onPermissions,
 }: {
   member: TeamMember;
   isSelf: boolean;
   isBanned: boolean;
   permProfiles: { id: string; name: string; slug: string }[];
   onAction: (title: string, description: string, action: () => Promise<void>) => void;
+  onPermissions: (member: TeamMember) => void;
 }) {
   const Icon = PROFILE_ICONS[member.profileSlug || ''] || Headset;
   const colorClass = PROFILE_COLORS[member.profileSlug || ''] || PROFILE_COLORS.operador;
