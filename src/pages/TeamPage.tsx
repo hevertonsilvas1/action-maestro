@@ -192,10 +192,18 @@ function TeamMemberCard({
                         Tornar {profile.name}
                       </DropdownMenuItem>
                     ))}
-                  <DropdownMenuSeparator />
+                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onPermissions(member)}>
                     <KeyRound className="h-4 w-4 mr-2" />
                     Gerenciar Permissões
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onResetPassword(member)}>
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Redefinir Senha
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onImpersonate(member)}>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Login como Usuário
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
