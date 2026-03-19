@@ -159,7 +159,7 @@ export function UserPermissionsDialog({
       }
 
       setInitialOverrides({ ...overrides });
-      toast.success(`Permissões de ${displayName} atualizadas`);
+      toast.success(`Permissões de ${displayName} atualizadas. O usuário verá as mudanças em até 1 minuto ou ao atualizar a página.`);
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao salvar permissões');
