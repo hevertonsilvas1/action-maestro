@@ -26,6 +26,7 @@ export interface Action {
 export interface Winner {
   id: string;
   actionId: string;
+  actionName?: string;
   name: string;
   prizeType: string;
   prizeTitle: string;

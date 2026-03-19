@@ -195,7 +195,10 @@ export function BatchGeneratorModal({
       }
 
       const MAX_SIZE = 2 * 1024 * 1024;
-      const baseFilename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+      const filenameActionBase = selected.length === 1
+        ? (selected[0].actionName || actionsMap?.[selected[0].actionId] || actionName || 'lote_pix').trim()
+        : (actionName || 'lote_pix').trim();
+      const baseFilename = `lote_pix_${filenameActionBase.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
       const buildWorkbook = (rows: Record<string, any>[]) => {
         const ws = XLSX.utils.json_to_sheet(rows);
