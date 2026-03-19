@@ -603,6 +603,10 @@ export default function ActionDetailPage() {
                       Gerar Lote PIX
                     </Button>
                   )}
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setBatchHistoryOpen(true)}>
+                    <History className="h-3.5 w-3.5 mr-1.5" />
+                    Histórico Lotes
+                  </Button>
                 </>
               )}
               <Button size="sm" variant="outline" className="h-8 text-xs">
