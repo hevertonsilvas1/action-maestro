@@ -123,6 +123,8 @@ function TeamMemberCard({
   permProfiles,
   onAction,
   onPermissions,
+  onResetPassword,
+  onImpersonate,
 }: {
   member: TeamMember;
   isSelf: boolean;
@@ -130,6 +132,8 @@ function TeamMemberCard({
   permProfiles: { id: string; name: string; slug: string }[];
   onAction: (title: string, description: string, action: () => Promise<void>) => void;
   onPermissions: (member: TeamMember) => void;
+  onResetPassword: (member: TeamMember) => void;
+  onImpersonate: (member: TeamMember) => void;
 }) {
   const Icon = PROFILE_ICONS[member.profileSlug || ''] || Headset;
   const colorClass = PROFILE_COLORS[member.profileSlug || ''] || PROFILE_COLORS.operador;
