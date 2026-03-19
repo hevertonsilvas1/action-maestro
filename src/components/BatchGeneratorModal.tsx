@@ -34,20 +34,126 @@ interface BatchGeneratorModalProps {
   userName: string;
   actionsMap?: Record<string, string>;
 }
-...
+
+function isEligibleForBatch(w: Winner): boolean {
+  const isForcarPix = w.status === 'forcar_pix';
+
+  if (isForcarPix) {
+    return (
+      w.value > 0 &&
+      (!!w.cpf || !!w.phone) &&
+      !w.batchId
+    );
+  }
+
+  return (
+    !!w.pixKey &&
+    !!w.pixType &&
+    w.value > 0 &&
+    !['receipt_attached', 'receipt_sent'].includes(w.status) &&
+    !w.batchId
+  );
+}
+
+function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } {
+  const resolved = resolveOperationalPixKey(w.pixKey, w.cpf, w.phone, w.status);
+  if (resolved.key && resolved.source === 'pix' && w.pixType) {
+    return { pixKey: resolved.key, pixType: w.pixType };
+  }
+  if (resolved.key && resolved.source === 'cpf') {
+    return { pixKey: resolved.key, pixType: 'cpf' };
+  }
+  if (resolved.key && resolved.source === 'phone') {
+    return { pixKey: resolved.key, pixType: 'phone' };
+  }
+  if (w.pixKey && w.pixType) return { pixKey: w.pixKey, pixType: w.pixType };
+  if (w.cpf) return { pixKey: w.cpf.replace(/\D/g, ''), pixType: 'cpf' };
+  if (w.phone) return { pixKey: w.phone.replace(/\D/g, ''), pixType: 'phone' };
+  return { pixKey: '', pixType: 'cpf' };
+}
+
 export function BatchGeneratorModal({
   open, onOpenChange, winners, actionId, actionName, userName, actionsMap,
 }: BatchGeneratorModalProps) {
-...
+  const queryClient = useQueryClient();
+  const [generating, setGenerating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const eligible = useMemo(() => winners.filter(isEligibleForBatch), [winners]);
+
+  const toggleId = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === eligible.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(eligible.map(w => w.id)));
+    }
+  };
+
+  const selected = useMemo(() => eligible.filter(w => selectedIds.has(w.id)), [eligible, selectedIds]);
+  const totalValue = selected.reduce((s, w) => s + w.value, 0);
+
+  const handleGenerate = async () => {
+    if (selected.length === 0) return;
+    setGenerating(true);
+
+    try {
+      const now = new Date().toISOString();
+      const byAction = new Map<string, Winner[]>();
+
+      for (const w of selected) {
+        const group = byAction.get(w.actionId) || [];
+        group.push(w);
+        byAction.set(w.actionId, group);
+      }
+
+      const allRows: Record<string, any>[] = [];
+
       for (const [aId, group] of byAction) {
-        const resolvedActionName = actionsMap?.[aId] || (aId === actionId ? actionName : group[0]?.prizeTitle || 'Ação');
+        const resolvedActionName = actionsMap?.[aId] || (aId === actionId ? actionName : actionName);
         const groupTotal = group.reduce((s, w) => s + w.value, 0);
         const filename = `lote_pix_${resolvedActionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-...
+
+        const { data: batch, error: batchError } = await supabase
+          .from('pix_batches')
+          .insert({
+            action_id: aId,
+            generated_by: userName,
+            generated_at: now,
+            winner_count: group.length,
+            total_value: groupTotal,
+            filename,
+          } as any)
+          .select('id')
+          .single();
+
+        if (batchError) throw batchError;
+
+        const winnerIds = group.map(w => w.id);
+        const { error: updateError } = await supabase
+          .from('winners')
+          .update({
+            status: 'sent_to_batch' as any,
+            batch_id: batch.id,
+            payment_method: 'lote_pix' as any,
+            updated_at: now,
+          } as any)
+          .in('id', winnerIds);
+
+        if (updateError) throw updateError;
+
         for (const w of group) {
           const { pixKey, pixType } = getOperationalPixData(w);
           const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
           const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}`.slice(0, 240);
+
           allRows.push({
             'Apelido': w.name,
             'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
@@ -62,7 +168,7 @@ export function BatchGeneratorModal({
 
         await insertAuditLog({
           actionId: aId,
-          actionName: aName,
+          actionName: resolvedActionName,
           tableName: 'winners',
           operation: 'lote_pix_gerado',
           changes: {
@@ -75,8 +181,7 @@ export function BatchGeneratorModal({
         });
       }
 
-      // Generate XLSX files, splitting if > 2MB
-      const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+      const MAX_SIZE = 2 * 1024 * 1024;
       const baseFilename = `lote_pix_${actionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
       const buildWorkbook = (rows: Record<string, any>[]) => {
@@ -90,27 +195,26 @@ export function BatchGeneratorModal({
         return wb;
       };
 
-      // Try full file first
       const fullWb = buildWorkbook(allRows);
       const fullBuf = XLSX.write(fullWb, { type: 'array', bookType: 'xlsx' });
 
       if (fullBuf.byteLength <= MAX_SIZE) {
         XLSX.writeFile(fullWb, `${baseFilename}.xlsx`);
       } else {
-        // Split into chunks that fit under 2MB
         let chunkStart = 0;
         let part = 1;
+
         while (chunkStart < allRows.length) {
           let chunkEnd = allRows.length;
           let buf: ArrayBuffer;
-          // Binary search for max rows that fit
+
           while (chunkEnd > chunkStart + 1) {
             const mid = Math.floor((chunkStart + chunkEnd) / 2);
             const testWb = buildWorkbook(allRows.slice(chunkStart, mid));
             buf = XLSX.write(testWb, { type: 'array', bookType: 'xlsx' });
+
             if (buf.byteLength <= MAX_SIZE) {
               chunkEnd = mid;
-              // Try more rows
               const testWb2 = buildWorkbook(allRows.slice(chunkStart, chunkEnd + Math.floor((allRows.length - chunkEnd) / 2)));
               const buf2 = XLSX.write(testWb2, { type: 'array', bookType: 'xlsx' });
               if (buf2.byteLength <= MAX_SIZE) {
@@ -121,11 +225,13 @@ export function BatchGeneratorModal({
               chunkEnd = mid;
             }
           }
+
           const chunkWb = buildWorkbook(allRows.slice(chunkStart, chunkEnd));
           XLSX.writeFile(chunkWb, `${baseFilename}_parte${part}.xlsx`);
           chunkStart = chunkEnd;
           part++;
         }
+
         toast.info(`Arquivo dividido em ${part - 1} partes (limite 2MB por arquivo).`);
       }
 
@@ -198,7 +304,7 @@ export function BatchGeneratorModal({
                           const { pixType } = getOperationalPixData(w);
                           const label = PIX_TYPE_LABELS[pixType];
                           return w.status === 'forcar_pix' && !w.pixKey
-                            ? `${label} (operacional)` 
+                            ? `${label} (operacional)`
                             : label;
                         })()} · {w.prizeTitle}
                       </p>
