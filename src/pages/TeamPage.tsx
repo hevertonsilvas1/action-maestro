@@ -35,6 +35,7 @@ interface TeamMember {
   displayName: string;
   email: string;
   role: string;
+  profileId: string | null;
   profileSlug: string | null;
   profileName: string | null;
 }
