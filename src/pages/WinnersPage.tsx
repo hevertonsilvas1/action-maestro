@@ -206,7 +206,7 @@ export default function WinnersPage() {
               <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
               Novo
             </Button>
-            {isAdmin && (
+            {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportActionSelectorOpen(true)}>
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Importar
@@ -218,7 +218,7 @@ export default function WinnersPage() {
                   <Send className="h-3.5 w-3.5 mr-1.5" />
                   Pix ({selected.size})
                 </Button>
-                {isAdmin && (
+                {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
                   <>
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchStatusOpen(true)}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
@@ -232,7 +232,7 @@ export default function WinnersPage() {
                 )}
               </>
             )}
-            {isAdmin && (
+            {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
                 <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
                 Lote
@@ -547,7 +547,7 @@ export default function WinnersPage() {
                                 </TooltipTrigger>
                                 <TooltipContent>Histórico de Status</TooltipContent>
                               </Tooltip>
-                              {isAdmin && (
+                              {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
@@ -651,7 +651,7 @@ export default function WinnersPage() {
                         <Paperclip className={cn('h-4 w-4 mr-1.5', w.receiptUrl ? 'text-success' : '')} />
                         Comp.
                       </Button>
-                      {isAdmin && (
+                      {can(PERMISSIONS.GANHADOR_IMPORTAR) && (
                         <Button variant="outline" size="sm" className="h-10 text-xs text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteWinner(w); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
