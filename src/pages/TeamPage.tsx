@@ -492,6 +492,17 @@ export default function TeamPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {permsMember && (
+        <UserPermissionsDialog
+          open={!!permsMember}
+          onOpenChange={(open) => { if (!open) setPermsMember(null); }}
+          userId={permsMember.userId}
+          displayName={permsMember.displayName}
+          profileId={permsMember.profileId}
+          profileName={permsMember.profileName}
+        />
+      )}
     </AppLayout>
   );
 }
