@@ -85,9 +85,11 @@ Deno.serve(async (req) => {
     }
 
     // Assign role
+    const insertData: Record<string, unknown> = { user_id: newUser.user.id, role };
+    if (profileId) insertData.profile_id = profileId;
     const { error: roleError } = await adminClient
       .from("user_roles")
-      .insert({ user_id: newUser.user.id, role });
+      .insert(insertData);
 
     if (roleError) {
       return new Response(JSON.stringify({ error: roleError.message }), {
