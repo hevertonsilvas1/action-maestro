@@ -585,7 +585,7 @@ export default function ActionDetailPage() {
                     <Send className="h-3.5 w-3.5 mr-1.5" />
                     Solicitar Pix {selectedWinnerIds.size > 0 && `(${selectedWinnerIds.size})`}
                   </Button>
-                  {isAdmin && selectedWinnerIds.size > 0 && (
+                  {can(PERMISSIONS.GANHADOR_ALTERAR_STATUS) && selectedWinnerIds.size > 0 && (
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchStatusOpen(true)}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                       Alterar Status ({selectedWinnerIds.size})
