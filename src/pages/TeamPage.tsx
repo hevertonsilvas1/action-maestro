@@ -351,6 +351,27 @@ export default function TeamPage() {
     }
   };
 
+  const handleImpersonate = async (member: TeamMember) => {
+    setImpersonating(true);
+    try {
+      const res = await supabase.functions.invoke('impersonate-user', {
+        body: { userId: member.userId },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      if (res.data?.url) {
+        // Open impersonation URL in a new tab
+        window.open(res.data.url, '_blank');
+        toast.success(`Sessão aberta como ${member.displayName} em nova aba`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao acessar como usuário');
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
   const loading = isLoading || bannedLoading;
 
   return (
