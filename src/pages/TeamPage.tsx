@@ -461,6 +461,8 @@ export default function TeamPage() {
                     permProfiles={permProfiles}
                     onAction={confirmAction}
                     onPermissions={setPermsMember}
+                    onResetPassword={setResetPwMember}
+                    onImpersonate={handleImpersonate}
                   />
                 ))}
               </div>
