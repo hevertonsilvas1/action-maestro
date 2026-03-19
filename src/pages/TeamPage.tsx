@@ -150,6 +150,9 @@ function TeamMemberCard({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{member.displayName}</p>
+          {member.email && (
+            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+          )}
           <div className="flex items-center gap-1.5 mt-1">
             <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${colorClass}`}>
               {label}
