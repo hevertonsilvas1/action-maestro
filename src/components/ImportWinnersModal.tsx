@@ -399,30 +399,38 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                     </p>
                     <p className="text-muted-foreground">
                       Foram encontrados registros com mesma combinação de ação, data/hora, tipo, valor, nome e documento/telefone.
-                      O que deseja fazer com eles?
+                      {blockingDuplicateCount > 0
+                        ? ` ${blockingDuplicateCount} deles estão bloqueados pela regra de duplicidade do banco e serão ignorados automaticamente.`
+                        : ' O que deseja fazer com eles?'}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 ml-6">
-                  <Button
-                    variant={duplicateAction === 'skip' || duplicateAction === null ? 'default' : 'outline'}
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() => setDuplicateAction('skip')}
-                  >
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Ignorar duplicados
-                  </Button>
-                  <Button
-                    variant={duplicateAction === 'import' ? 'default' : 'outline'}
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() => setDuplicateAction('import')}
-                  >
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Importar mesmo assim
-                  </Button>
-                </div>
+                {importableDuplicateCount > 0 ? (
+                  <div className="flex gap-2 ml-6">
+                    <Button
+                      variant={duplicateAction === 'skip' || duplicateAction === null ? 'default' : 'outline'}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setDuplicateAction('skip')}
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Ignorar duplicados
+                    </Button>
+                    <Button
+                      variant={duplicateAction === 'import' ? 'default' : 'outline'}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setDuplicateAction('import')}
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Importar duplicados permitidos
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="ml-6 text-xs text-muted-foreground">
+                    Todos os duplicados detectados nesta importação estão bloqueados pela regra do banco.
+                  </div>
+                )}
               </div>
             )}
 
