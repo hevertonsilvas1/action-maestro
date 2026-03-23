@@ -142,17 +142,26 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         changes.admin_reason = adminReason.trim();
       }
 
+      if (!pixValidationEnabled && isNew) {
+        changes.auto_validated = true;
+        changes.status = { before: winner.status, after: 'pix_received' };
+      }
+
       await supabase.from('action_audit_log').insert({
         action_id: actionId,
         table_name: 'winners',
         record_id: winner.id,
-        operation: isNew ? 'pix_cadastro' : 'pix_edicao',
+        operation: !pixValidationEnabled && isNew ? 'pix_cadastro_auto_validado' : (isNew ? 'pix_cadastro' : 'pix_edicao'),
         user_name: userName,
         changes,
       });
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      toast.success(isNew ? 'PIX cadastrado com sucesso!' : 'PIX atualizado com sucesso!');
+      if (!pixValidationEnabled && isNew) {
+        toast.success('PIX cadastrado e validado automaticamente!');
+      } else {
+        toast.success(isNew ? 'PIX cadastrado com sucesso!' : 'PIX atualizado com sucesso!');
+      }
       onOpenChange(false);
     } catch (err) {
       console.error('Save PIX error:', err);
