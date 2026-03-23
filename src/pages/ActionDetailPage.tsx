@@ -711,7 +711,7 @@ export default function ActionDetailPage() {
                   </thead>
                   <tbody>
                     {paginatedWinners.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 14 : 13} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
+                      <tr><td colSpan={isAdmin ? 15 : 14} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum ganhador encontrado.</td></tr>
                     ) : (
                       paginatedWinners.map((w, i) => {
                         const windowOpen = isWindowOpen(w.lastInboundAt);
