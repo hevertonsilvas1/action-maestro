@@ -45,6 +45,8 @@ const EXPECTED_COLUMNS = [
   { key: 'cpf', label: 'CPF', required: false },
 ];
 
+type DuplicateAction = 'skip' | 'import' | null;
+
 export function ImportWinnersModal({ open, onClose, actionId, actionName }: ImportWinnersModalProps) {
   const [tab, setTab] = useState<'pdf' | 'excel'>('pdf');
   const [step, setStep] = useState<ImportStep>('choose');
@@ -54,6 +56,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [rawExcelRows, setRawExcelRows] = useState<any[]>([]);
+  const [duplicateAction, setDuplicateAction] = useState<DuplicateAction>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { parsePdf, parseExcel, checkDuplicatesAndValidate, importWinners, isLoading, isParsing } = useImportWinners(actionId, actionName);
