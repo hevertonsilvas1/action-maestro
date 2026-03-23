@@ -552,6 +552,7 @@ export default function EditActionPage() {
 
         {/* SAVE / ACTIONS */}
         <div className="flex items-center justify-end gap-3">
+          {!readOnly && <DraftStatusIndicator status={draftStatus} />}
           <Link to={`/actions/${id}`}>
             <Button variant="outline">Cancelar</Button>
           </Link>
