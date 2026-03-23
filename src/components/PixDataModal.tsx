@@ -338,8 +338,8 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          {/* Validate button - only if PIX is filled but not yet validated */}
-          {pixStatus === 'filled' && canEdit && (
+          {/* Validate button - only if PIX validation is enabled and PIX is filled but not yet validated */}
+          {pixValidationEnabled && pixStatus === 'filled' && canEdit && (
             <Button
               variant="outline"
               onClick={handleValidate}
