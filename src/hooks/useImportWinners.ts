@@ -187,23 +187,41 @@ export function useImportWinners(actionId: string, actionName: string) {
       return w;
     });
 
-    // Check duplicates against DB
+    // Check duplicates against DB using the new composite key:
+    // action + prize_datetime + prize_type + value + name + phone/cpf
     const { data: existingWinners } = await supabase
       .from('winners')
-      .select('name, cpf, prize_type, prize_datetime, value')
-      .eq('action_id', actionId);
+      .select('name, cpf, phone, prize_type, prize_datetime, value')
+      .eq('action_id', actionId)
+      .is('deleted_at', null);
+
+    function buildDuplicateKey(name: string, cpf: string | null, phone: string | null, prizeType: string, prizeDatetime: string | null, value: number): string {
+      const normalizedName = (name || '').trim().toLowerCase();
+      const normalizedCpf = cpf ? cpf.replace(/\D/g, '') : '';
+      const normalizedPhone = phone ? phone.replace(/\D/g, '') : '';
+      const normalizedType = normalizePrizeType(prizeType);
+      // Normalize datetime to minute precision to handle slight variations
+      let normalizedDatetime = '';
+      if (prizeDatetime) {
+        try {
+          const d = new Date(prizeDatetime);
+          if (!isNaN(d.getTime())) {
+            normalizedDatetime = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          }
+        } catch { /* keep empty */ }
+      }
+      return `${normalizedType}|${normalizedDatetime}|${value}|${normalizedName}|${normalizedCpf}|${normalizedPhone}`;
+    }
 
     const existingKeys = new Set(
-      (existingWinners || []).map((w) => {
-        const identifier = w.cpf || w.name;
-        return `${w.prize_type}|${identifier}|${w.prize_datetime || ''}|${w.value}`;
-      })
+      (existingWinners || []).map((w) =>
+        buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
+      )
     );
 
     const result = validated.map((w) => {
       if (w.isInvalid) return w;
-      const identifier = w.cpf || w.name;
-      const key = `${normalizePrizeType(w.prize_type)}|${identifier}|${w.prize_datetime || ''}|${w.value}`;
+      const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
       if (existingKeys.has(key)) {
         return { ...w, isDuplicate: true };
       }
@@ -214,8 +232,7 @@ export function useImportWinners(actionId: string, actionName: string) {
     const seenKeys = new Set<string>();
     const afterDedupe = result.map((w) => {
       if (w.isInvalid || w.isDuplicate) return w;
-      const identifier = w.cpf || w.name;
-      const key = `${normalizePrizeType(w.prize_type)}|${identifier}|${w.prize_datetime || ''}|${w.value}`;
+      const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
       if (seenKeys.has(key)) {
         return { ...w, isDuplicate: true };
       }
