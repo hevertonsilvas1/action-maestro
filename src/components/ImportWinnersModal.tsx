@@ -474,7 +474,12 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
             <div>
               <p className="text-lg font-semibold">Importação concluída!</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {stats?.totalNew} ganhador(es) importado(s) com sucesso.
+                {importableCount} ganhador(es) importado(s) com sucesso.
+                {duplicateAction === 'import' && stats && stats.totalDuplicates > 0 && (
+                  <span className="block text-warning text-xs mt-1">
+                    Incluindo {stats.totalDuplicates} registro(s) duplicado(s) importados por escolha do operador.
+                  </span>
+                )}
               </p>
             </div>
             <Button onClick={handleClose}>Fechar</Button>
