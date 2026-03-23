@@ -505,7 +505,8 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                     <tr key={i} className={cn(
                       "border-t hover:bg-muted/30",
                       w.isOverLimit && "bg-destructive/5",
-                      w.isDuplicate && !w.isOverLimit && "bg-warning/5",
+                      w.isBlockingDuplicate && "bg-destructive/5",
+                      w.isDuplicate && !w.isBlockingDuplicate && !w.isOverLimit && "bg-warning/5",
                       w.isInvalid && !w.isDuplicate && !w.isOverLimit && "bg-destructive/5",
                     )}>
                       <td className="px-3 py-1.5">
