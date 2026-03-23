@@ -142,7 +142,7 @@ const Index = () => {
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               <span>{formatCurrency(action.expectedRevenue)}</span>
-                              <span>{action.winnersCount} ganhadores</span>
+                              <span>{action.paidCount}/{action.plannedWinners || action.winnersCount} ganhadores</span>
                               <span>·</span>
                               <span>{formatDate(action.updatedAt)}</span>
                             </div>
