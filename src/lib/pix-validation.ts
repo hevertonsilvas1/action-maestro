@@ -74,20 +74,36 @@ function normalizePhoneDigits(phone: string | null | undefined): string | null {
   return digits.length >= 10 ? digits : null;
 }
 
+export interface PixContextWarning {
+  level: 'info' | 'critical';
+  type: 'phone' | 'cpf';
+  message: string;
+  detail: string;
+  winnerValue: string;
+  pixValue: string;
+}
+
 /** Get contextual warnings comparing PIX key with winner data. Non-blocking. */
 export function getPixContextWarnings(
   type: PixType,
   key: string,
   winner: { cpf?: string | null; phone?: string | null },
-): string[] {
-  const warnings: string[] = [];
+): PixContextWarning[] {
+  const warnings: PixContextWarning[] = [];
   const trimmed = key.trim();
 
   if (type === 'cpf' && winner.cpf) {
     const keyDigits = trimmed.replace(/\D/g, '');
     const winnerDigits = winner.cpf.replace(/\D/g, '');
     if (keyDigits && winnerDigits && keyDigits !== winnerDigits) {
-      warnings.push('CPF da chave PIX diferente do CPF do ganhador.');
+      warnings.push({
+        level: 'critical',
+        type: 'cpf',
+        message: 'ATENÇÃO: o CPF informado como chave PIX é diferente do CPF do ganhador.',
+        detail: 'O pagamento deve preferencialmente ser feito para uma chave PIX em nome do próprio ganhador. Utilize outra chave apenas se houver autorização para pagamento a terceiro.',
+        winnerValue: winnerDigits,
+        pixValue: keyDigits,
+      });
     }
   }
 
@@ -95,7 +111,14 @@ export function getPixContextWarnings(
     const keyNorm = normalizePhoneDigits(trimmed);
     const winnerNorm = normalizePhoneDigits(winner.phone);
     if (keyNorm && winnerNorm && keyNorm !== winnerNorm) {
-      warnings.push('Telefone da chave PIX diferente do telefone do ganhador.');
+      warnings.push({
+        level: 'info',
+        type: 'phone',
+        message: 'Atenção: o telefone informado como chave PIX é diferente do telefone cadastrado do ganhador.',
+        detail: '',
+        winnerValue: winnerNorm,
+        pixValue: keyNorm,
+      });
     }
   }
 
