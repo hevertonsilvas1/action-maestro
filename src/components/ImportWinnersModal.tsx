@@ -14,6 +14,9 @@ import {
 import { useImportWinners, ParsedWinner } from '@/hooks/useImportWinners';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
+import { usePrizes } from '@/hooks/usePrizes';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 function convertExcelDate(value: any): string | null {
   if (value == null || value === '') return null;
@@ -34,7 +37,7 @@ interface ImportWinnersModalProps {
   actionName: string;
 }
 
-type ImportStep = 'choose' | 'mapping' | 'preview' | 'done';
+type ImportStep = 'choose' | 'mapping' | 'select-type' | 'preview' | 'done';
 
 const EXPECTED_COLUMNS = [
   { key: 'name', label: 'Ganhador / Nome', required: true },
@@ -59,9 +62,25 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [rawExcelRows, setRawExcelRows] = useState<any[]>([]);
   const [duplicateAction, setDuplicateAction] = useState<DuplicateAction>(null);
   const [previewFilter, setPreviewFilter] = useState<'all' | 'new' | 'duplicate' | 'invalid' | 'overlimit'>('all');
+  const [selectedPrizeType, setSelectedPrizeType] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { parsePdf, parseExcel, checkDuplicatesAndValidate, importWinners, isLoading, isParsing } = useImportWinners(actionId, actionName);
+
+  const { data: prizeTypeConfigs } = useQuery({
+    queryKey: ['prize_type_configs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prize_type_configs')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: actionPrizes } = usePrizes(actionId);
 
   const reset = useCallback(() => {
     setStep('choose');
@@ -73,6 +92,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     setRawExcelRows([]);
     setDuplicateAction(null);
     setPreviewFilter('all');
+    setSelectedPrizeType('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
@@ -103,10 +123,8 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     try {
       if (tab === 'pdf') {
         const winners = await parsePdf(file);
-        const result = await checkDuplicatesAndValidate(winners);
-        setParsedWinners(result.winners);
-        setStats(result.stats);
-        setStep('preview');
+        setParsedWinners(winners);
+        setStep('select-type');
       } else {
         const winners = await parseExcel(file);
         if (winners.length > 0) {
@@ -341,6 +359,65 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                 disabled={!columnMapping.name || !columnMapping.value || !columnMapping.prize_type}
               >
                 Aplicar Mapeamento
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'select-type' && (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Foram encontrados <span className="font-bold text-foreground">{parsedWinners.length}</span> registros no arquivo.
+              Selecione o tipo de premiação para todos os registros:
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tipo de Premiação</label>
+              <Select value={selectedPrizeType} onValueChange={setSelectedPrizeType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar tipo de premiação..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {actionPrizes && actionPrizes.length > 0 ? (
+                    actionPrizes.map((p) => (
+                      <SelectItem key={p.id} value={p.type}>
+                        {p.title} ({p.type})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    prizeTypeConfigs?.map((c) => (
+                      <SelectItem key={c.id} value={c.name.toLowerCase()}>
+                        {c.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {actionPrizes && actionPrizes.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Mostrando os prêmios cadastrados nesta ação.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" size="sm" onClick={reset}>Voltar</Button>
+              <Button
+                size="sm"
+                disabled={!selectedPrizeType}
+                onClick={async () => {
+                  const withType = parsedWinners.map(w => ({
+                    ...w,
+                    prize_type: selectedPrizeType,
+                  }));
+                  const result = await checkDuplicatesAndValidate(withType);
+                  setParsedWinners(result.winners);
+                  setStats(result.stats);
+                  setStep('preview');
+                }}
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Continuar
               </Button>
             </div>
           </div>
