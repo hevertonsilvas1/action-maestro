@@ -271,6 +271,59 @@ export function GeneralTab() {
               Parâmetro <code className="text-xs font-mono">STATUS_TRANSITION_MODE</code> não encontrado na base de dados.
             </div>
           )}
+          {/* PIX_VALIDATION_ENABLED */}
+          {pixValidationConfig ? (
+            <div className="flex items-start gap-4 rounded-lg border p-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent">
+                <ShieldCheck className="h-4 w-4 text-accent-foreground" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <div>
+                  <Label className="text-sm font-medium">Financeiro valida PIX antes do pagamento</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Quando ativado, o suporte cadastra o PIX e o financeiro precisa validar antes de seguir para pagamento.
+                    Quando desativado, ao cadastrar o PIX o sistema avança automaticamente para "Pronto para Pagamento".
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={editValues['PIX_VALIDATION_ENABLED'] === 'true'}
+                    onCheckedChange={(checked) => {
+                      const newVal = checked ? 'true' : 'false';
+                      setEditValues(prev => ({ ...prev, PIX_VALIDATION_ENABLED: newVal }));
+                      const config = pixValidationConfig;
+                      if (config) {
+                        setSaving('PIX_VALIDATION_ENABLED');
+                        supabase
+                          .from('integration_configs')
+                          .update({ value: newVal, updated_by: user?.id, updated_at: new Date().toISOString() })
+                          .eq('id', config.id)
+                          .then(({ error }) => {
+                            if (error) {
+                              toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+                            } else {
+                              toast({ title: checked ? 'Validação de PIX ativada' : 'Validação de PIX desativada' });
+                              fetchConfigs();
+                            }
+                            setSaving(null);
+                          });
+                      }
+                    }}
+                    disabled={saving === 'PIX_VALIDATION_ENABLED'}
+                  />
+                  <span className="text-xs font-medium">
+                    {editValues['PIX_VALIDATION_ENABLED'] === 'true' ? 'Ativado' : 'Desativado'}
+                  </span>
+                  {saving === 'PIX_VALIDATION_ENABLED' && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              <ShieldCheck className="h-5 w-5 mx-auto mb-2 text-muted-foreground/40" />
+              Parâmetro <code className="text-xs font-mono">PIX_VALIDATION_ENABLED</code> não encontrado na base de dados.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
