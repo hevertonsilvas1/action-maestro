@@ -18,7 +18,7 @@ import { Loader2, CreditCard, CheckCircle2, ShieldCheck, AlertTriangle } from 'l
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings } from '@/lib/pix-validation';
+import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, type PixContextWarning } from '@/lib/pix-validation';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
 import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
 import type { Winner, PixType } from '@/types';
@@ -45,7 +45,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
   const [holderDoc, setHolderDoc] = useState('');
   const [observation, setObservation] = useState('');
   const [keyError, setKeyError] = useState<string | null>(null);
-  const [contextWarnings, setContextWarnings] = useState<string[]>([]);
+  const [contextWarnings, setContextWarnings] = useState<PixContextWarning[]>([]);
 
   const isLocked = winner ? PIX_LOCKED_STATUSES.includes(winner.status) : false;
   const canEdit = !isLocked || isAdmin;
@@ -298,12 +298,36 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
               />
               {keyError && <p className="text-[10px] text-destructive">{keyError}</p>}
               {!keyError && contextWarnings.length > 0 && (
-                <div className="space-y-1">
+                <div className="space-y-2 mt-2">
                   {contextWarnings.map((w, i) => (
-                    <p key={i} className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3 shrink-0" />
-                      {w}
-                    </p>
+                    <div
+                      key={i}
+                      className={`rounded-lg border p-3 text-xs space-y-2 ${
+                        w.level === 'critical'
+                          ? 'border-destructive/50 bg-destructive/5'
+                          : 'border-amber-400/50 bg-amber-50 dark:bg-amber-950/20'
+                      }`}
+                    >
+                      <p className={`font-semibold flex items-center gap-1.5 ${
+                        w.level === 'critical' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'
+                      }`}>
+                        <AlertTriangle className={`h-4 w-4 shrink-0 ${w.level === 'critical' ? '' : ''}`} />
+                        {w.message}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-muted-foreground">{w.type === 'cpf' ? 'CPF do ganhador:' : 'Telefone cadastrado:'}</span>
+                          <p className="font-mono font-medium">{w.winnerValue}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">{w.type === 'cpf' ? 'CPF na chave PIX:' : 'Telefone informado:'}</span>
+                          <p className="font-mono font-medium">{w.pixValue}</p>
+                        </div>
+                      </div>
+                      {w.detail && (
+                        <p className="text-muted-foreground text-[11px] leading-relaxed">{w.detail}</p>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
