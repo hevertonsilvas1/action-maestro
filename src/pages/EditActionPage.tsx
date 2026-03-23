@@ -551,7 +551,7 @@ export default function EditActionPage() {
         </section>
 
         {/* SAVE / ACTIONS */}
-        <div className="flex justify-end gap-3">
+        <div className="flex items-center justify-end gap-3">
           <Link to={`/actions/${id}`}>
             <Button variant="outline">Cancelar</Button>
           </Link>
