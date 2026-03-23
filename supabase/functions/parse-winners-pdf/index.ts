@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const prompt = `You are a data extraction expert. Analyze this PDF document which is an accumulated prize report from a sales system (relatório acumulado).
+    const prompt = `You are a data extraction expert. Analyze this PDF document which is a prize report from a sales system.
 
 Extract ALL winner records found in the document. Each record should have:
 - name: the winner's name
@@ -26,13 +26,12 @@ Extract ALL winner records found in the document. Each record should have:
 - phone: phone number (only digits, remove formatting)
 - value: prize value as a number (e.g., 100.00)
 - prize_datetime: date and time of the prize in ISO 8601 format (YYYY-MM-DDTHH:mm:ss)
-- prize_type: type of prize (e.g., "Giro Abençoado", "Hora Abençoada", "Bônus", etc.)
-- title: the prize title / quota number when present
+- title: the prize identifier / quota number / ticket number shown alongside the winner (e.g. "2344043", "0286773"). This is typically a numeric code shown before the value.
 
 IMPORTANT:
 - Extract EVERY single record, even if they appear repeated across pages
-- When the PDF shows prize data in the format "2344043 - 100,00", the part BEFORE the dash is the title/quota number and MUST go into "title", while the part AFTER the dash is the numeric value and MUST go into "value"
-- For quota winners, the title is the quota number shown before the value
+- When the PDF shows prize data in the format "2344043 - 100,00", the part BEFORE the dash (e.g. "2344043") is the title/quota number and MUST go into "title", while the part AFTER the dash (e.g. "100,00") is the numeric value and MUST go into "value"
+- Do NOT try to determine the prize_type. The user will select it manually.
 - CPF must be digits only (remove . and -)
 - Phone must be digits only
 - Value must be a valid number
@@ -48,7 +47,6 @@ Return ONLY a valid JSON object with this exact structure:
       "phone": "string or null",
       "value": number,
       "prize_datetime": "string ISO or null",
-      "prize_type": "string",
       "title": "string or null"
     }
   ],
