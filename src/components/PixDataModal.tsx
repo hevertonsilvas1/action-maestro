@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { validatePixKey, maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
+import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
 import type { Winner, PixType } from '@/types';
 
 interface PixDataModalProps {
@@ -33,6 +34,7 @@ interface PixDataModalProps {
 
 export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, actionId }: PixDataModalProps) {
   const queryClient = useQueryClient();
+  const { data: pixValidationEnabled = false } = usePixValidationEnabled();
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
   const [adminReason, setAdminReason] = useState('');
@@ -106,6 +108,13 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         updateData.pix_registered_at = now;
       }
 
+      // When PIX validation is disabled, auto-advance to ready_to_pay on save
+      if (!pixValidationEnabled && isNew) {
+        updateData.status = 'pix_received';
+        updateData.pix_validated_by = userName;
+        updateData.pix_validated_at = now;
+      }
+
       const { error: updateError } = await supabase
         .from('winners')
         .update(updateData)
@@ -133,17 +142,26 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         changes.admin_reason = adminReason.trim();
       }
 
+      if (!pixValidationEnabled && isNew) {
+        changes.auto_validated = true;
+        changes.status = { before: winner.status, after: 'pix_received' };
+      }
+
       await supabase.from('action_audit_log').insert({
         action_id: actionId,
         table_name: 'winners',
         record_id: winner.id,
-        operation: isNew ? 'pix_cadastro' : 'pix_edicao',
+        operation: !pixValidationEnabled && isNew ? 'pix_cadastro_auto_validado' : (isNew ? 'pix_cadastro' : 'pix_edicao'),
         user_name: userName,
         changes,
       });
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      toast.success(isNew ? 'PIX cadastrado com sucesso!' : 'PIX atualizado com sucesso!');
+      if (!pixValidationEnabled && isNew) {
+        toast.success('PIX cadastrado e validado automaticamente!');
+      } else {
+        toast.success(isNew ? 'PIX cadastrado com sucesso!' : 'PIX atualizado com sucesso!');
+      }
       onOpenChange(false);
     } catch (err) {
       console.error('Save PIX error:', err);
@@ -329,8 +347,8 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          {/* Validate button - only if PIX is filled but not yet validated */}
-          {pixStatus === 'filled' && canEdit && (
+          {/* Validate button - only if PIX validation is enabled and PIX is filled but not yet validated */}
+          {pixValidationEnabled && pixStatus === 'filled' && canEdit && (
             <Button
               variant="outline"
               onClick={handleValidate}
