@@ -315,12 +315,31 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
                   Tipo detectado: {PIX_TYPE_LABELS[pixType as PixType] || pixType}
                 </Badge>
               )}
-              {pixKey.trim() && !pixType && (
+              {pixKey.trim() && !pixType && ambiguousCandidates.length === 0 && (
                 <span className="text-[10px] text-muted-foreground">
                   Continue digitando para detectar o tipo...
                 </span>
               )}
             </div>
+            {/* Ambiguous type selector */}
+            {ambiguousCandidates.length > 0 && (
+              <div className="rounded-lg border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Não foi possível identificar o tipo automaticamente. Selecione:
+                </p>
+                <RadioGroup onValueChange={handleAmbiguousSelect} className="flex gap-4">
+                  {ambiguousCandidates.map((c) => (
+                    <div key={c} className="flex items-center gap-1.5">
+                      <RadioGroupItem value={c} id={`pix-type-${c}`} />
+                      <Label htmlFor={`pix-type-${c}`} className="text-xs cursor-pointer">
+                        {PIX_TYPE_LABELS[c]}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
             {keyError && <p className="text-[10px] text-destructive">{keyError}</p>}
             {!keyError && contextWarnings.length > 0 && (
               <div className="space-y-2 mt-2">
