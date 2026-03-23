@@ -169,7 +169,6 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
         value: col('value') ? row[col('value')!] : 0,
         prize_type: String(col('prize_type') ? row[col('prize_type')!] : '').trim(),
         title: col('title') ? String(row[col('title')!] || '').trim() : undefined,
-        quota_number: col('quota_number') ? String(row[col('quota_number')!] || '').trim() : undefined,
         prize_datetime: col('prize_datetime') ? convertExcelDate(row[col('prize_datetime')!]) : null,
       }));
 
