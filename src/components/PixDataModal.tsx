@@ -34,6 +34,7 @@ interface PixDataModalProps {
 
 export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, actionId }: PixDataModalProps) {
   const queryClient = useQueryClient();
+  const { data: pixValidationEnabled = false } = usePixValidationEnabled();
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
   const [adminReason, setAdminReason] = useState('');
