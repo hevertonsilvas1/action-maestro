@@ -264,6 +264,8 @@ export default function NewActionPage() {
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6 max-w-4xl">
 
+        {draft && <DraftBanner onRestore={restoreDraft} onDiscard={discardDraft} />}
+
         {/* 1. DADOS BÁSICOS */}
         <section className="rounded-xl border bg-card p-4 space-y-4">
           <h2 className="text-sm font-semibold">1. Dados Básicos</h2>
