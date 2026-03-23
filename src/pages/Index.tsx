@@ -155,11 +155,12 @@ const Index = () => {
                           <div className="text-right shrink-0 space-y-0.5">
                             <p className="text-sm font-semibold text-success">{formatCurrency(action.grossProfit)}</p>
                             <p className="text-[10px] text-muted-foreground">{formatPercent(action.marginPercent)} margem</p>
-                            {action.realPaid > 0 && (
-                              <p className="text-[10px] font-medium text-primary">
-                                Pago: {formatCurrency(action.realPaid)}
-                              </p>
-                            )}
+                            <p className="text-[10px] text-muted-foreground">
+                              Prev: {formatCurrency(action.totalPrizes)}
+                            </p>
+                            <p className="text-[10px] font-medium text-primary">
+                              Pago: {formatCurrency(action.realPaid)}
+                            </p>
                           </div>
                         </Link>
                       );
