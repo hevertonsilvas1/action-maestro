@@ -77,18 +77,39 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
 
   const handleKeyChange = (value: string) => {
     setPixKey(value);
-    const detected = detectPixType(value);
-    const type = detected || '';
-    setPixType(type);
+    const result = detectPixType(value, winner ? { cpf: winner.cpf, phone: winner.phone } : undefined);
 
-    if (type && value.trim()) {
-      setKeyError(validatePixKey(type as PixType, value));
-      if (winner) {
-        setContextWarnings(getPixContextWarnings(type as PixType, value, { cpf: winner.cpf, phone: winner.phone }));
-      }
-    } else {
+    if (result.ambiguous) {
+      setPixType('');
+      setAmbiguousCandidates(result.candidates);
       setKeyError(null);
       setContextWarnings([]);
+    } else {
+      const type = result.type || '';
+      setPixType(type);
+      setAmbiguousCandidates([]);
+
+      if (type && value.trim()) {
+        setKeyError(validatePixKey(type as PixType, value));
+        if (winner) {
+          setContextWarnings(getPixContextWarnings(type as PixType, value, { cpf: winner.cpf, phone: winner.phone }));
+        }
+      } else {
+        setKeyError(null);
+        setContextWarnings([]);
+      }
+    }
+  };
+
+  const handleAmbiguousSelect = (selected: string) => {
+    const type = selected as PixType;
+    setPixType(type);
+    setAmbiguousCandidates([]);
+    if (type && pixKey.trim()) {
+      setKeyError(validatePixKey(type, pixKey));
+      if (winner) {
+        setContextWarnings(getPixContextWarnings(type, pixKey, { cpf: winner.cpf, phone: winner.phone }));
+      }
     }
   };
 
