@@ -69,6 +69,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     setExcelColumns([]);
     setColumnMapping({});
     setRawExcelRows([]);
+    setDuplicateAction(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
