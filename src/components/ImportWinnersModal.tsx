@@ -72,8 +72,23 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     setColumnMapping({});
     setRawExcelRows([]);
     setDuplicateAction(null);
+    setPreviewFilter('all');
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
+
+  const filteredPreviewWinners = useMemo(() => {
+    // Sort: problems first (overlimit, invalid, duplicate), then new
+    const sorted = [...parsedWinners].sort((a, b) => {
+      const priority = (w: ParsedWinner) => w.isOverLimit ? 0 : w.isInvalid ? 1 : w.isDuplicate ? 2 : 3;
+      return priority(a) - priority(b);
+    });
+    if (previewFilter === 'all') return sorted;
+    if (previewFilter === 'new') return sorted.filter(w => !w.isDuplicate && !w.isInvalid && !w.isOverLimit);
+    if (previewFilter === 'duplicate') return sorted.filter(w => w.isDuplicate);
+    if (previewFilter === 'invalid') return sorted.filter(w => w.isInvalid && !w.isOverLimit);
+    if (previewFilter === 'overlimit') return sorted.filter(w => w.isOverLimit);
+    return sorted;
+  }, [parsedWinners, previewFilter]);
 
   const handleClose = () => {
     reset();
