@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
@@ -15,6 +15,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftBanner, DraftStatusIndicator } from '@/components/DraftBanner';
 
 const QUOTA_OPTIONS_POPULAR = [1000, 10000, 100000, 10000000];
 const QUOTA_OPTIONS = [
@@ -80,6 +82,25 @@ export default function NewActionPage() {
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Auto-save draft
+  const formData = useMemo(() => ({ name, status, startDate, endDate, quotaCount, quotaValue, taxPercent, prizes, costs }), [name, status, startDate, endDate, quotaCount, quotaValue, taxPercent, prizes, costs]);
+  const { draft, clearDraft, discardDraft, clearAfterSave, draftStatus } = useFormDraft({ key: 'new-action', data: formData, enabled: true });
+
+  const restoreDraft = useCallback(() => {
+    if (!draft) return;
+    setName(draft.name || '');
+    setStatus(draft.status || 'planning');
+    setStartDate(draft.startDate || '');
+    setEndDate(draft.endDate || '');
+    setQuotaCount(draft.quotaCount ?? null);
+    setQuotaValue(draft.quotaValue || '');
+    setTaxPercent(draft.taxPercent || '');
+    setPrizes(draft.prizes || []);
+    setCosts(draft.costs || []);
+    clearDraft();
+    toast.success('Rascunho restaurado!');
+  }, [draft, clearDraft]);
 
   // Calculations
   const quotaValueNum = parseFloat(quotaValue) || 0;
@@ -192,6 +213,7 @@ export default function NewActionPage() {
         prizes: prizesInput,
         costs: costsInput,
       });
+      clearAfterSave();
       toast.success('Ação criada com sucesso!');
       navigate('/actions');
     } catch (err: any) {
@@ -241,6 +263,8 @@ export default function NewActionPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6 max-w-4xl">
+
+        {draft && <DraftBanner onRestore={restoreDraft} onDiscard={discardDraft} />}
 
         {/* 1. DADOS BÁSICOS */}
         <section className="rounded-xl border bg-card p-4 space-y-4">
@@ -549,7 +573,8 @@ export default function NewActionPage() {
         </section>
 
         {/* SAVE */}
-        <div className="flex justify-end gap-3 pb-8">
+        <div className="flex items-center justify-end gap-3 pb-8">
+          <DraftStatusIndicator status={draftStatus} />
           <Link to="/actions">
             <Button variant="outline">Cancelar</Button>
           </Link>

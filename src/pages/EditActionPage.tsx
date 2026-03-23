@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { AppHeader } from '@/components/AppHeader';
@@ -21,6 +21,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle, Save, Copy, History, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftBanner, DraftStatusIndicator } from '@/components/DraftBanner';
 
 const QUOTA_OPTIONS_POPULAR = [1000, 10000, 100000, 10000000];
 const QUOTA_OPTIONS = [
@@ -75,6 +77,25 @@ export default function EditActionPage() {
   const [showNewCostType, setShowNewCostType] = useState(false);
   const [newPrizeTypeName, setNewPrizeTypeName] = useState('');
   const [newCostTypeName, setNewCostTypeName] = useState('');
+
+  // Auto-save draft
+  const formData = useMemo(() => ({ name, status, startDate, endDate, quotaCount, quotaValue, taxPercent, prizes, costs }), [name, status, startDate, endDate, quotaCount, quotaValue, taxPercent, prizes, costs]);
+  const { draft, clearDraft, discardDraft, clearAfterSave, draftStatus } = useFormDraft({ key: `edit-action-${id}`, data: formData, enabled: initialized });
+
+  const restoreDraft = useCallback(() => {
+    if (!draft) return;
+    setName(draft.name || '');
+    setStatus(draft.status || 'planning');
+    setStartDate(draft.startDate || '');
+    setEndDate(draft.endDate || '');
+    setQuotaCount(draft.quotaCount ?? null);
+    setQuotaValue(draft.quotaValue || '');
+    setTaxPercent(draft.taxPercent || '');
+    setPrizes(draft.prizes || []);
+    setCosts(draft.costs || []);
+    clearDraft();
+    toast.success('Rascunho restaurado!');
+  }, [draft, clearDraft]);
 
   // Populate form from loaded data
   useEffect(() => {
@@ -208,6 +229,7 @@ export default function EditActionPage() {
         startDate: startDate || null, endDate: endDate || null, taxPercent: taxPercentNum,
         prizes: prizesInput, costs: costsInput,
       });
+      clearAfterSave();
       toast.success('Ação atualizada com sucesso!');
       navigate(`/actions/${id}`);
     } catch (err: any) {
@@ -265,6 +287,9 @@ export default function EditActionPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6 max-w-4xl">
+
+        {/* Draft recovery */}
+        {draft && !readOnly && <DraftBanner onRestore={restoreDraft} onDiscard={discardDraft} />}
 
         {/* Status warnings */}
         {isCompleted && (
@@ -526,7 +551,8 @@ export default function EditActionPage() {
         </section>
 
         {/* SAVE / ACTIONS */}
-        <div className="flex justify-end gap-3">
+        <div className="flex items-center justify-end gap-3">
+          {!readOnly && <DraftStatusIndicator status={draftStatus} />}
           <Link to={`/actions/${id}`}>
             <Button variant="outline">Cancelar</Button>
           </Link>
