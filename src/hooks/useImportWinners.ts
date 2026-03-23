@@ -40,7 +40,6 @@ const PRIZE_TYPE_MAP: Record<string, string> = {
   'premio principal': 'main',
   'instantâneo': 'instant',
   'instantaneo': 'instant',
-  'instantâneo': 'instant',
   'cota': 'quota',
   'cota premiada': 'quota',
   'cota super': 'quota',
