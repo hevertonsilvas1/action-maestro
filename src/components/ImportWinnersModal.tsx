@@ -364,8 +364,46 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
 
             {stats.totalNew > 0 && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Progress value={(stats.totalNew / stats.totalFound) * 100} className="h-1.5 flex-1" />
-                <span>{((stats.totalNew / stats.totalFound) * 100).toFixed(0)}% novos</span>
+                <Progress value={(importableCount / stats.totalFound) * 100} className="h-1.5 flex-1" />
+                <span>{((importableCount / stats.totalFound) * 100).toFixed(0)}% serão importados</span>
+              </div>
+            )}
+
+            {/* Duplicate action controls */}
+            {stats.totalDuplicates > 0 && (
+              <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-medium text-warning">
+                      {stats.totalDuplicates} registro(s) com possível duplicidade
+                    </p>
+                    <p className="text-muted-foreground">
+                      Foram encontrados registros com mesma combinação de ação, data/hora, tipo, valor, nome e documento/telefone.
+                      O que deseja fazer com eles?
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 ml-6">
+                  <Button
+                    variant={duplicateAction === 'skip' || duplicateAction === null ? 'default' : 'outline'}
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => setDuplicateAction('skip')}
+                  >
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Ignorar duplicados
+                  </Button>
+                  <Button
+                    variant={duplicateAction === 'import' ? 'default' : 'outline'}
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => setDuplicateAction('import')}
+                  >
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Importar mesmo assim
+                  </Button>
+                </div>
               </div>
             )}
 
