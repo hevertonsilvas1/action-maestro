@@ -80,6 +80,7 @@ export function GeneralTab() {
   const windowConfig = getWindowConfig();
   const autoSendConfig = getAutoSendConfig();
   const transitionModeConfig = getTransitionModeConfig();
+  const pixValidationConfig = getPixValidationConfig();
 
   return (
     <div className="space-y-6">
