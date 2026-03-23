@@ -525,7 +525,12 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                       <td className="px-3 py-1.5">{w.name}</td>
                       <td className="px-3 py-1.5 font-mono">{w.cpf ? w.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—'}</td>
                       <td className="px-3 py-1.5 text-right">{formatCurrency(w.value)}</td>
-                      <td className="px-3 py-1.5">{w.prize_type}</td>
+                      <td className="px-3 py-1.5">
+                        <div>{w.prize_type}</div>
+                        {w.duplicateReason && (
+                          <div className="text-[10px] text-muted-foreground">{w.duplicateReason}</div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {filteredPreviewWinners.length === 0 && (
