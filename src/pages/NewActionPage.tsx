@@ -573,7 +573,8 @@ export default function NewActionPage() {
         </section>
 
         {/* SAVE */}
-        <div className="flex justify-end gap-3 pb-8">
+        <div className="flex items-center justify-end gap-3 pb-8">
+          <DraftStatusIndicator status={draftStatus} />
           <Link to="/actions">
             <Button variant="outline">Cancelar</Button>
           </Link>
