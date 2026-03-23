@@ -18,7 +18,7 @@ interface ParamConfig {
   description: string | null;
 }
 
-const GENERAL_PARAMS = ['INBOUND_WINDOW_HOURS', 'AUTO_SEND_RECEIPT_ON_INBOUND', 'STATUS_TRANSITION_MODE'];
+const GENERAL_PARAMS = ['INBOUND_WINDOW_HOURS', 'AUTO_SEND_RECEIPT_ON_INBOUND', 'STATUS_TRANSITION_MODE', 'PIX_VALIDATION_ENABLED'];
 
 export function GeneralTab() {
   const { user } = useAuth();
