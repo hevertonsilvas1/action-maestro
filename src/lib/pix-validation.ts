@@ -1,5 +1,47 @@
 import type { PixType } from '@/types';
 
+/** Format a PIX key with mask based on detected type */
+export function formatPixKeyWithMask(type: PixType | '' | null, value: string): string {
+  if (!type) return value;
+  const digits = value.replace(/\D/g, '');
+
+  switch (type) {
+    case 'cpf': {
+      // 000.000.000-00
+      let r = digits.slice(0, 11);
+      if (r.length > 9) r = r.slice(0, 3) + '.' + r.slice(3, 6) + '.' + r.slice(6, 9) + '-' + r.slice(9);
+      else if (r.length > 6) r = r.slice(0, 3) + '.' + r.slice(3, 6) + '.' + r.slice(6);
+      else if (r.length > 3) r = r.slice(0, 3) + '.' + r.slice(3);
+      return r;
+    }
+    case 'cnpj': {
+      // 00.000.000/0000-00
+      let r = digits.slice(0, 14);
+      if (r.length > 12) r = r.slice(0, 2) + '.' + r.slice(2, 5) + '.' + r.slice(5, 8) + '/' + r.slice(8, 12) + '-' + r.slice(12);
+      else if (r.length > 8) r = r.slice(0, 2) + '.' + r.slice(2, 5) + '.' + r.slice(5, 8) + '/' + r.slice(8);
+      else if (r.length > 5) r = r.slice(0, 2) + '.' + r.slice(2, 5) + '.' + r.slice(5);
+      else if (r.length > 2) r = r.slice(0, 2) + '.' + r.slice(2);
+      return r;
+    }
+    case 'phone': {
+      // (00) 00000-0000 or (00) 0000-0000
+      let r = digits;
+      // strip leading 55 country code
+      if (r.startsWith('55') && (r.length === 12 || r.length === 13)) r = r.slice(2);
+      r = r.slice(0, 11);
+      if (r.length > 6) {
+        const ddd = r.slice(0, 2);
+        const sep = r.length > 10 ? 5 : 4; // mobile vs landline
+        return `(${ddd}) ${r.slice(2, 2 + sep)}-${r.slice(2 + sep)}`;
+      }
+      if (r.length > 2) return `(${r.slice(0, 2)}) ${r.slice(2)}`;
+      return r;
+    }
+    default:
+      return value;
+  }
+}
+
 /** Validate CPF checksum (11 digits) */
 function isValidCpfChecksum(digits: string): boolean {
   if (digits.length !== 11) return false;

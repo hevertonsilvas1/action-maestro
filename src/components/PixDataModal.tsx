@@ -18,7 +18,7 @@ import { Loader2, CreditCard, CheckCircle2, ShieldCheck, AlertTriangle, ChevronD
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, detectPixType, type PixContextWarning, type PixDetectionResult } from '@/lib/pix-validation';
+import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, detectPixType, formatPixKeyWithMask, type PixContextWarning, type PixDetectionResult } from '@/lib/pix-validation';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
 import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
@@ -75,24 +75,28 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
     }
   }, [winner, open]);
 
-  const handleKeyChange = (value: string) => {
-    setPixKey(value);
-    const result = detectPixType(value, winner ? { cpf: winner.cpf, phone: winner.phone } : undefined);
+  const handleKeyChange = (rawValue: string) => {
+    const result = detectPixType(rawValue, winner ? { cpf: winner.cpf, phone: winner.phone } : undefined);
 
     if (result.ambiguous) {
+      setPixKey(rawValue);
       setPixType('');
       setAmbiguousCandidates(result.candidates);
       setKeyError(null);
       setContextWarnings([]);
     } else {
       const type = result.type || '';
+      const masked = type && ['cpf', 'cnpj', 'phone'].includes(type)
+        ? formatPixKeyWithMask(type as PixType, rawValue)
+        : rawValue;
+      setPixKey(masked);
       setPixType(type);
       setAmbiguousCandidates([]);
 
-      if (type && value.trim()) {
-        setKeyError(validatePixKey(type as PixType, value));
+      if (type && rawValue.trim()) {
+        setKeyError(validatePixKey(type as PixType, masked));
         if (winner) {
-          setContextWarnings(getPixContextWarnings(type as PixType, value, { cpf: winner.cpf, phone: winner.phone }));
+          setContextWarnings(getPixContextWarnings(type as PixType, masked, { cpf: winner.cpf, phone: winner.phone }));
         }
       } else {
         setKeyError(null);
@@ -103,12 +107,16 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
 
   const handleAmbiguousSelect = (selected: string) => {
     const type = selected as PixType;
+    const masked = ['cpf', 'cnpj', 'phone'].includes(type)
+      ? formatPixKeyWithMask(type, pixKey)
+      : pixKey;
+    setPixKey(masked);
     setPixType(type);
     setAmbiguousCandidates([]);
-    if (type && pixKey.trim()) {
-      setKeyError(validatePixKey(type, pixKey));
+    if (type && masked.trim()) {
+      setKeyError(validatePixKey(type, masked));
       if (winner) {
-        setContextWarnings(getPixContextWarnings(type, pixKey, { cpf: winner.cpf, phone: winner.phone }));
+        setContextWarnings(getPixContextWarnings(type, masked, { cpf: winner.cpf, phone: winner.phone }));
       }
     }
   };
