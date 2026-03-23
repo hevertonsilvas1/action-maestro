@@ -19,6 +19,7 @@ export interface Action {
   winnersCount: number;
   paidCount: number;
   pendingCount: number;
+  plannedWinners: number;
   createdAt: string;
   updatedAt: string;
 }
