@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,6 +58,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [rawExcelRows, setRawExcelRows] = useState<any[]>([]);
   const [duplicateAction, setDuplicateAction] = useState<DuplicateAction>(null);
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'new' | 'duplicate' | 'invalid' | 'overlimit'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { parsePdf, parseExcel, checkDuplicatesAndValidate, importWinners, isLoading, isParsing } = useImportWinners(actionId, actionName);
@@ -70,8 +72,23 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     setColumnMapping({});
     setRawExcelRows([]);
     setDuplicateAction(null);
+    setPreviewFilter('all');
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
+
+  const filteredPreviewWinners = useMemo(() => {
+    // Sort: problems first (overlimit, invalid, duplicate), then new
+    const sorted = [...parsedWinners].sort((a, b) => {
+      const priority = (w: ParsedWinner) => w.isOverLimit ? 0 : w.isInvalid ? 1 : w.isDuplicate ? 2 : 3;
+      return priority(a) - priority(b);
+    });
+    if (previewFilter === 'all') return sorted;
+    if (previewFilter === 'new') return sorted.filter(w => !w.isDuplicate && !w.isInvalid && !w.isOverLimit);
+    if (previewFilter === 'duplicate') return sorted.filter(w => w.isDuplicate);
+    if (previewFilter === 'invalid') return sorted.filter(w => w.isInvalid && !w.isOverLimit);
+    if (previewFilter === 'overlimit') return sorted.filter(w => w.isOverLimit);
+    return sorted;
+  }, [parsedWinners, previewFilter]);
 
   const handleClose = () => {
     reset();
@@ -407,6 +424,60 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
               </div>
             )}
 
+            {/* Filter tabs for table */}
+            <div className="flex gap-1.5 flex-wrap">
+              <Button
+                variant={previewFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => setPreviewFilter('all')}
+              >
+                Todos ({stats.totalFound})
+              </Button>
+              <Button
+                variant={previewFilter === 'new' ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => setPreviewFilter('new')}
+              >
+                <CheckCircle2 className="h-3 w-3 mr-1 text-success" />
+                Novos ({stats.totalNew})
+              </Button>
+              {stats.totalDuplicates > 0 && (
+                <Button
+                  variant={previewFilter === 'duplicate' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setPreviewFilter('duplicate')}
+                >
+                  <RefreshCcw className="h-3 w-3 mr-1 text-warning" />
+                  Duplicados ({stats.totalDuplicates})
+                </Button>
+              )}
+              {stats.totalInvalid > 0 && (
+                <Button
+                  variant={previewFilter === 'invalid' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setPreviewFilter('invalid')}
+                >
+                  <XCircle className="h-3 w-3 mr-1 text-destructive" />
+                  Inválidos ({stats.totalInvalid})
+                </Button>
+              )}
+              {stats.totalOverLimit > 0 && (
+                <Button
+                  variant={previewFilter === 'overlimit' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setPreviewFilter('overlimit')}
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1 text-destructive" />
+                  Excede Limite ({stats.totalOverLimit})
+                </Button>
+              )}
+            </div>
+
             {/* Winners table preview */}
             <ScrollArea className="flex-1 border rounded-lg">
               <table className="w-full text-xs">
@@ -420,8 +491,13 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                   </tr>
                 </thead>
                 <tbody>
-                  {parsedWinners.map((w, i) => (
-                    <tr key={i} className="border-t hover:bg-muted/30">
+                  {filteredPreviewWinners.map((w, i) => (
+                    <tr key={i} className={cn(
+                      "border-t hover:bg-muted/30",
+                      w.isOverLimit && "bg-destructive/5",
+                      w.isDuplicate && !w.isOverLimit && "bg-warning/5",
+                      w.isInvalid && !w.isDuplicate && !w.isOverLimit && "bg-destructive/5",
+                    )}>
                       <td className="px-3 py-1.5">
                         {w.isOverLimit ? (
                           <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Excede Limite</Badge>
@@ -439,6 +515,13 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                       <td className="px-3 py-1.5">{w.prize_type}</td>
                     </tr>
                   ))}
+                  {filteredPreviewWinners.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+                        Nenhum registro nesta categoria.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </ScrollArea>
