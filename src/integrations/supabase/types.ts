@@ -1032,7 +1032,6 @@ export type Database = {
           prize_datetime: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
-          quota_number: string | null
           receipt_attached_at: string | null
           receipt_attached_by: string | null
           receipt_filename: string | null
@@ -1077,7 +1076,6 @@ export type Database = {
           prize_datetime?: string | null
           prize_title: string
           prize_type: Database["public"]["Enums"]["prize_type"]
-          quota_number?: string | null
           receipt_attached_at?: string | null
           receipt_attached_by?: string | null
           receipt_filename?: string | null
@@ -1122,7 +1120,6 @@ export type Database = {
           prize_datetime?: string | null
           prize_title?: string
           prize_type?: Database["public"]["Enums"]["prize_type"]
-          quota_number?: string | null
           receipt_attached_at?: string | null
           receipt_attached_by?: string | null
           receipt_filename?: string | null
