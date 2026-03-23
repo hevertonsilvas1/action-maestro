@@ -229,6 +229,7 @@ export default function EditActionPage() {
         startDate: startDate || null, endDate: endDate || null, taxPercent: taxPercentNum,
         prizes: prizesInput, costs: costsInput,
       });
+      clearAfterSave();
       toast.success('Ação atualizada com sucesso!');
       navigate(`/actions/${id}`);
     } catch (err: any) {
