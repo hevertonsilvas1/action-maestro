@@ -59,6 +59,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
       setHolderDoc(winner.pixHolderDoc || '');
       setObservation(winner.pixObservation || '');
       setKeyError(null);
+      setContextWarnings([]);
       setAdminReason('');
     }
   }, [winner, open]);
