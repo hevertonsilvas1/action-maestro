@@ -450,7 +450,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
               <Button
                 size="sm"
                 onClick={handleConfirmImport}
-                disabled={isLoading || stats.totalNew === 0}
+                disabled={isLoading || importableCount === 0}
               >
                 {isLoading ? (
                   <>
@@ -460,7 +460,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                 ) : (
                   <>
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Confirmar Importação ({stats.totalNew} ganhadores)
+                    Confirmar Importação ({importableCount} ganhadores)
                   </>
                 )}
               </Button>
