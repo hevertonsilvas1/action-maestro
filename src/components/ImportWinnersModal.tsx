@@ -44,6 +44,7 @@ const EXPECTED_COLUMNS = [
   { key: 'value', label: 'Prêmio / Valor', required: true },
   { key: 'prize_datetime', label: 'Associado em / Data', required: false },
   { key: 'cpf', label: 'CPF', required: false },
+  { key: 'quota_number', label: 'Nº da Cota', required: false },
 ];
 
 type DuplicateAction = 'skip' | 'import' | null;
