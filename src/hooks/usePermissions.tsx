@@ -126,7 +126,9 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const [profileSlug, setProfileSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchPermissions = useCallback(async () => {
+  const fetchPermissions = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+
     if (!user) {
       setPermissions([]);
       setProfileSlug(null);
@@ -134,9 +136,11 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
+
     try {
-      // Fetch permissions via RPC
       const { data: perms, error: permsError } = await supabase
         .rpc('get_user_permissions', { _user_id: user.id });
 
@@ -147,7 +151,6 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
         setPermissions(perms || []);
       }
 
-      // Fetch profile slug
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('profile_id, permission_profiles!user_roles_profile_id_fkey(slug)')
@@ -160,16 +163,19 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       console.error('Error in fetchPermissions:', err);
       setPermissions([]);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [user]);
 
   useEffect(() => {
     fetchPermissions();
 
-    // Refresh permissions every 60 seconds to pick up admin changes
     const interval = setInterval(() => {
-      if (user) fetchPermissions();
+      if (user) {
+        fetchPermissions({ silent: true });
+      }
     }, 60_000);
 
     return () => clearInterval(interval);
