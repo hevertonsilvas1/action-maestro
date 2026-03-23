@@ -124,7 +124,6 @@ export function useImportWinners(actionId: string, actionName: string) {
         value: normalizeValue(w.value),
         prize_datetime: w.prize_datetime || null,
         prize_type: w.prize_type || '',
-        quota_number: w.quota_number || undefined,
       }));
 
       return winners;
