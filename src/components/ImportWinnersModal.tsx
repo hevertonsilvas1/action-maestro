@@ -58,6 +58,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [rawExcelRows, setRawExcelRows] = useState<any[]>([]);
   const [duplicateAction, setDuplicateAction] = useState<DuplicateAction>(null);
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'new' | 'duplicate' | 'invalid' | 'overlimit'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { parsePdf, parseExcel, checkDuplicatesAndValidate, importWinners, isLoading, isParsing } = useImportWinners(actionId, actionName);
