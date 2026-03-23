@@ -64,18 +64,26 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
     }
   }, [winner, open]);
 
+  const updateValidation = (type: PixType | '', key: string) => {
+    if (type && key.trim()) {
+      setKeyError(validatePixKey(type as PixType, key));
+      if (winner) {
+        setContextWarnings(getPixContextWarnings(type as PixType, key, { cpf: winner.cpf, phone: winner.phone }));
+      }
+    } else {
+      setKeyError(null);
+      setContextWarnings([]);
+    }
+  };
+
   const handleKeyChange = (value: string) => {
     setPixKey(value);
-    if (pixType) {
-      setKeyError(validatePixKey(pixType as PixType, value));
-    }
+    updateValidation(pixType, value);
   };
 
   const handleTypeChange = (value: string) => {
     setPixType(value as PixType);
-    if (pixKey) {
-      setKeyError(validatePixKey(value as PixType, pixKey));
-    }
+    updateValidation(value as PixType, pixKey);
   };
 
   const handleSave = async () => {
