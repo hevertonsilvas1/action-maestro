@@ -36,6 +36,7 @@ function mapWinner(row: any): Winner {
     pixRegisteredAt: row.pix_registered_at ?? undefined,
     pixValidatedBy: row.pix_validated_by ?? undefined,
     pixValidatedAt: row.pix_validated_at ?? undefined,
+    quotaNumber: row.quota_number ?? undefined,
     batchId: row.batch_id ?? undefined,
     paymentMethod: row.payment_method ?? undefined,
     ultimaInteracaoWhatsapp: row.ultima_interacao_whatsapp ?? undefined,
