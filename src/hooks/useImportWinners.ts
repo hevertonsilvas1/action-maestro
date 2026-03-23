@@ -15,7 +15,6 @@ export interface ParsedWinner {
   title?: string;
   // Dedup status
   isDuplicate?: boolean;
-  isBlockingDuplicate?: boolean;
   duplicateReason?: string;
   isInvalid?: boolean;
   invalidReason?: string;
