@@ -45,6 +45,8 @@ const EXPECTED_COLUMNS = [
   { key: 'cpf', label: 'CPF', required: false },
 ];
 
+type DuplicateAction = 'skip' | 'import' | null;
+
 export function ImportWinnersModal({ open, onClose, actionId, actionName }: ImportWinnersModalProps) {
   const [tab, setTab] = useState<'pdf' | 'excel'>('pdf');
   const [step, setStep] = useState<ImportStep>('choose');
@@ -54,6 +56,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [rawExcelRows, setRawExcelRows] = useState<any[]>([]);
+  const [duplicateAction, setDuplicateAction] = useState<DuplicateAction>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { parsePdf, parseExcel, checkDuplicatesAndValidate, importWinners, isLoading, isParsing } = useImportWinners(actionId, actionName);
@@ -66,6 +69,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     setExcelColumns([]);
     setColumnMapping({});
     setRawExcelRows([]);
+    setDuplicateAction(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
@@ -163,13 +167,18 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
 
   const handleConfirmImport = async () => {
     try {
-      await importWinners(parsedWinners, tab === 'pdf' ? 'pdf' : fileName.endsWith('.csv') ? 'csv' : 'xlsx', fileName);
+      const includeDuplicates = duplicateAction === 'import';
+      await importWinners(parsedWinners, tab === 'pdf' ? 'pdf' : fileName.endsWith('.csv') ? 'csv' : 'xlsx', fileName, includeDuplicates);
       setStep('done');
     } catch (error: any) {
       console.error('Import failed:', error);
       toast.error('Erro ao importar: ' + (error?.message || 'Erro desconhecido'));
     }
   };
+
+  const importableCount = stats
+    ? stats.totalNew + (duplicateAction === 'import' ? stats.totalDuplicates : 0)
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
@@ -355,8 +364,46 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
 
             {stats.totalNew > 0 && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Progress value={(stats.totalNew / stats.totalFound) * 100} className="h-1.5 flex-1" />
-                <span>{((stats.totalNew / stats.totalFound) * 100).toFixed(0)}% novos</span>
+                <Progress value={(importableCount / stats.totalFound) * 100} className="h-1.5 flex-1" />
+                <span>{((importableCount / stats.totalFound) * 100).toFixed(0)}% serão importados</span>
+              </div>
+            )}
+
+            {/* Duplicate action controls */}
+            {stats.totalDuplicates > 0 && (
+              <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-medium text-warning">
+                      {stats.totalDuplicates} registro(s) com possível duplicidade
+                    </p>
+                    <p className="text-muted-foreground">
+                      Foram encontrados registros com mesma combinação de ação, data/hora, tipo, valor, nome e documento/telefone.
+                      O que deseja fazer com eles?
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 ml-6">
+                  <Button
+                    variant={duplicateAction === 'skip' || duplicateAction === null ? 'default' : 'outline'}
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => setDuplicateAction('skip')}
+                  >
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Ignorar duplicados
+                  </Button>
+                  <Button
+                    variant={duplicateAction === 'import' ? 'default' : 'outline'}
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => setDuplicateAction('import')}
+                  >
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Importar mesmo assim
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -403,7 +450,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
               <Button
                 size="sm"
                 onClick={handleConfirmImport}
-                disabled={isLoading || stats.totalNew === 0}
+                disabled={isLoading || importableCount === 0}
               >
                 {isLoading ? (
                   <>
@@ -413,7 +460,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                 ) : (
                   <>
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Confirmar Importação ({stats.totalNew} ganhadores)
+                    Confirmar Importação ({importableCount} ganhadores)
                   </>
                 )}
               </Button>
@@ -427,7 +474,12 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
             <div>
               <p className="text-lg font-semibold">Importação concluída!</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {stats?.totalNew} ganhador(es) importado(s) com sucesso.
+                {importableCount} ganhador(es) importado(s) com sucesso.
+                {duplicateAction === 'import' && stats && stats.totalDuplicates > 0 && (
+                  <span className="block text-warning text-xs mt-1">
+                    Incluindo {stats.totalDuplicates} registro(s) duplicado(s) importados por escolha do operador.
+                  </span>
+                )}
               </p>
             </div>
             <Button onClick={handleClose}>Fechar</Button>
