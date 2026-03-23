@@ -485,12 +485,13 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Status</th>
-                    <th className="text-left px-3 py-2 font-medium">Nome</th>
-                    <th className="text-left px-3 py-2 font-medium">CPF</th>
-                    <th className="text-right px-3 py-2 font-medium">Valor</th>
-                    <th className="text-left px-3 py-2 font-medium">Tipo</th>
-                  </tr>
+                     <th className="text-left px-3 py-2 font-medium">Status</th>
+                     <th className="text-left px-3 py-2 font-medium">Nome</th>
+                     <th className="text-left px-3 py-2 font-medium">CPF</th>
+                     <th className="text-right px-3 py-2 font-medium">Valor</th>
+                     <th className="text-left px-3 py-2 font-medium">Tipo</th>
+                     <th className="text-left px-3 py-2 font-medium">Nº Cota</th>
+                   </tr>
                 </thead>
                 <tbody>
                   {filteredPreviewWinners.map((w, i) => (
