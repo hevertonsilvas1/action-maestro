@@ -127,7 +127,8 @@ const Index = () => {
                   <div className="space-y-3">
                     {operationalActions.slice(0, 5).map((action, i) => {
                       const denominator = action.plannedWinners > 0 ? action.plannedWinners : action.winnersCount;
-                      const progress = denominator > 0 ? (action.paidCount / denominator) * 100 : 0;
+                      const progress = denominator > 0 ? (action.winnersCount / denominator) * 100 : 0;
+                      const paidProgress = denominator > 0 ? (action.paidCount / denominator) * 100 : 0;
                       return (
                         <Link
                           key={action.id}
