@@ -64,7 +64,7 @@ export function useAction(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('actions')
-        .select('*, prizes(quantity)')
+        .select('*, prizes(quantity, total_value, prize_type_config_id, prize_type_configs(name))')
         .eq('id', id!)
         .maybeSingle();
       if (error) throw error;
