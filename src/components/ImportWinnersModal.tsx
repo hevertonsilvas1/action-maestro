@@ -193,8 +193,10 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     }
   };
 
+  const blockingDuplicateCount = parsedWinners.filter((w) => w.isBlockingDuplicate).length;
+  const importableDuplicateCount = parsedWinners.filter((w) => w.isDuplicate && !w.isBlockingDuplicate).length;
   const importableCount = stats
-    ? stats.totalNew + (duplicateAction === 'import' ? stats.totalDuplicates : 0)
+    ? stats.totalNew + (duplicateAction === 'import' ? importableDuplicateCount : 0)
     : 0;
 
   return (
