@@ -148,9 +148,16 @@ const Index = () => {
                               <span>{formatDate(action.updatedAt)}</span>
                             </div>
                             {(action.plannedWinners > 0 || action.winnersCount > 0) && (
-                              <div className="flex items-center gap-2">
-                                <Progress value={progress} className="h-1.5 flex-1" />
-                                <span className="text-[10px] font-medium text-muted-foreground">{progress.toFixed(0)}%</span>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Progress value={progress} className="h-1.5 flex-1" />
+                                  <span className="text-[10px] font-medium text-muted-foreground">{progress.toFixed(0)}%</span>
+                                </div>
+                                {action.paidCount > 0 && (
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {action.paidCount} pagos ({paidProgress.toFixed(0)}%)
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
