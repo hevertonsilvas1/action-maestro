@@ -103,10 +103,8 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     try {
       if (tab === 'pdf') {
         const winners = await parsePdf(file);
-        const result = await checkDuplicatesAndValidate(winners);
-        setParsedWinners(result.winners);
-        setStats(result.stats);
-        setStep('preview');
+        setParsedWinners(winners);
+        setStep('select-type');
       } else {
         const winners = await parseExcel(file);
         if (winners.length > 0) {
