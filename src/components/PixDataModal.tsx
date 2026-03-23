@@ -66,6 +66,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
       setKeyError(null);
       setAdminReason('');
       setAdditionalOpen(!!(winner.pixHolderName || winner.pixHolderDoc));
+      setAmbiguousCandidates([]);
       if (type && key.trim()) {
         setContextWarnings(getPixContextWarnings(type as PixType, key, { cpf: winner.cpf, phone: winner.phone }));
       } else {
