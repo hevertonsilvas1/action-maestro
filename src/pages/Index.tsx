@@ -61,7 +61,9 @@ const Index = () => {
   // Previsão — ações ativas
   const activeRevenue = activeActions.reduce((s, a) => s + a.expectedRevenue, 0);
   const activePrizes = activeActions.reduce((s, a) => s + a.totalPrizes, 0);
-  const activeMargin = activeRevenue > 0 ? ((activeRevenue - activePrizes) / activeRevenue) * 100 : 0;
+  const activeMargin = activeActions.length > 0
+    ? activeActions.reduce((s, a) => s + a.marginPercent, 0) / activeActions.length
+    : 0;
 
   // Resultado — ações encerradas
   const completedRevenue = completedActions.reduce((s, a) => s + a.expectedRevenue, 0);
