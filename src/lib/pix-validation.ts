@@ -1,5 +1,24 @@
 import type { PixType } from '@/types';
 
+/** Validate CPF checksum (11 digits) */
+function isValidCpfChecksum(digits: string): boolean {
+  if (digits.length !== 11) return false;
+  // All same digits is invalid
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+  if (remainder !== parseInt(digits[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+  remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+  return remainder === parseInt(digits[10]);
+}
+
 /** Validate PIX key format based on type */
 export function validatePixKey(type: PixType, value: string): string | null {
   const trimmed = value.trim();
@@ -9,6 +28,7 @@ export function validatePixKey(type: PixType, value: string): string | null {
     case 'cpf': {
       const digits = trimmed.replace(/\D/g, '');
       if (digits.length !== 11) return 'CPF deve ter 11 dígitos.';
+      if (!isValidCpfChecksum(digits)) return 'CPF inválido (dígito verificador incorreto).';
       return null;
     }
     case 'cnpj': {
@@ -22,17 +42,64 @@ export function validatePixKey(type: PixType, value: string): string | null {
       return null;
     }
     case 'phone': {
-      const digits = trimmed.replace(/\D/g, '');
-      if (digits.length < 10 || digits.length > 11) return 'Telefone deve ter 10 ou 11 dígitos.';
+      // Strip everything except digits; also strip leading +55 or 55
+      let digits = trimmed.replace(/\D/g, '');
+      if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+        digits = digits.slice(2);
+      }
+      if (digits.length !== 10 && digits.length !== 11) {
+        return 'Telefone deve ter DDD + número (10 ou 11 dígitos). Ex: 73981962774';
+      }
       return null;
     }
     case 'random': {
-      if (trimmed.length < 32) return 'Chave aleatória deve ter no mínimo 32 caracteres.';
+      // UUID v4 format: 8-4-4-4-12 hex chars
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(trimmed)) return 'Chave aleatória deve estar no formato UUID (ex: 123e4567-e89b-12d3-a456-426614174000).';
       return null;
     }
     default:
       return 'Tipo de chave inválido.';
   }
+}
+
+/** Normalize phone to just digits (DDD+number, no country code) for comparison */
+function normalizePhoneDigits(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  let digits = phone.replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    digits = digits.slice(2);
+  }
+  return digits.length >= 10 ? digits : null;
+}
+
+/** Get contextual warnings comparing PIX key with winner data. Non-blocking. */
+export function getPixContextWarnings(
+  type: PixType,
+  key: string,
+  winner: { cpf?: string | null; phone?: string | null },
+): string[] {
+  const warnings: string[] = [];
+  const trimmed = key.trim();
+
+  if (type === 'cpf' && winner.cpf) {
+    const keyDigits = trimmed.replace(/\D/g, '');
+    const winnerDigits = winner.cpf.replace(/\D/g, '');
+    if (keyDigits && winnerDigits && keyDigits !== winnerDigits) {
+      warnings.push('CPF da chave PIX diferente do CPF do ganhador.');
+    }
+  }
+
+  if (type === 'phone' && winner.phone) {
+    const keyNorm = normalizePhoneDigits(trimmed);
+    const winnerNorm = normalizePhoneDigits(winner.phone);
+    if (keyNorm && winnerNorm && keyNorm !== winnerNorm) {
+      warnings.push('Telefone da chave PIX diferente do telefone do ganhador.');
+    }
+  }
+
+  return warnings;
 }
 
 /** Mask a PIX key for display */

@@ -18,7 +18,7 @@ import { Loader2, CreditCard, CheckCircle2, ShieldCheck, AlertTriangle } from 'l
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { validatePixKey, maskPixKey, getPixStatus } from '@/lib/pix-validation';
+import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings } from '@/lib/pix-validation';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
 import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
 import type { Winner, PixType } from '@/types';
@@ -45,6 +45,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
   const [holderDoc, setHolderDoc] = useState('');
   const [observation, setObservation] = useState('');
   const [keyError, setKeyError] = useState<string | null>(null);
+  const [contextWarnings, setContextWarnings] = useState<string[]>([]);
 
   const isLocked = winner ? PIX_LOCKED_STATUSES.includes(winner.status) : false;
   const canEdit = !isLocked || isAdmin;
@@ -58,22 +59,31 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
       setHolderDoc(winner.pixHolderDoc || '');
       setObservation(winner.pixObservation || '');
       setKeyError(null);
+      setContextWarnings([]);
       setAdminReason('');
     }
   }, [winner, open]);
 
+  const updateValidation = (type: PixType | '', key: string) => {
+    if (type && key.trim()) {
+      setKeyError(validatePixKey(type as PixType, key));
+      if (winner) {
+        setContextWarnings(getPixContextWarnings(type as PixType, key, { cpf: winner.cpf, phone: winner.phone }));
+      }
+    } else {
+      setKeyError(null);
+      setContextWarnings([]);
+    }
+  };
+
   const handleKeyChange = (value: string) => {
     setPixKey(value);
-    if (pixType) {
-      setKeyError(validatePixKey(pixType as PixType, value));
-    }
+    updateValidation(pixType, value);
   };
 
   const handleTypeChange = (value: string) => {
     setPixType(value as PixType);
-    if (pixKey) {
-      setKeyError(validatePixKey(value as PixType, pixKey));
-    }
+    updateValidation(value as PixType, pixKey);
   };
 
   const handleSave = async () => {
@@ -287,6 +297,16 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
                 className="font-mono text-sm"
               />
               {keyError && <p className="text-[10px] text-destructive">{keyError}</p>}
+              {!keyError && contextWarnings.length > 0 && (
+                <div className="space-y-1">
+                  {contextWarnings.map((w, i) => (
+                    <p key={i} className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      {w}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
