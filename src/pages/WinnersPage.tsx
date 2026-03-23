@@ -44,7 +44,7 @@ import { useQuickFilters } from '@/hooks/useQuickFilters';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Winner } from '@/types';
-import { PIX_TYPE_LABELS } from '@/types';
+import { PIX_TYPE_LABELS, PRIZE_TYPE_LABELS } from '@/types';
 import { CheckCircle2 } from 'lucide-react';
 
 const WINDOW_FILTERS_MAP: Record<string, { label: string; windowValue: 'open' | 'closed' }> = {
