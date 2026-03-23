@@ -18,7 +18,7 @@ import { Loader2, CreditCard, CheckCircle2, ShieldCheck, AlertTriangle, ChevronD
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, detectPixType, type PixContextWarning, type PixDetectionResult } from '@/lib/pix-validation';
+import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, detectPixType, formatPixKeyWithMask, type PixContextWarning, type PixDetectionResult } from '@/lib/pix-validation';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
 import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
