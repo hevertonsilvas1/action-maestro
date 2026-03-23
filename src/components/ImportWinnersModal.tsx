@@ -511,6 +511,8 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                       <td className="px-3 py-1.5">
                         {w.isOverLimit ? (
                           <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Excede Limite</Badge>
+                        ) : w.isBlockingDuplicate ? (
+                          <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Duplicado bloqueado</Badge>
                         ) : w.isDuplicate ? (
                           <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">Duplicado</Badge>
                         ) : w.isInvalid ? (
