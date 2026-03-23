@@ -245,12 +245,7 @@ export function useImportWinners(actionId: string, actionName: string) {
 
       const dbKey = buildDbDedupKey(w.cpf, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
       if (dbKey && existingDbKeys.has(dbKey)) {
-        return {
-          ...w,
-          isDuplicate: true,
-          isBlockingDuplicate: true,
-          duplicateReason: 'Duplicado bloqueado pela regra do banco (CPF + data/hora + tipo + valor)',
-        };
+        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado encontrado pela regra CPF + data/hora + tipo + valor' };
       }
 
       return w;
@@ -270,12 +265,7 @@ export function useImportWinners(actionId: string, actionName: string) {
       }
 
       if (dbKey && seenDbKeys.has(dbKey)) {
-        return {
-          ...w,
-          isDuplicate: true,
-          isBlockingDuplicate: true,
-          duplicateReason: 'Duplicado bloqueado pela regra do banco dentro do arquivo importado',
-        };
+        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado dentro do arquivo pela regra CPF + data/hora + tipo + valor' };
       }
 
       seenKeys.add(key);
