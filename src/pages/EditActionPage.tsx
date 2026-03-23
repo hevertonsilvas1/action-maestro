@@ -288,6 +288,9 @@ export default function EditActionPage() {
 
       <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6 max-w-4xl">
 
+        {/* Draft recovery */}
+        {draft && !readOnly && <DraftBanner onRestore={restoreDraft} onDiscard={discardDraft} />}
+
         {/* Status warnings */}
         {isCompleted && (
           <Alert variant="destructive">
