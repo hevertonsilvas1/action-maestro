@@ -297,6 +297,16 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
                 className="font-mono text-sm"
               />
               {keyError && <p className="text-[10px] text-destructive">{keyError}</p>}
+              {!keyError && contextWarnings.length > 0 && (
+                <div className="space-y-1">
+                  {contextWarnings.map((w, i) => (
+                    <p key={i} className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      {w}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
