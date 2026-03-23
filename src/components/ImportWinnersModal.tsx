@@ -14,7 +14,6 @@ import {
 import { useImportWinners, ParsedWinner } from '@/hooks/useImportWinners';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
-import { usePrizes } from '@/hooks/usePrizes';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -80,7 +79,6 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     },
   });
 
-  const { data: actionPrizes } = usePrizes(actionId);
 
   const reset = useCallback(() => {
     setStep('choose');
@@ -378,26 +376,14 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                   <SelectValue placeholder="Selecionar tipo de premiação..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {actionPrizes && actionPrizes.length > 0 ? (
-                    actionPrizes.map((p) => (
-                      <SelectItem key={p.id} value={p.type}>
-                        {p.title} ({p.type})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    prizeTypeConfigs?.map((c) => (
-                      <SelectItem key={c.id} value={c.name.toLowerCase()}>
+                  {prizeTypeConfigs?.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
                         {c.name}
                       </SelectItem>
-                    ))
-                  )}
+                    ))}
                 </SelectContent>
               </Select>
-              {actionPrizes && actionPrizes.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Mostrando os prêmios cadastrados nesta ação.
-                </p>
-              )}
+
             </div>
 
             <div className="flex justify-between pt-2">
