@@ -419,6 +419,9 @@ export default function WinnersPage() {
                           <td className="px-3 py-2.5 text-xs text-muted-foreground">
                             {w.prizeTitle}
                           </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                            {w.quotaNumber || '—'}
+                          </td>
                           <td className="px-3 py-2.5 text-right text-sm font-medium">
                             {formatCurrency(w.value)}
                           </td>
