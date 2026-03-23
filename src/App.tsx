@@ -24,7 +24,15 @@ import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 import { useForcePasswordCheck } from "@/hooks/useForcePasswordCheck";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 1000 * 60, // 1 min — avoid aggressive background refetches
+    },
+  },
+});
 
 function ForcePasswordGuard({ children }: { children: React.ReactNode }) {
   const { mustChangePassword, loading } = useForcePasswordCheck();
