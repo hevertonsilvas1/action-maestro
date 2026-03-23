@@ -371,6 +371,7 @@ export default function WinnersPage() {
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">CPF</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Ação</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Tipo</th>
+                      <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Nº Cota</th>
                       <th className="text-right text-xs font-semibold text-muted-foreground px-3 py-3">Valor</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Chave PIX</th>
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-3">Tipo do PIX</th>
@@ -417,6 +418,9 @@ export default function WinnersPage() {
                           </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground">
                             {w.prizeTitle}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
+                            {w.quotaNumber || '—'}
                           </td>
                           <td className="px-3 py-2.5 text-right text-sm font-medium">
                             {formatCurrency(w.value)}

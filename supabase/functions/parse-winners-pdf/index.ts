@@ -45,7 +45,8 @@ Return ONLY a valid JSON object with this exact structure:
       "phone": "string or null",
       "value": number,
       "prize_datetime": "string ISO or null",
-      "prize_type": "string"
+      "prize_type": "string",
+      "quota_number": "string or null (the quota/cota number if this is a quota prize)"
     }
   ],
   "total_found": number

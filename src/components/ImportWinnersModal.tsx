@@ -44,6 +44,7 @@ const EXPECTED_COLUMNS = [
   { key: 'value', label: 'Prêmio / Valor', required: true },
   { key: 'prize_datetime', label: 'Associado em / Data', required: false },
   { key: 'cpf', label: 'CPF', required: false },
+  { key: 'quota_number', label: 'Nº da Cota', required: false },
 ];
 
 type DuplicateAction = 'skip' | 'import' | null;
@@ -169,6 +170,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
         value: col('value') ? row[col('value')!] : 0,
         prize_type: String(col('prize_type') ? row[col('prize_type')!] : '').trim(),
         title: col('title') ? String(row[col('title')!] || '').trim() : undefined,
+        quota_number: col('quota_number') ? String(row[col('quota_number')!] || '').trim() : undefined,
         prize_datetime: col('prize_datetime') ? convertExcelDate(row[col('prize_datetime')!]) : null,
       }));
 
@@ -483,12 +485,13 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Status</th>
-                    <th className="text-left px-3 py-2 font-medium">Nome</th>
-                    <th className="text-left px-3 py-2 font-medium">CPF</th>
-                    <th className="text-right px-3 py-2 font-medium">Valor</th>
-                    <th className="text-left px-3 py-2 font-medium">Tipo</th>
-                  </tr>
+                     <th className="text-left px-3 py-2 font-medium">Status</th>
+                     <th className="text-left px-3 py-2 font-medium">Nome</th>
+                     <th className="text-left px-3 py-2 font-medium">CPF</th>
+                     <th className="text-right px-3 py-2 font-medium">Valor</th>
+                     <th className="text-left px-3 py-2 font-medium">Tipo</th>
+                     <th className="text-left px-3 py-2 font-medium">Nº Cota</th>
+                   </tr>
                 </thead>
                 <tbody>
                   {filteredPreviewWinners.map((w, i) => (
@@ -518,13 +521,14 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                           <div className="text-[10px] text-muted-foreground">{w.duplicateReason}</div>
                         )}
                       </td>
+                      <td className="px-3 py-1.5 font-mono">{w.quota_number || '—'}</td>
                     </tr>
                   ))}
                   {filteredPreviewWinners.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
-                        Nenhum registro nesta categoria.
-                      </td>
+                       <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                         Nenhum registro nesta categoria.
+                       </td>
                     </tr>
                   )}
                 </tbody>
