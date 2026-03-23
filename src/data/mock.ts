@@ -6,7 +6,7 @@ export const mockActions: Action[] = [
     quotaCount: 1000, quotaValue: 150, taxPercent: 5,
     expectedRevenue: 150000, totalPrizes: 45000, totalOperational: 12000,
     totalTaxes: 8500, totalCost: 65500, grossProfit: 84500, marginPercent: 56.3,
-    realPaid: 28000, winnersCount: 120, paidCount: 65, pendingCount: 55,
+    realPaid: 28000, winnersCount: 120, paidCount: 65, pendingCount: 55, plannedWinners: 120,
     createdAt: '2024-11-01', updatedAt: '2024-12-15',
   },
   {
@@ -14,7 +14,7 @@ export const mockActions: Action[] = [
     quotaCount: 500, quotaValue: 160, taxPercent: 8,
     expectedRevenue: 80000, totalPrizes: 25000, totalOperational: 6000,
     totalTaxes: 4500, totalCost: 35500, grossProfit: 44500, marginPercent: 55.6,
-    realPaid: 0, winnersCount: 0, paidCount: 0, pendingCount: 0,
+    realPaid: 0, winnersCount: 0, paidCount: 0, pendingCount: 0, plannedWinners: 0,
     createdAt: '2024-12-01', updatedAt: '2024-12-10',
   },
   {
@@ -22,7 +22,7 @@ export const mockActions: Action[] = [
     quotaCount: 2000, quotaValue: 100, taxPercent: 6,
     expectedRevenue: 200000, totalPrizes: 60000, totalOperational: 15000,
     totalTaxes: 12000, totalCost: 87000, grossProfit: 113000, marginPercent: 56.5,
-    realPaid: 58500, winnersCount: 200, paidCount: 200, pendingCount: 0,
+    realPaid: 58500, winnersCount: 200, paidCount: 200, pendingCount: 0, plannedWinners: 200,
     createdAt: '2024-09-01', updatedAt: '2024-10-30',
   },
   {
@@ -30,7 +30,7 @@ export const mockActions: Action[] = [
     quotaCount: 800, quotaValue: 150, taxPercent: 5,
     expectedRevenue: 120000, totalPrizes: 38000, totalOperational: 9000,
     totalTaxes: 7000, totalCost: 54000, grossProfit: 66000, marginPercent: 55.0,
-    realPaid: 15000, winnersCount: 85, paidCount: 30, pendingCount: 55,
+    realPaid: 15000, winnersCount: 85, paidCount: 30, pendingCount: 55, plannedWinners: 85,
     createdAt: '2024-11-15', updatedAt: '2024-12-14',
   },
 ];
