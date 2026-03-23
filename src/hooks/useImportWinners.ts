@@ -314,7 +314,6 @@ export function useImportWinners(actionId: string, actionName: string) {
     try {
       const newWinners = winners.filter((w) => {
         if (w.isInvalid || w.isOverLimit) return false;
-        if (w.isBlockingDuplicate) return false;
         if (w.isDuplicate && !includeDuplicates) return false;
         return true;
       });

@@ -495,15 +495,12 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                     <tr key={i} className={cn(
                       "border-t hover:bg-muted/30",
                       w.isOverLimit && "bg-destructive/5",
-                      w.isBlockingDuplicate && "bg-destructive/5",
-                      w.isDuplicate && !w.isBlockingDuplicate && !w.isOverLimit && "bg-warning/5",
+                      w.isDuplicate && !w.isOverLimit && "bg-warning/5",
                       w.isInvalid && !w.isDuplicate && !w.isOverLimit && "bg-destructive/5",
                     )}>
                       <td className="px-3 py-1.5">
                         {w.isOverLimit ? (
                           <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Excede Limite</Badge>
-                        ) : w.isBlockingDuplicate ? (
-                          <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Duplicado bloqueado</Badge>
                         ) : w.isDuplicate ? (
                           <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">Duplicado</Badge>
                         ) : w.isInvalid ? (
