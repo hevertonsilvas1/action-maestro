@@ -521,6 +521,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                           <div className="text-[10px] text-muted-foreground">{w.duplicateReason}</div>
                         )}
                       </td>
+                      <td className="px-3 py-1.5 font-mono">{w.quota_number || '—'}</td>
                     </tr>
                   ))}
                   {filteredPreviewWinners.length === 0 && (
