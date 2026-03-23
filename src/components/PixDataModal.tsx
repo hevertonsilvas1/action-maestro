@@ -45,6 +45,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
   const [holderDoc, setHolderDoc] = useState('');
   const [observation, setObservation] = useState('');
   const [keyError, setKeyError] = useState<string | null>(null);
+  const [contextWarnings, setContextWarnings] = useState<string[]>([]);
 
   const isLocked = winner ? PIX_LOCKED_STATUSES.includes(winner.status) : false;
   const canEdit = !isLocked || isAdmin;
