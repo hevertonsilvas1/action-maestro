@@ -127,7 +127,8 @@ const Index = () => {
                   <div className="space-y-3">
                     {operationalActions.slice(0, 5).map((action, i) => {
                       const denominator = action.plannedWinners > 0 ? action.plannedWinners : action.winnersCount;
-                      const progress = denominator > 0 ? (action.paidCount / denominator) * 100 : 0;
+                      const progress = denominator > 0 ? (action.winnersCount / denominator) * 100 : 0;
+                      const paidProgress = denominator > 0 ? (action.paidCount / denominator) * 100 : 0;
                       return (
                         <Link
                           key={action.id}
@@ -142,14 +143,21 @@ const Index = () => {
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               <span>{formatCurrency(action.expectedRevenue)}</span>
-                              <span>{action.paidCount}/{action.plannedWinners || action.winnersCount} ganhadores</span>
+                              <span>{action.winnersCount}/{action.plannedWinners || action.winnersCount} ganhadores</span>
                               <span>·</span>
                               <span>{formatDate(action.updatedAt)}</span>
                             </div>
                             {(action.plannedWinners > 0 || action.winnersCount > 0) && (
-                              <div className="flex items-center gap-2">
-                                <Progress value={progress} className="h-1.5 flex-1" />
-                                <span className="text-[10px] font-medium text-muted-foreground">{progress.toFixed(0)}%</span>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Progress value={progress} className="h-1.5 flex-1" />
+                                  <span className="text-[10px] font-medium text-muted-foreground">{progress.toFixed(0)}%</span>
+                                </div>
+                                {action.paidCount > 0 && (
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {action.paidCount} pagos ({paidProgress.toFixed(0)}%)
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
