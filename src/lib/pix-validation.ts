@@ -125,6 +125,40 @@ export function getPixContextWarnings(
   return warnings;
 }
 
+/** Auto-detect PIX key type from value */
+export function detectPixType(value: string): PixType | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  // UUID check first (most specific format)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return 'random';
+  }
+
+  // Email check
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return 'email';
+  }
+
+  // Digits-only analysis
+  const digits = trimmed.replace(/\D/g, '');
+
+  if (digits.length === 14) return 'cnpj';
+
+  if (digits.length === 11) {
+    // Could be CPF or phone (11-digit mobile). Check if it's a valid CPF checksum.
+    if (isValidCpfChecksum(digits)) return 'cpf';
+    // Otherwise treat as phone
+    return 'phone';
+  }
+
+  // 10-digit landline or 12/13-digit with country code
+  if (digits.length === 10) return 'phone';
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return 'phone';
+
+  return null;
+}
+
 /** Mask a PIX key for display */
 export function maskPixKey(type: PixType | string | undefined, key: string | undefined): string {
   if (!key || !type) return '—';
