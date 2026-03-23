@@ -193,8 +193,10 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
     }
   };
 
+  const blockingDuplicateCount = parsedWinners.filter((w) => w.isBlockingDuplicate).length;
+  const importableDuplicateCount = parsedWinners.filter((w) => w.isDuplicate && !w.isBlockingDuplicate).length;
   const importableCount = stats
-    ? stats.totalNew + (duplicateAction === 'import' ? stats.totalDuplicates : 0)
+    ? stats.totalNew + (duplicateAction === 'import' ? importableDuplicateCount : 0)
     : 0;
 
   return (
@@ -397,30 +399,38 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                     </p>
                     <p className="text-muted-foreground">
                       Foram encontrados registros com mesma combinação de ação, data/hora, tipo, valor, nome e documento/telefone.
-                      O que deseja fazer com eles?
+                      {blockingDuplicateCount > 0
+                        ? ` ${blockingDuplicateCount} deles estão bloqueados pela regra de duplicidade do banco e serão ignorados automaticamente.`
+                        : ' O que deseja fazer com eles?'}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 ml-6">
-                  <Button
-                    variant={duplicateAction === 'skip' || duplicateAction === null ? 'default' : 'outline'}
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() => setDuplicateAction('skip')}
-                  >
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Ignorar duplicados
-                  </Button>
-                  <Button
-                    variant={duplicateAction === 'import' ? 'default' : 'outline'}
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() => setDuplicateAction('import')}
-                  >
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Importar mesmo assim
-                  </Button>
-                </div>
+                {importableDuplicateCount > 0 ? (
+                  <div className="flex gap-2 ml-6">
+                    <Button
+                      variant={duplicateAction === 'skip' || duplicateAction === null ? 'default' : 'outline'}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setDuplicateAction('skip')}
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Ignorar duplicados
+                    </Button>
+                    <Button
+                      variant={duplicateAction === 'import' ? 'default' : 'outline'}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setDuplicateAction('import')}
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Importar duplicados permitidos
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="ml-6 text-xs text-muted-foreground">
+                    Todos os duplicados detectados nesta importação estão bloqueados pela regra do banco.
+                  </div>
+                )}
               </div>
             )}
 
@@ -495,12 +505,15 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                     <tr key={i} className={cn(
                       "border-t hover:bg-muted/30",
                       w.isOverLimit && "bg-destructive/5",
-                      w.isDuplicate && !w.isOverLimit && "bg-warning/5",
+                      w.isBlockingDuplicate && "bg-destructive/5",
+                      w.isDuplicate && !w.isBlockingDuplicate && !w.isOverLimit && "bg-warning/5",
                       w.isInvalid && !w.isDuplicate && !w.isOverLimit && "bg-destructive/5",
                     )}>
                       <td className="px-3 py-1.5">
                         {w.isOverLimit ? (
                           <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Excede Limite</Badge>
+                        ) : w.isBlockingDuplicate ? (
+                          <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Duplicado bloqueado</Badge>
                         ) : w.isDuplicate ? (
                           <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">Duplicado</Badge>
                         ) : w.isInvalid ? (
@@ -512,7 +525,12 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                       <td className="px-3 py-1.5">{w.name}</td>
                       <td className="px-3 py-1.5 font-mono">{w.cpf ? w.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—'}</td>
                       <td className="px-3 py-1.5 text-right">{formatCurrency(w.value)}</td>
-                      <td className="px-3 py-1.5">{w.prize_type}</td>
+                      <td className="px-3 py-1.5">
+                        <div>{w.prize_type}</div>
+                        {w.duplicateReason && (
+                          <div className="text-[10px] text-muted-foreground">{w.duplicateReason}</div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {filteredPreviewWinners.length === 0 && (

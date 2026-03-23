@@ -15,6 +15,8 @@ export interface ParsedWinner {
   title?: string;
   // Dedup status
   isDuplicate?: boolean;
+  isBlockingDuplicate?: boolean;
+  duplicateReason?: string;
   isInvalid?: boolean;
   invalidReason?: string;
   isOverLimit?: boolean;
@@ -229,23 +231,29 @@ export function useImportWinners(actionId: string, actionName: string) {
     );
 
     const existingDbKeys = new Set(
-      (existingWinners || []).map((w) =>
-        buildDbDedupKey(w.cpf, w.prize_type, w.prize_datetime, Number(w.value))
-      ).filter(Boolean)
+      (existingWinners || [])
+        .map((w) => buildDbDedupKey(w.cpf, w.prize_type, w.prize_datetime, Number(w.value)))
+        .filter((key): key is string => Boolean(key))
     );
 
     const result = validated.map((w) => {
       if (w.isInvalid) return w;
-      // Check against the app-level composite key
+
       const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
       if (existingKeys.has(key)) {
-        return { ...w, isDuplicate: true };
+        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado encontrado na ação' };
       }
-      // Also check against the DB unique index to prevent constraint violations
+
       const dbKey = buildDbDedupKey(w.cpf, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
       if (dbKey && existingDbKeys.has(dbKey)) {
-        return { ...w, isDuplicate: true };
+        return {
+          ...w,
+          isDuplicate: true,
+          isBlockingDuplicate: true,
+          duplicateReason: 'Duplicado bloqueado pela regra do banco (CPF + data/hora + tipo + valor)',
+        };
       }
+
       return w;
     });
 
@@ -254,11 +262,23 @@ export function useImportWinners(actionId: string, actionName: string) {
     const seenDbKeys = new Set<string>();
     const afterDedupe = result.map((w) => {
       if (w.isInvalid || w.isDuplicate) return w;
+
       const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
       const dbKey = buildDbDedupKey(w.cpf, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
-      if (seenKeys.has(key) || (dbKey && seenDbKeys.has(dbKey))) {
-        return { ...w, isDuplicate: true };
+
+      if (seenKeys.has(key)) {
+        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado dentro do arquivo importado' };
       }
+
+      if (dbKey && seenDbKeys.has(dbKey)) {
+        return {
+          ...w,
+          isDuplicate: true,
+          isBlockingDuplicate: true,
+          duplicateReason: 'Duplicado bloqueado pela regra do banco dentro do arquivo importado',
+        };
+      }
+
       seenKeys.add(key);
       if (dbKey) seenDbKeys.add(dbKey);
       return w;
@@ -305,6 +325,7 @@ export function useImportWinners(actionId: string, actionName: string) {
     try {
       const newWinners = winners.filter((w) => {
         if (w.isInvalid || w.isOverLimit) return false;
+        if (w.isBlockingDuplicate) return false;
         if (w.isDuplicate && !includeDuplicates) return false;
         return true;
       });
