@@ -133,8 +133,8 @@ export default function ActionsPage() {
                 </thead>
                 <tbody>
                   {filtered.map((action, i) => {
-                    const progress = action.winnersCount > 0
-                      ? (action.paidCount / action.winnersCount) * 100
+                    const progress = action.plannedWinners > 0
+                      ? (action.winnersCount / action.plannedWinners) * 100
                       : 0;
                     const isArchived = action.status === 'archived';
                     return (
