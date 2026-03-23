@@ -108,6 +108,13 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         updateData.pix_registered_at = now;
       }
 
+      // When PIX validation is disabled, auto-advance to ready_to_pay on save
+      if (!pixValidationEnabled && isNew) {
+        updateData.status = 'pix_received';
+        updateData.pix_validated_by = userName;
+        updateData.pix_validated_at = now;
+      }
+
       const { error: updateError } = await supabase
         .from('winners')
         .update(updateData)
