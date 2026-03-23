@@ -13,6 +13,7 @@ import { formatRelativeTime, isWindowOpen } from '@/lib/time';
 import { useQueryClient } from '@tanstack/react-query';
 import { maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { ACTION_STATUS_LABELS, ACTION_STATUS_COLORS, PIX_TYPE_LABELS, WinnerStatus } from '@/types';
+import { PRIZE_TYPE_LABELS } from '@/types';
 import type { Action } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -739,7 +740,7 @@ export default function ActionDetailPage() {
                             <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
                               {formatCpf(w.cpf)}
                             </td>
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground">{w.prizeTitle}</td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground">{PRIZE_TYPE_LABELS[w.prizeType] || w.prizeType}</td>
                             <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">{w.prizeType === 'quota' ? w.prizeTitle : '—'}</td>
                             {isAdmin && <td className="px-3 py-2.5 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
                             <td className="px-3 py-2.5 text-xs font-mono">
