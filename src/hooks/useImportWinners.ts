@@ -274,11 +274,16 @@ export function useImportWinners(actionId: string, actionName: string) {
   const importWinners = async (
     winners: ParsedWinner[],
     fileType: string,
-    fileName: string
+    fileName: string,
+    includeDuplicates: boolean = false
   ) => {
     setIsLoading(true);
     try {
-      const newWinners = winners.filter((w) => !w.isDuplicate && !w.isInvalid && !w.isOverLimit);
+      const newWinners = winners.filter((w) => {
+        if (w.isInvalid || w.isOverLimit) return false;
+        if (w.isDuplicate && !includeDuplicates) return false;
+        return true;
+      });
 
       if (newWinners.length === 0) {
         toast.info('Nenhum novo ganhador para importar.');
