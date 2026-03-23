@@ -78,6 +78,25 @@ export default function EditActionPage() {
   const [newPrizeTypeName, setNewPrizeTypeName] = useState('');
   const [newCostTypeName, setNewCostTypeName] = useState('');
 
+  // Auto-save draft
+  const formData = useMemo(() => ({ name, status, startDate, endDate, quotaCount, quotaValue, taxPercent, prizes, costs }), [name, status, startDate, endDate, quotaCount, quotaValue, taxPercent, prizes, costs]);
+  const { draft, clearDraft, discardDraft, clearAfterSave, draftStatus } = useFormDraft({ key: `edit-action-${id}`, data: formData, enabled: initialized });
+
+  const restoreDraft = useCallback(() => {
+    if (!draft) return;
+    setName(draft.name || '');
+    setStatus(draft.status || 'planning');
+    setStartDate(draft.startDate || '');
+    setEndDate(draft.endDate || '');
+    setQuotaCount(draft.quotaCount ?? null);
+    setQuotaValue(draft.quotaValue || '');
+    setTaxPercent(draft.taxPercent || '');
+    setPrizes(draft.prizes || []);
+    setCosts(draft.costs || []);
+    clearDraft();
+    toast.success('Rascunho restaurado!');
+  }, [draft, clearDraft]);
+
   // Populate form from loaded data
   useEffect(() => {
     if (action && !initialized && !prizesLoading && !costsLoading) {
