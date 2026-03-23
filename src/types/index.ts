@@ -55,7 +55,6 @@ export interface Winner {
   pixRegisteredAt?: string;
   pixValidatedBy?: string;
   pixValidatedAt?: string;
-  quotaNumber?: string;
   batchId?: string;
   paymentMethod?: PaymentMethod;
   ultimaInteracaoWhatsapp?: string;

@@ -13,7 +13,6 @@ export interface ParsedWinner {
   prize_datetime: string | null;
   prize_type: string;
   title?: string;
-  quota_number?: string;
   // Dedup status
   isDuplicate?: boolean;
   duplicateReason?: string;
@@ -125,7 +124,6 @@ export function useImportWinners(actionId: string, actionName: string) {
         value: normalizeValue(w.value),
         prize_datetime: w.prize_datetime || null,
         prize_type: w.prize_type || '',
-        quota_number: w.quota_number || undefined,
       }));
 
       return winners;
@@ -154,7 +152,6 @@ export function useImportWinners(actionId: string, actionName: string) {
         prize_datetime: excelSerialToISO(row['Associado em'] || row.Data || row.data || row['Data/Hora'] || row.date || null),
         prize_type: String(row['Tipo de Premiação'] || row['Tipo'] || row.tipo || row.Status || row.status || row['Premio'] || row.prize_type || '').trim(),
         title: String(row['Título'] || row.Titulo || row.titulo || row.title || '').trim() || undefined,
-        quota_number: String(row['Nº Cota'] || row['Nº da Cota'] || row['Numero da Cota'] || row['numero_cota'] || row.quota_number || row['Cota'] || row.cota || '').trim() || undefined,
       }));
     } finally {
       setIsParsing(false);
@@ -348,7 +345,6 @@ export function useImportWinners(actionId: string, actionName: string) {
           prize_type: normalizePrizeType(w.prize_type) as any,
           prize_title: w.title || w.prize_type,
           prize_datetime: w.prize_datetime || null,
-          quota_number: w.quota_number || null,
           status: 'imported' as const,
         };
       });

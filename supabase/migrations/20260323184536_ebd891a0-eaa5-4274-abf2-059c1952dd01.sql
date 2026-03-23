@@ -1,0 +1,1 @@
+ALTER TABLE public.winners DROP COLUMN IF EXISTS quota_number;

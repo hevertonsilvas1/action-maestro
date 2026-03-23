@@ -44,7 +44,6 @@ const EXPECTED_COLUMNS = [
   { key: 'value', label: 'Prêmio / Valor', required: true },
   { key: 'prize_datetime', label: 'Associado em / Data', required: false },
   { key: 'cpf', label: 'CPF', required: false },
-  { key: 'quota_number', label: 'Nº da Cota', required: false },
 ];
 
 type DuplicateAction = 'skip' | 'import' | null;
@@ -170,7 +169,6 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
         value: col('value') ? row[col('value')!] : 0,
         prize_type: String(col('prize_type') ? row[col('prize_type')!] : '').trim(),
         title: col('title') ? String(row[col('title')!] || '').trim() : undefined,
-        quota_number: col('quota_number') ? String(row[col('quota_number')!] || '').trim() : undefined,
         prize_datetime: col('prize_datetime') ? convertExcelDate(row[col('prize_datetime')!]) : null,
       }));
 
@@ -521,7 +519,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                           <div className="text-[10px] text-muted-foreground">{w.duplicateReason}</div>
                         )}
                       </td>
-                      <td className="px-3 py-1.5 font-mono">{w.quota_number || '—'}</td>
+                      <td className="px-3 py-1.5 font-mono">{w.prize_type === 'quota' || w.prize_type === 'cota' ? (w.title || '—') : '—'}</td>
                     </tr>
                   ))}
                   {filteredPreviewWinners.length === 0 && (

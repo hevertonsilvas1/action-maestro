@@ -420,7 +420,7 @@ export default function WinnersPage() {
                             {w.prizeTitle}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
-                            {w.quotaNumber || '—'}
+                            {w.prizeType === 'quota' ? w.prizeTitle : '—'}
                           </td>
                           <td className="px-3 py-2.5 text-right text-sm font-medium">
                             {formatCurrency(w.value)}
