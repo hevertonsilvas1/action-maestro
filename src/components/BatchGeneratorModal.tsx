@@ -36,23 +36,18 @@ interface BatchGeneratorModalProps {
 }
 
 function isEligibleForBatch(w: Winner): boolean {
+  // Winners currently in batch or in final statuses are not eligible
+  if (w.status === 'sent_to_batch' || ['receipt_attached', 'receipt_sent'].includes(w.status)) {
+    return false;
+  }
+
   const isForcarPix = w.status === 'forcar_pix';
 
   if (isForcarPix) {
-    return (
-      w.value > 0 &&
-      (!!w.cpf || !!w.phone) &&
-      !w.batchId
-    );
+    return w.value > 0 && (!!w.cpf || !!w.phone);
   }
 
-  return (
-    !!w.pixKey &&
-    !!w.pixType &&
-    w.value > 0 &&
-    !['receipt_attached', 'receipt_sent'].includes(w.status) &&
-    !w.batchId
-  );
+  return !!w.pixKey && !!w.pixType && w.value > 0;
 }
 
 function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } {
