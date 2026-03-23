@@ -53,14 +53,21 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
 
   useEffect(() => {
     if (winner && open) {
-      setPixType((winner.pixType as PixType) || '');
-      setPixKey(winner.pixKey || '');
+      const type = (winner.pixType as PixType) || '';
+      const key = winner.pixKey || '';
+      setPixType(type);
+      setPixKey(key);
       setHolderName(winner.pixHolderName || '');
       setHolderDoc(winner.pixHolderDoc || '');
       setObservation(winner.pixObservation || '');
       setKeyError(null);
-      setContextWarnings([]);
       setAdminReason('');
+      // Recalculate contextual warnings for existing saved data
+      if (type && key.trim()) {
+        setContextWarnings(getPixContextWarnings(type as PixType, key, { cpf: winner.cpf, phone: winner.phone }));
+      } else {
+        setContextWarnings([]);
+      }
     }
   }, [winner, open]);
 
