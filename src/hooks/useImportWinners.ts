@@ -345,7 +345,6 @@ export function useImportWinners(actionId: string, actionName: string) {
           prize_type: normalizePrizeType(w.prize_type) as any,
           prize_title: w.title || w.prize_type,
           prize_datetime: w.prize_datetime || null,
-          quota_number: w.quota_number || null,
           status: 'imported' as const,
         };
       });

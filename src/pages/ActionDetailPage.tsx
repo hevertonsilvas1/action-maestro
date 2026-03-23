@@ -740,7 +740,7 @@ export default function ActionDetailPage() {
                               {formatCpf(w.cpf)}
                             </td>
                             <td className="px-3 py-2.5 text-xs text-muted-foreground">{w.prizeTitle}</td>
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">{w.quotaNumber || '—'}</td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">{w.prizeType === 'quota' ? w.prizeTitle : '—'}</td>
                             {isAdmin && <td className="px-3 py-2.5 text-right text-sm font-medium">{formatCurrency(w.value)}</td>}
                             <td className="px-3 py-2.5 text-xs font-mono">
                               {opPix.key ? (
