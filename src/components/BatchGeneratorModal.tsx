@@ -41,8 +41,8 @@ function isEligibleForBatch(w: Winner): boolean {
     return false;
   }
 
-  // Only pix_received can be re-sent to batch after a previous batch
-  if (w.batchId && w.status !== 'pix_received') {
+  // Only pix_received and forcar_pix can be re-sent to batch after a previous batch
+  if (w.batchId && w.status !== 'pix_received' && w.status !== 'forcar_pix') {
     return false;
   }
 
