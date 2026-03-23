@@ -123,7 +123,7 @@ export function useImportWinners(actionId: string, actionName: string) {
         phone: normalizePhone(w.phone),
         value: normalizeValue(w.value),
         prize_datetime: w.prize_datetime || null,
-        prize_type: w.prize_type || '',
+        prize_type: '',
         title: typeof w.title === 'string' ? w.title.trim() || undefined : undefined,
       }));
 
