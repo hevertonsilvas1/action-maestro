@@ -417,7 +417,7 @@ export default function WinnersPage() {
                             <p className="text-xs text-muted-foreground truncate max-w-[140px]">{w.actionName}</p>
                           </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                            {w.prizeTitle}
+                            {PRIZE_TYPE_LABELS[w.prizeType] || w.prizeType}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">
                             {w.prizeType === 'quota' ? w.prizeTitle : '—'}

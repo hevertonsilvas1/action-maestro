@@ -172,3 +172,12 @@ export interface Cost {
 }
 
 export type UserRole = 'admin' | 'support';
+
+export const PRIZE_TYPE_LABELS: Record<string, string> = {
+  main: 'Principal',
+  instant: 'Instantâneo',
+  spin: 'Giro Abençoado',
+  quota: 'Cota Premiada',
+  blessed_hour: 'Hora Abençoada',
+  bonus: 'Bônus',
+};
