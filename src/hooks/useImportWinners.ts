@@ -13,7 +13,6 @@ export interface ParsedWinner {
   prize_datetime: string | null;
   prize_type: string;
   title?: string;
-  quota_number?: string;
   // Dedup status
   isDuplicate?: boolean;
   duplicateReason?: string;
