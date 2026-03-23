@@ -49,7 +49,7 @@ export function useActions() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('actions')
-        .select('*, prizes(quantity)')
+        .select('*, prizes(quantity, total_value, prize_type_config_id, prize_type_configs(name))')
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return (data ?? []).map(mapAction);
