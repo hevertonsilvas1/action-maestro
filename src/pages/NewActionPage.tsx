@@ -15,6 +15,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftBanner, DraftStatusIndicator } from '@/components/DraftBanner';
 
 const QUOTA_OPTIONS_POPULAR = [1000, 10000, 100000, 10000000];
 const QUOTA_OPTIONS = [
