@@ -152,7 +152,6 @@ export function useImportWinners(actionId: string, actionName: string) {
         prize_datetime: excelSerialToISO(row['Associado em'] || row.Data || row.data || row['Data/Hora'] || row.date || null),
         prize_type: String(row['Tipo de Premiação'] || row['Tipo'] || row.tipo || row.Status || row.status || row['Premio'] || row.prize_type || '').trim(),
         title: String(row['Título'] || row.Titulo || row.titulo || row.title || '').trim() || undefined,
-        quota_number: String(row['Nº Cota'] || row['Nº da Cota'] || row['Numero da Cota'] || row['numero_cota'] || row.quota_number || row['Cota'] || row.cota || '').trim() || undefined,
       }));
     } finally {
       setIsParsing(false);
