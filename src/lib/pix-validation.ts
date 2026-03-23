@@ -125,38 +125,66 @@ export function getPixContextWarnings(
   return warnings;
 }
 
-/** Auto-detect PIX key type from value */
-export function detectPixType(value: string): PixType | null {
+export interface PixDetectionResult {
+  type: PixType | null;
+  ambiguous: boolean;
+  candidates: PixType[];
+}
+
+/** Auto-detect PIX key type from value, using winner data to resolve ambiguity */
+export function detectPixType(
+  value: string,
+  winner?: { cpf?: string | null; phone?: string | null },
+): PixDetectionResult {
   const trimmed = value.trim();
-  if (!trimmed) return null;
+  if (!trimmed) return { type: null, ambiguous: false, candidates: [] };
 
-  // UUID check first (most specific format)
+  // UUID — unambiguous
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
-    return 'random';
+    return { type: 'random', ambiguous: false, candidates: [] };
   }
 
-  // Email check
+  // Email — unambiguous
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-    return 'email';
+    return { type: 'email', ambiguous: false, candidates: [] };
   }
 
-  // Digits-only analysis
   const digits = trimmed.replace(/\D/g, '');
 
-  if (digits.length === 14) return 'cnpj';
+  // CNPJ — unambiguous
+  if (digits.length === 14) return { type: 'cnpj', ambiguous: false, candidates: [] };
 
-  if (digits.length === 11) {
-    // Could be CPF or phone (11-digit mobile). Check if it's a valid CPF checksum.
-    if (isValidCpfChecksum(digits)) return 'cpf';
-    // Otherwise treat as phone
-    return 'phone';
+  // 10 digits — only phone
+  if (digits.length === 10) return { type: 'phone', ambiguous: false, candidates: [] };
+
+  // 12/13 with country code — only phone
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+    return { type: 'phone', ambiguous: false, candidates: [] };
   }
 
-  // 10-digit landline or 12/13-digit with country code
-  if (digits.length === 10) return 'phone';
-  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return 'phone';
+  // 11 digits — could be CPF or phone
+  if (digits.length === 11) {
+    const validCpf = isValidCpfChecksum(digits);
 
-  return null;
+    // Use winner data to resolve: if matches winner CPF exactly → CPF
+    if (winner?.cpf) {
+      const winnerCpfDigits = winner.cpf.replace(/\D/g, '');
+      if (digits === winnerCpfDigits) return { type: 'cpf', ambiguous: false, candidates: [] };
+    }
+    // If matches winner phone exactly → phone
+    if (winner?.phone) {
+      const winnerPhoneNorm = normalizePhoneDigits(winner.phone);
+      if (winnerPhoneNorm && digits === winnerPhoneNorm) return { type: 'phone', ambiguous: false, candidates: [] };
+    }
+
+    // If NOT a valid CPF checksum → phone
+    if (!validCpf) return { type: 'phone', ambiguous: false, candidates: [] };
+
+    // Valid CPF checksum AND 11 digits (could also be phone) → ambiguous
+    return { type: null, ambiguous: true, candidates: ['cpf', 'phone'] };
+  }
+
+  return { type: null, ambiguous: false, candidates: [] };
 }
 
 /** Mask a PIX key for display */

@@ -18,7 +18,8 @@ import { Loader2, CreditCard, CheckCircle2, ShieldCheck, AlertTriangle, ChevronD
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, detectPixType, type PixContextWarning } from '@/lib/pix-validation';
+import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, detectPixType, type PixContextWarning, type PixDetectionResult } from '@/lib/pix-validation';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
 import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
 import type { Winner, PixType } from '@/types';
@@ -47,6 +48,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
   const [observation, setObservation] = useState('');
   const [keyError, setKeyError] = useState<string | null>(null);
   const [contextWarnings, setContextWarnings] = useState<PixContextWarning[]>([]);
+  const [ambiguousCandidates, setAmbiguousCandidates] = useState<PixType[]>([]);
 
   const isLocked = winner ? PIX_LOCKED_STATUSES.includes(winner.status) : false;
   const canEdit = !isLocked || isAdmin;
@@ -64,6 +66,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
       setKeyError(null);
       setAdminReason('');
       setAdditionalOpen(!!(winner.pixHolderName || winner.pixHolderDoc));
+      setAmbiguousCandidates([]);
       if (type && key.trim()) {
         setContextWarnings(getPixContextWarnings(type as PixType, key, { cpf: winner.cpf, phone: winner.phone }));
       } else {
@@ -74,18 +77,39 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
 
   const handleKeyChange = (value: string) => {
     setPixKey(value);
-    const detected = detectPixType(value);
-    const type = detected || '';
-    setPixType(type);
+    const result = detectPixType(value, winner ? { cpf: winner.cpf, phone: winner.phone } : undefined);
 
-    if (type && value.trim()) {
-      setKeyError(validatePixKey(type as PixType, value));
-      if (winner) {
-        setContextWarnings(getPixContextWarnings(type as PixType, value, { cpf: winner.cpf, phone: winner.phone }));
-      }
-    } else {
+    if (result.ambiguous) {
+      setPixType('');
+      setAmbiguousCandidates(result.candidates);
       setKeyError(null);
       setContextWarnings([]);
+    } else {
+      const type = result.type || '';
+      setPixType(type);
+      setAmbiguousCandidates([]);
+
+      if (type && value.trim()) {
+        setKeyError(validatePixKey(type as PixType, value));
+        if (winner) {
+          setContextWarnings(getPixContextWarnings(type as PixType, value, { cpf: winner.cpf, phone: winner.phone }));
+        }
+      } else {
+        setKeyError(null);
+        setContextWarnings([]);
+      }
+    }
+  };
+
+  const handleAmbiguousSelect = (selected: string) => {
+    const type = selected as PixType;
+    setPixType(type);
+    setAmbiguousCandidates([]);
+    if (type && pixKey.trim()) {
+      setKeyError(validatePixKey(type, pixKey));
+      if (winner) {
+        setContextWarnings(getPixContextWarnings(type, pixKey, { cpf: winner.cpf, phone: winner.phone }));
+      }
     }
   };
 
@@ -291,12 +315,31 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
                   Tipo detectado: {PIX_TYPE_LABELS[pixType as PixType] || pixType}
                 </Badge>
               )}
-              {pixKey.trim() && !pixType && (
+              {pixKey.trim() && !pixType && ambiguousCandidates.length === 0 && (
                 <span className="text-[10px] text-muted-foreground">
                   Continue digitando para detectar o tipo...
                 </span>
               )}
             </div>
+            {/* Ambiguous type selector */}
+            {ambiguousCandidates.length > 0 && (
+              <div className="rounded-lg border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Não foi possível identificar o tipo automaticamente. Selecione:
+                </p>
+                <RadioGroup onValueChange={handleAmbiguousSelect} className="flex gap-4">
+                  {ambiguousCandidates.map((c) => (
+                    <div key={c} className="flex items-center gap-1.5">
+                      <RadioGroupItem value={c} id={`pix-type-${c}`} />
+                      <Label htmlFor={`pix-type-${c}`} className="text-xs cursor-pointer">
+                        {PIX_TYPE_LABELS[c]}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
             {keyError && <p className="text-[10px] text-destructive">{keyError}</p>}
             {!keyError && contextWarnings.length > 0 && (
               <div className="space-y-2 mt-2">
