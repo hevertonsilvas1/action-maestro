@@ -213,6 +213,7 @@ export default function NewActionPage() {
         prizes: prizesInput,
         costs: costsInput,
       });
+      clearAfterSave();
       toast.success('Ação criada com sucesso!');
       navigate('/actions');
     } catch (err: any) {
