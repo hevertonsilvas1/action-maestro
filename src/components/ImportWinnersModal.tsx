@@ -526,9 +526,9 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
                   ))}
                   {filteredPreviewWinners.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
-                        Nenhum registro nesta categoria.
-                      </td>
+                       <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                         Nenhum registro nesta categoria.
+                       </td>
                     </tr>
                   )}
                 </tbody>
