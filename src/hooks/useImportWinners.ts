@@ -213,30 +213,54 @@ export function useImportWinners(actionId: string, actionName: string) {
       return `${normalizedType}|${normalizedDatetime}|${value}|${normalizedName}|${normalizedCpf}|${normalizedPhone}`;
     }
 
+    // Build DB-level dedup key matching idx_winners_dedup: (action_id, prize_type, cpf, prize_datetime, value)
+    // Only applies when cpf IS NOT NULL AND prize_datetime IS NOT NULL
+    function buildDbDedupKey(cpf: string | null, prizeType: string, prizeDatetime: string | null, value: number): string | null {
+      const normalizedCpf = cpf ? cpf.replace(/\D/g, '') : null;
+      if (!normalizedCpf || !prizeDatetime) return null;
+      const normalizedType = normalizePrizeType(prizeType);
+      return `${normalizedType}|${normalizedCpf}|${prizeDatetime}|${value}`;
+    }
+
     const existingKeys = new Set(
       (existingWinners || []).map((w) =>
         buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
       )
     );
 
+    const existingDbKeys = new Set(
+      (existingWinners || []).map((w) =>
+        buildDbDedupKey(w.cpf, w.prize_type, w.prize_datetime, Number(w.value))
+      ).filter(Boolean)
+    );
+
     const result = validated.map((w) => {
       if (w.isInvalid) return w;
+      // Check against the app-level composite key
       const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
       if (existingKeys.has(key)) {
+        return { ...w, isDuplicate: true };
+      }
+      // Also check against the DB unique index to prevent constraint violations
+      const dbKey = buildDbDedupKey(w.cpf, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
+      if (dbKey && existingDbKeys.has(dbKey)) {
         return { ...w, isDuplicate: true };
       }
       return w;
     });
 
-    // Also check for duplicates within the batch itself
+    // Also check for duplicates within the batch itself (both app-level and DB-level)
     const seenKeys = new Set<string>();
+    const seenDbKeys = new Set<string>();
     const afterDedupe = result.map((w) => {
       if (w.isInvalid || w.isDuplicate) return w;
       const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
-      if (seenKeys.has(key)) {
+      const dbKey = buildDbDedupKey(w.cpf, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
+      if (seenKeys.has(key) || (dbKey && seenDbKeys.has(dbKey))) {
         return { ...w, isDuplicate: true };
       }
       seenKeys.add(key);
+      if (dbKey) seenDbKeys.add(dbKey);
       return w;
     });
 
