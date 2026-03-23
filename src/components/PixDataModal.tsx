@@ -11,14 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, CreditCard, CheckCircle2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Loader2, CreditCard, CheckCircle2, ShieldCheck, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, type PixContextWarning } from '@/lib/pix-validation';
+import { validatePixKey, maskPixKey, getPixStatus, getPixContextWarnings, detectPixType, type PixContextWarning } from '@/lib/pix-validation';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
 import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
 import type { Winner, PixType } from '@/types';
@@ -38,6 +38,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
   const [adminReason, setAdminReason] = useState('');
+  const [additionalOpen, setAdditionalOpen] = useState(false);
 
   const [pixType, setPixType] = useState<PixType | ''>('');
   const [pixKey, setPixKey] = useState('');
@@ -62,7 +63,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
       setObservation(winner.pixObservation || '');
       setKeyError(null);
       setAdminReason('');
-      // Recalculate contextual warnings for existing saved data
+      setAdditionalOpen(!!(winner.pixHolderName || winner.pixHolderDoc));
       if (type && key.trim()) {
         setContextWarnings(getPixContextWarnings(type as PixType, key, { cpf: winner.cpf, phone: winner.phone }));
       } else {
@@ -71,26 +72,21 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
     }
   }, [winner, open]);
 
-  const updateValidation = (type: PixType | '', key: string) => {
-    if (type && key.trim()) {
-      setKeyError(validatePixKey(type as PixType, key));
+  const handleKeyChange = (value: string) => {
+    setPixKey(value);
+    const detected = detectPixType(value);
+    const type = detected || '';
+    setPixType(type);
+
+    if (type && value.trim()) {
+      setKeyError(validatePixKey(type as PixType, value));
       if (winner) {
-        setContextWarnings(getPixContextWarnings(type as PixType, key, { cpf: winner.cpf, phone: winner.phone }));
+        setContextWarnings(getPixContextWarnings(type as PixType, value, { cpf: winner.cpf, phone: winner.phone }));
       }
     } else {
       setKeyError(null);
       setContextWarnings([]);
     }
-  };
-
-  const handleKeyChange = (value: string) => {
-    setPixKey(value);
-    updateValidation(pixType, value);
-  };
-
-  const handleTypeChange = (value: string) => {
-    setPixType(value as PixType);
-    updateValidation(value as PixType, pixKey);
   };
 
   const handleSave = async () => {
@@ -125,7 +121,6 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         updateData.pix_registered_at = now;
       }
 
-      // When PIX validation is disabled, auto-advance to ready_to_pay on save
       if (!pixValidationEnabled && isNew) {
         updateData.status = 'pix_received';
         updateData.pix_validated_by = userName;
@@ -139,7 +134,6 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
 
       if (updateError) throw updateError;
 
-      // Audit log
       const changes: Record<string, any> = {
         winner_name: winner.name,
         operation_type: isNew ? 'pix_cadastro' : 'pix_edicao',
@@ -280,102 +274,116 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         <Separator />
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs">Tipo de Chave *</Label>
-              <Select value={pixType} onValueChange={handleTypeChange} disabled={!canEdit}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PIX_TYPE_LABELS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs">Chave PIX *</Label>
-              <Input
-                value={pixKey}
-                onChange={(e) => handleKeyChange(e.target.value)}
-                placeholder={pixType === 'cpf' ? '000.000.000-00' : pixType === 'email' ? 'email@exemplo.com' : 'Chave PIX'}
-                disabled={!canEdit}
-                className="font-mono text-sm"
-              />
-              {keyError && <p className="text-[10px] text-destructive">{keyError}</p>}
-              {!keyError && contextWarnings.length > 0 && (
-                <div className="space-y-2 mt-2">
-                  {contextWarnings.map((w, i) => (
-                    <div
-                      key={i}
-                      className={`rounded-lg border p-3 text-xs space-y-2 ${
-                        w.level === 'critical'
-                          ? 'border-destructive/50 bg-destructive/5'
-                          : 'border-amber-400/50 bg-amber-50 dark:bg-amber-950/20'
-                      }`}
-                    >
-                      <p className={`font-semibold flex items-center gap-1.5 ${
-                        w.level === 'critical' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'
-                      }`}>
-                        <AlertTriangle className={`h-4 w-4 shrink-0 ${w.level === 'critical' ? '' : ''}`} />
-                        {w.message}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div>
-                          <span className="text-muted-foreground">{w.type === 'cpf' ? 'CPF do ganhador:' : 'Telefone cadastrado:'}</span>
-                          <p className="font-mono font-medium">{w.winnerValue}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">{w.type === 'cpf' ? 'CPF na chave PIX:' : 'Telefone informado:'}</span>
-                          <p className="font-mono font-medium">{w.pixValue}</p>
-                        </div>
-                      </div>
-                      {w.detail && (
-                        <p className="text-muted-foreground text-[11px] leading-relaxed">{w.detail}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+          {/* Main field: PIX Key with auto-detection */}
+          <div className="space-y-2">
+            <Label className="text-xs">Chave PIX *</Label>
+            <Input
+              value={pixKey}
+              onChange={(e) => handleKeyChange(e.target.value)}
+              placeholder="Digite ou cole a chave PIX (CPF, telefone, email ou chave aleatória)"
+              disabled={!canEdit}
+              className="font-mono text-sm"
+              autoFocus
+            />
+            <div className="flex items-center gap-2">
+              {pixType && (
+                <Badge variant="secondary" className="text-[10px] gap-1">
+                  Tipo detectado: {PIX_TYPE_LABELS[pixType as PixType] || pixType}
+                </Badge>
+              )}
+              {pixKey.trim() && !pixType && (
+                <span className="text-[10px] text-muted-foreground">
+                  Continue digitando para detectar o tipo...
+                </span>
               )}
             </div>
+            {keyError && <p className="text-[10px] text-destructive">{keyError}</p>}
+            {!keyError && contextWarnings.length > 0 && (
+              <div className="space-y-2 mt-2">
+                {contextWarnings.map((w, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-lg border p-3 text-xs space-y-2 ${
+                      w.level === 'critical'
+                        ? 'border-destructive/50 bg-destructive/5'
+                        : 'border-amber-400/50 bg-amber-50 dark:bg-amber-950/20'
+                    }`}
+                  >
+                    <p className={`font-semibold flex items-center gap-1.5 ${
+                      w.level === 'critical' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'
+                    }`}>
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      {w.message}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-muted-foreground">{w.type === 'cpf' ? 'CPF do ganhador:' : 'Telefone cadastrado:'}</span>
+                        <p className="font-mono font-medium">{w.winnerValue}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{w.type === 'cpf' ? 'CPF na chave PIX:' : 'Telefone informado:'}</span>
+                        <p className="font-mono font-medium">{w.pixValue}</p>
+                      </div>
+                    </div>
+                    {w.detail && (
+                      <p className="text-muted-foreground text-[11px] leading-relaxed">{w.detail}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs">Nome do Titular</Label>
-              <Input
-                value={holderName}
-                onChange={(e) => setHolderName(e.target.value)}
-                placeholder="Nome completo do titular"
-                disabled={!canEdit}
-                maxLength={100}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs">CPF/CNPJ do Titular</Label>
-              <Input
-                value={holderDoc}
-                onChange={(e) => setHolderDoc(e.target.value)}
-                placeholder="Documento do titular"
-                disabled={!canEdit}
-                maxLength={18}
-                className="font-mono text-sm"
-              />
-            </div>
-          </div>
-
+          {/* Observation */}
           <div className="space-y-2">
             <Label className="text-xs">Observação</Label>
             <Textarea
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
-              placeholder="Observações sobre o PIX..."
+              placeholder="Ex: PIX de terceiro, PIX da esposa, autorizado pelo cliente..."
               disabled={!canEdit}
               rows={2}
               maxLength={200}
             />
           </div>
+
+          {/* Collapsible additional info */}
+          <Collapsible open={additionalOpen} onOpenChange={setAdditionalOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+              >
+                {additionalOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                Informações adicionais
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Nome do Titular</Label>
+                  <Input
+                    value={holderName}
+                    onChange={(e) => setHolderName(e.target.value)}
+                    placeholder="Nome completo do titular"
+                    disabled={!canEdit}
+                    maxLength={100}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">CPF/CNPJ do Titular</Label>
+                  <Input
+                    value={holderDoc}
+                    onChange={(e) => setHolderDoc(e.target.value)}
+                    placeholder="Documento do titular"
+                    disabled={!canEdit}
+                    maxLength={18}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {isLocked && isAdmin && (
             <div className="space-y-2">
@@ -398,7 +406,6 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          {/* Validate button - only if PIX validation is enabled and PIX is filled but not yet validated */}
           {pixValidationEnabled && pixStatus === 'filled' && canEdit && (
             <Button
               variant="outline"
