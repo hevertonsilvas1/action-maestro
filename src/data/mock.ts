@@ -6,7 +6,7 @@ export const mockActions: Action[] = [
     quotaCount: 1000, quotaValue: 150, taxPercent: 5,
     expectedRevenue: 150000, totalPrizes: 45000, totalOperational: 12000,
     totalTaxes: 8500, totalCost: 65500, grossProfit: 84500, marginPercent: 56.3,
-    realPaid: 28000, winnersCount: 120, paidCount: 65, pendingCount: 55, plannedWinners: 120,
+    realPaid: 28000, winnersCount: 120, paidCount: 65, pendingCount: 55, plannedWinners: 120, mainPrizesValue: 0, operationalPrizesValue: 45000,
     createdAt: '2024-11-01', updatedAt: '2024-12-15',
   },
   {
