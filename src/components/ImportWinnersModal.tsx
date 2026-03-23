@@ -167,13 +167,18 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
 
   const handleConfirmImport = async () => {
     try {
-      await importWinners(parsedWinners, tab === 'pdf' ? 'pdf' : fileName.endsWith('.csv') ? 'csv' : 'xlsx', fileName);
+      const includeDuplicates = duplicateAction === 'import';
+      await importWinners(parsedWinners, tab === 'pdf' ? 'pdf' : fileName.endsWith('.csv') ? 'csv' : 'xlsx', fileName, includeDuplicates);
       setStep('done');
     } catch (error: any) {
       console.error('Import failed:', error);
       toast.error('Erro ao importar: ' + (error?.message || 'Erro desconhecido'));
     }
   };
+
+  const importableCount = stats
+    ? stats.totalNew + (duplicateAction === 'import' ? stats.totalDuplicates : 0)
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
