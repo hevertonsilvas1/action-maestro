@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { validatePixKey, maskPixKey, getPixStatus } from '@/lib/pix-validation';
 import { PIX_TYPE_LABELS, PIX_LOCKED_STATUSES } from '@/types';
+import { usePixValidationEnabled } from '@/hooks/usePixValidationConfig';
 import type { Winner, PixType } from '@/types';
 
 interface PixDataModalProps {
