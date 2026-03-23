@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, Save, Settings2, Clock, Send, ArrowRightLeft } from 'lucide-react';
+import { Loader2, Save, Settings2, Clock, Send, ArrowRightLeft, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ParamConfig {
