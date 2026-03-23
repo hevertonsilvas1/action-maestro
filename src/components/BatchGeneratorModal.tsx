@@ -22,7 +22,7 @@ const PIX_TRANSACTION_TYPES: Record<string, string> = {
   cnpj: 'Pix - CNPJ',
   email: 'Pix - Email',
   phone: 'Pix - Celular',
-  random: 'Pix - Aleatória',
+  random: 'Pix - Chave Aleatória',
 };
 
 interface BatchGeneratorModalProps {
