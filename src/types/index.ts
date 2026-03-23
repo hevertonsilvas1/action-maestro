@@ -20,6 +20,8 @@ export interface Action {
   paidCount: number;
   pendingCount: number;
   plannedWinners: number;
+  mainPrizesValue: number;
+  operationalPrizesValue: number;
   createdAt: string;
   updatedAt: string;
 }
