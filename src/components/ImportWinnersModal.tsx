@@ -479,7 +479,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
             </div>
 
             {/* Winners table preview */}
-            <ScrollArea className="flex-1 border rounded-lg">
+            <ScrollArea className="flex-1 border rounded-lg max-h-[40vh] min-h-[200px]">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                   <tr>
