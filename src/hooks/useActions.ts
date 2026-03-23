@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Action } from '@/types';
 
 function mapAction(row: any): Action {
+  const prizes = row.prizes as any[] | null;
+  const plannedWinners = prizes ? prizes.reduce((s: number, p: any) => s + (p.quantity ?? 0), 0) : 0;
   return {
     id: row.id,
     name: row.name,
@@ -24,6 +26,7 @@ function mapAction(row: any): Action {
     winnersCount: row.winners_count,
     paidCount: row.paid_count,
     pendingCount: row.pending_count,
+    plannedWinners,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
