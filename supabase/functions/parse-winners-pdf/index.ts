@@ -25,7 +25,7 @@ Extract ALL winner records found in the document. Each record should have:
 - cpf: CPF number (only digits, remove dots and dashes)
 - phone: phone number (only digits, remove formatting)
 - value: prize value as a number (e.g., 100.00)
-- prize_datetime: date and time of the prize in ISO 8601 format (YYYY-MM-DDTHH:mm:ss)
+- prize_datetime: date and time of the prize in ISO 8601 format with Brazil timezone offset (YYYY-MM-DDTHH:mm:ss-03:00). The times in the PDF are in BRT (Brasília Time, UTC-3), so ALWAYS append -03:00 to the datetime.
 - title: the prize identifier / quota number / ticket number shown alongside the winner (e.g. "2344043", "0286773"). This is typically a numeric code shown before the value.
 
 IMPORTANT:
