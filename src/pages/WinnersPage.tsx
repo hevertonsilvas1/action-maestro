@@ -341,7 +341,7 @@ export default function WinnersPage() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           actionsMap={actionsMap}
-          showValueFilter={can(PERMISSIONS.FINANCEIRO_VER_DASHBOARD)}
+          showValueFilter
         />
 
         {isLoading ? (
