@@ -677,7 +677,7 @@ export default function ActionDetailPage() {
             <WinnersFilters
               filters={winnersFilters}
               onFiltersChange={handleWinnersFiltersChange}
-              showValueFilter={isAdmin}
+              showValueFilter
             />
 
             {/* Desktop Table */}
