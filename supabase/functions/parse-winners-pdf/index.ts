@@ -70,7 +70,7 @@ Do NOT include any text outside the JSON. Do NOT use markdown code fences.`;
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: prompt },
           {
@@ -78,7 +78,7 @@ Do NOT include any text outside the JSON. Do NOT use markdown code fences.`;
             content: [
               {
                 type: "text",
-                text: `Extract all winner records from this PDF report. File: ${fileName || "report.pdf"}`,
+                text: `Extract ALL winner records from this PDF table. Each row is one winner. Keep each row's data aligned correctly — name, phone, value, and date must belong to the same row. File: ${fileName || "report.pdf"}`,
               },
               {
                 type: "image_url",
