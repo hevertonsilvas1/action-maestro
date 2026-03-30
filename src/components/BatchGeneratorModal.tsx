@@ -322,7 +322,7 @@ export function BatchGeneratorModal({
               </p>
             )}
 
-            <ScrollArea className="flex-1 max-h-[400px] border rounded-lg">
+            <ScrollArea className="border rounded-lg" style={{ height: Math.min(eligible.length * 52 + 32, 400) }}>
               <div className="divide-y">
                 {eligibleNormal.length > 0 && (
                   <div className="px-3 py-1.5 bg-muted/30 sticky top-0 z-10">
