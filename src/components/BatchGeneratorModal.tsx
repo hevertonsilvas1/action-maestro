@@ -202,7 +202,7 @@ export function BatchGeneratorModal({
             winner_count: group.length,
             total_value: groupTotal,
             winners: group.map(w => w.name).join(', '),
-            status: { before: 'various', after: 'sent_to_batch' },
+            status: { before: 'various', after: mode === 'forced' ? 'lote_forcado' : 'sent_to_batch' },
           },
         });
       }
