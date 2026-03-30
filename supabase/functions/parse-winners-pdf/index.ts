@@ -18,36 +18,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    const prompt = `You are a data extraction expert. Analyze this PDF document which is a prize report from a sales system.
+    const prompt = `You are a precise data extraction expert. You will receive a PDF containing a table of prize winners.
 
-Extract ALL winner records found in the document. Each record should have:
-- name: the winner's name
-- cpf: CPF number (only digits, remove dots and dashes)
-- phone: phone number (only digits, remove formatting)
-- value: prize value as a number (e.g., 100.00)
-- prize_datetime: date and time of the prize in ISO 8601 format with Brazil timezone offset (YYYY-MM-DDTHH:mm:ss-03:00). The times in the PDF are in BRT (Brasília Time, UTC-3), so ALWAYS append -03:00 to the datetime.
-- title: the prize identifier / quota number / ticket number shown alongside the winner (e.g. "2344043", "0286773"). This is typically a numeric code shown before the value.
+The PDF has a structured table with these columns (in Portuguese):
+- Nome (name)
+- Telefone (phone)
+- Tipo (prize type description, e.g. "Roleta Instantânea")
+- Valor (value in BRL, e.g. "R$ 100,00")
+- Data (date/time in DD/MM/YYYY HH:mm:ss format)
+
+Sometimes the table may also include a "Cota" or "Título" column with a ticket/quota number.
+
+CRITICAL RULES FOR ACCURATE EXTRACTION:
+1. Extract EACH ROW independently. Do NOT mix data between rows.
+2. The "Nome" column contains the winner's full name - copy it EXACTLY as shown.
+3. The "Telefone" column contains the phone number - extract ONLY digits (remove parentheses, dashes, spaces).
+4. The "Valor" column contains the prize value - convert "R$ 100,00" to 100.00 (use dot as decimal separator).
+5. The "Data" column contains date/time - convert from "DD/MM/YYYY HH:mm:ss" to ISO 8601 with Brazil timezone: "YYYY-MM-DDTHH:mm:ss-03:00".
+6. The "Tipo" column describes the prize type - extract it as-is into the "prize_type_label" field.
+7. If there is a "Cota" or "Título" column, extract the number into the "title" field.
 
 IMPORTANT:
-- Extract EVERY single record, even if they appear repeated across pages
-- When the PDF shows prize data in the format "2344043 - 100,00", the part BEFORE the dash (e.g. "2344043") is the title/quota number and MUST go into "title", while the part AFTER the dash (e.g. "100,00") is the numeric value and MUST go into "value"
-- Do NOT try to determine the prize_type. The user will select it manually.
-- CPF must be digits only (remove . and -)
-- Phone must be digits only
-- Value must be a valid number
-- Date must be in ISO format
-- If a field is missing or unreadable, set it to null
+- Process ALL pages of the PDF, extracting EVERY row.
+- Keep each row's data aligned - the name, phone, value, and date must belong to the SAME person.
+- Do NOT skip any rows. Do NOT merge rows.
+- Do NOT invent or modify data. Extract exactly what is in the PDF.
+- CPF field: set to null (this PDF format typically does not include CPF).
 
-Return ONLY a valid JSON object with this exact structure:
+Return ONLY a valid JSON object:
 {
   "winners": [
     {
       "name": "string",
-      "cpf": "string or null",
-      "phone": "string or null",
+      "cpf": null,
+      "phone": "string (digits only) or null",
       "value": number,
-      "prize_datetime": "string ISO or null",
-      "title": "string or null"
+      "prize_datetime": "YYYY-MM-DDTHH:mm:ss-03:00",
+      "title": "string or null",
+      "prize_type_label": "string"
     }
   ],
   "total_found": number
