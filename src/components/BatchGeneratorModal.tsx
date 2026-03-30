@@ -40,7 +40,7 @@ interface BatchGeneratorModalProps {
 
 function isEligibleForBatch(w: Winner): boolean {
   // Winners currently in batch or in final statuses are not eligible
-  if (w.status === 'sent_to_batch' || ['receipt_attached', 'receipt_sent'].includes(w.status)) {
+  if (['sent_to_batch', 'lote_forcado', 'receipt_attached', 'receipt_sent'].includes(w.status)) {
     return false;
   }
 
