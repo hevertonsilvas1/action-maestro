@@ -167,6 +167,7 @@ export function BatchGeneratorModal({
           const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
           const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}`.slice(0, 240);
 
+          const isForced = w.status === 'forcar_pix';
           allRows.push({
             'Apelido': w.name,
             'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
@@ -175,7 +176,8 @@ export function BatchGeneratorModal({
             'Categoria (Opcional)': prizeLabel,
             'Centro de Custo (Opcional)': 'Premiações Instantâneas',
             'Descrição (Opcional) (Max. 240 Caractéres)': description,
-            ...(w.status === 'forcar_pix' ? { 'Observação': 'FORÇAR PIX - Dados operacionais' } : {}),
+            'Origem PIX': isForced ? 'Forçar PIX (dados operacionais)' : 'Chave informada',
+            '__forcar_pix': isForced, // internal flag, removed before export
           });
         }
 
