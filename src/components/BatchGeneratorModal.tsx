@@ -80,6 +80,8 @@ export function BatchGeneratorModal({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const eligible = useMemo(() => winners.filter(isEligibleForBatch), [winners]);
+  const eligibleNormal = useMemo(() => eligible.filter(w => w.status !== 'forcar_pix'), [eligible]);
+  const eligibleForced = useMemo(() => eligible.filter(w => w.status === 'forcar_pix'), [eligible]);
 
   const toggleId = (id: string) => {
     setSelectedIds(prev => {
@@ -98,6 +100,8 @@ export function BatchGeneratorModal({
   };
 
   const selected = useMemo(() => eligible.filter(w => selectedIds.has(w.id)), [eligible, selectedIds]);
+  const selectedNormal = selected.filter(w => w.status !== 'forcar_pix');
+  const selectedForced = selected.filter(w => w.status === 'forcar_pix');
   const totalValue = selected.reduce((s, w) => s + w.value, 0);
 
   const handleGenerate = async () => {
