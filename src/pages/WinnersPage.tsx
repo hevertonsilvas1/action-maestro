@@ -236,10 +236,16 @@ export default function WinnersPage() {
               </>
             )}
             {can(PERMISSIONS.GANHADOR_GERAR_LOTE) && (
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
-                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                Lote
-              </Button>
+              <>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                  Lote
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs border-warning/50 text-warning hover:text-warning" onClick={() => setBatchForcedOpen(true)}>
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                  Lote Forçar
+                </Button>
+              </>
             )}
             {can(PERMISSIONS.FINANCEIRO_VER_LOTES) && (
               <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setBatchHistoryOpen(true)}>
