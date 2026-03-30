@@ -80,6 +80,8 @@ export function BatchGeneratorModal({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const eligible = useMemo(() => winners.filter(isEligibleForBatch), [winners]);
+  const eligibleNormal = useMemo(() => eligible.filter(w => w.status !== 'forcar_pix'), [eligible]);
+  const eligibleForced = useMemo(() => eligible.filter(w => w.status === 'forcar_pix'), [eligible]);
 
   const toggleId = (id: string) => {
     setSelectedIds(prev => {
@@ -98,6 +100,8 @@ export function BatchGeneratorModal({
   };
 
   const selected = useMemo(() => eligible.filter(w => selectedIds.has(w.id)), [eligible, selectedIds]);
+  const selectedNormal = selected.filter(w => w.status !== 'forcar_pix');
+  const selectedForced = selected.filter(w => w.status === 'forcar_pix');
   const totalValue = selected.reduce((s, w) => s + w.value, 0);
 
   const handleGenerate = async () => {
@@ -167,6 +171,7 @@ export function BatchGeneratorModal({
           const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
           const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}`.slice(0, 240);
 
+          const isForced = w.status === 'forcar_pix';
           allRows.push({
             'Apelido': w.name,
             'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
@@ -175,7 +180,8 @@ export function BatchGeneratorModal({
             'Categoria (Opcional)': prizeLabel,
             'Centro de Custo (Opcional)': 'Premiações Instantâneas',
             'Descrição (Opcional) (Max. 240 Caractéres)': description,
-            ...(w.status === 'forcar_pix' ? { 'Observação': 'FORÇAR PIX - Dados operacionais' } : {}),
+            'Origem PIX': isForced ? 'Forçar PIX (dados operacionais)' : 'Chave informada',
+            '__forcar_pix': isForced, // internal flag, removed before export
           });
         }
 
@@ -194,18 +200,25 @@ export function BatchGeneratorModal({
         });
       }
 
-      const MAX_SIZE = 2 * 1024 * 1024;
+      // Separate rows into normal and forced PIX
+      const normalRows = allRows.filter(r => !r['__forcar_pix']);
+      const forcedRows = allRows.filter(r => r['__forcar_pix']);
+      // Remove internal flag before writing
+      normalRows.forEach(r => delete r['__forcar_pix']);
+      forcedRows.forEach(r => delete r['__forcar_pix']);
+
       const filenameActionBase = selected.length === 1
         ? (actionNamesById.get(selected[0].actionId)?.trim() || actionsMap?.[selected[0].actionId]?.trim() || selected[0].actionName || actionName || 'lote_pix').trim()
         : byAction.size === 1
           ? (actionNamesById.get(Array.from(byAction.keys())[0])?.trim() || actionName || 'lote_pix').trim()
           : (actionName || 'lote_pix').trim();
-      const baseFilename = `lote_pix_${filenameActionBase.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const sanitized = filenameActionBase.replace(/\s+/g, '_');
 
-      const buildWorkbook = (rows: Record<string, any>[]) => {
+      const buildWorkbook = (rows: Record<string, any>[], sheetName = 'Lote PIX') => {
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Lote PIX');
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
         ws['!cols'] = [
           { wch: 25 }, { wch: 18 }, { wch: 50 }, { wch: 12 },
           { wch: 20 }, { wch: 25 }, { wch: 50 },
@@ -213,48 +226,27 @@ export function BatchGeneratorModal({
         return wb;
       };
 
-      const fullWb = buildWorkbook(allRows);
-      const fullBuf = XLSX.write(fullWb, { type: 'array', bookType: 'xlsx' });
+      const writeFile = (rows: Record<string, any>[], baseName: string, sheetName = 'Lote PIX') => {
+        if (rows.length === 0) return;
+        const wb = buildWorkbook(rows, sheetName);
+        XLSX.writeFile(wb, `${baseName}.xlsx`);
+      };
 
-      if (fullBuf.byteLength <= MAX_SIZE) {
-        XLSX.writeFile(fullWb, `${baseFilename}.xlsx`);
-      } else {
-        let chunkStart = 0;
-        let part = 1;
-
-        while (chunkStart < allRows.length) {
-          let chunkEnd = allRows.length;
-          let buf: ArrayBuffer;
-
-          while (chunkEnd > chunkStart + 1) {
-            const mid = Math.floor((chunkStart + chunkEnd) / 2);
-            const testWb = buildWorkbook(allRows.slice(chunkStart, mid));
-            buf = XLSX.write(testWb, { type: 'array', bookType: 'xlsx' });
-
-            if (buf.byteLength <= MAX_SIZE) {
-              chunkEnd = mid;
-              const testWb2 = buildWorkbook(allRows.slice(chunkStart, chunkEnd + Math.floor((allRows.length - chunkEnd) / 2)));
-              const buf2 = XLSX.write(testWb2, { type: 'array', bookType: 'xlsx' });
-              if (buf2.byteLength <= MAX_SIZE) {
-                chunkEnd = chunkStart + Math.floor((chunkEnd - chunkStart + (allRows.length - chunkEnd) / 2));
-              }
-              break;
-            } else {
-              chunkEnd = mid;
-            }
-          }
-
-          const chunkWb = buildWorkbook(allRows.slice(chunkStart, chunkEnd));
-          XLSX.writeFile(chunkWb, `${baseFilename}_parte${part}.xlsx`);
-          chunkStart = chunkEnd;
-          part++;
-        }
-
-        toast.info(`Arquivo dividido em ${part - 1} partes (limite 2MB por arquivo).`);
+      // Write separate files
+      if (normalRows.length > 0) {
+        writeFile(normalRows, `lote_pix_${sanitized}_${dateStr}`);
+      }
+      if (forcedRows.length > 0) {
+        writeFile(forcedRows, `lote_forcar_pix_${sanitized}_${dateStr}`, 'Forçar PIX');
       }
 
+      const filesSummary = [
+        normalRows.length > 0 ? `${normalRows.length} normal` : '',
+        forcedRows.length > 0 ? `${forcedRows.length} forçar PIX` : '',
+      ].filter(Boolean).join(' + ');
+
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      toast.success(`Lote PIX gerado com ${selected.length} ganhadores!`);
+      toast.success(`Lote PIX gerado: ${filesSummary} (${selected.length} total)`);
       setSelectedIds(new Set());
       onOpenChange(false);
     } catch (err) {
@@ -287,7 +279,7 @@ export function BatchGeneratorModal({
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between">
+             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={selectedIds.size === eligible.length && eligible.length > 0}
@@ -298,15 +290,39 @@ export function BatchGeneratorModal({
                 </span>
               </div>
               <div className="flex items-center gap-3">
+                {selectedNormal.length > 0 && (
+                  <Badge variant="outline" className="text-[10px]">
+                    Normal: {selectedNormal.length}
+                  </Badge>
+                )}
+                {selectedForced.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] border-warning/50 text-warning">
+                    Forçar PIX: {selectedForced.length}
+                  </Badge>
+                )}
                 <Badge variant="outline" className="text-xs">
                   {formatCurrency(totalValue)}
                 </Badge>
               </div>
             </div>
 
+            {selectedForced.length > 0 && selectedNormal.length > 0 && (
+              <p className="text-[10px] text-warning flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Serão gerados 2 arquivos separados: PIX normal e Forçar PIX
+              </p>
+            )}
+
             <ScrollArea className="flex-1 max-h-[400px] border rounded-lg">
               <div className="divide-y">
-                {eligible.map(w => (
+                {eligibleNormal.length > 0 && (
+                  <div className="px-3 py-1.5 bg-muted/30 sticky top-0 z-10">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      PIX Normal ({eligibleNormal.length})
+                    </span>
+                  </div>
+                )}
+                {eligibleNormal.map(w => (
                   <label
                     key={w.id}
                     className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors"
@@ -318,13 +334,32 @@ export function BatchGeneratorModal({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{w.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {(() => {
-                          const { pixType } = getOperationalPixData(w);
-                          const label = PIX_TYPE_LABELS[pixType];
-                          return w.status === 'forcar_pix' && !w.pixKey
-                            ? `${label} (operacional)`
-                            : label;
-                        })()} · {w.prizeTitle}
+                        {PIX_TYPE_LABELS[getOperationalPixData(w).pixType]} · {w.prizeTitle}
+                      </p>
+                    </div>
+                    <span className="text-sm font-medium shrink-0">{formatCurrency(w.value)}</span>
+                  </label>
+                ))}
+                {eligibleForced.length > 0 && (
+                  <div className="px-3 py-1.5 bg-warning/10 sticky top-0 z-10 border-t-2 border-warning/30">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-warning">
+                      Forçar PIX ({eligibleForced.length})
+                    </span>
+                  </div>
+                )}
+                {eligibleForced.map(w => (
+                  <label
+                    key={w.id}
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-warning/5 cursor-pointer transition-colors"
+                  >
+                    <Checkbox
+                      checked={selectedIds.has(w.id)}
+                      onCheckedChange={() => toggleId(w.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{w.name}</p>
+                      <p className="text-[10px] text-warning">
+                        {PIX_TYPE_LABELS[getOperationalPixData(w).pixType]} (operacional) · {w.prizeTitle}
                       </p>
                     </div>
                     <span className="text-sm font-medium shrink-0">{formatCurrency(w.value)}</span>

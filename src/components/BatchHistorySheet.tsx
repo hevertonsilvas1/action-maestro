@@ -83,6 +83,7 @@ async function downloadBatch(batchId: string, filename: string | null) {
       'Categoria (Opcional)': prizeLabel,
       'Centro de Custo (Opcional)': 'Premiações Instantâneas',
       'Descrição (Opcional) (Max. 240 Caractéres)': description,
+      'Origem PIX': (resolved.source === 'cpf' || resolved.source === 'phone') ? 'Forçar PIX (dados operacionais)' : 'Chave informada',
     };
   });
 
