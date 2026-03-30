@@ -40,7 +40,7 @@ interface BatchGeneratorModalProps {
 
 function isEligibleForBatch(w: Winner): boolean {
   // Winners currently in batch or in final statuses are not eligible
-  if (w.status === 'sent_to_batch' || ['receipt_attached', 'receipt_sent'].includes(w.status)) {
+  if (['sent_to_batch', 'lote_forcado', 'receipt_attached', 'receipt_sent'].includes(w.status)) {
     return false;
   }
 
@@ -164,7 +164,7 @@ export function BatchGeneratorModal({
         const { error: updateError } = await supabase
           .from('winners')
           .update({
-            status: 'sent_to_batch' as any,
+            status: (mode === 'forced' ? 'lote_forcado' : 'sent_to_batch') as any,
             batch_id: batch.id,
             payment_method: 'lote_pix' as any,
             updated_at: now,
@@ -202,7 +202,7 @@ export function BatchGeneratorModal({
             winner_count: group.length,
             total_value: groupTotal,
             winners: group.map(w => w.name).join(', '),
-            status: { before: 'various', after: 'sent_to_batch' },
+            status: { before: 'various', after: mode === 'forced' ? 'lote_forcado' : 'sent_to_batch' },
           },
         });
       }
@@ -264,7 +264,7 @@ export function BatchGeneratorModal({
     }
   };
 
-  const ineligible = winners.filter(w => !isEligibleForBatch(w) && !['receipt_attached', 'receipt_sent'].includes(w.status));
+  const ineligible = winners.filter(w => !isEligibleForBatch(w) && !['receipt_attached', 'receipt_sent', 'sent_to_batch', 'lote_forcado'].includes(w.status));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
