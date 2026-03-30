@@ -76,13 +76,17 @@ function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } 
 }
 
 export function BatchGeneratorModal({
-  open, onOpenChange, winners, actionId, actionName, userName, actionsMap,
+  open, onOpenChange, winners, actionId, actionName, userName, actionsMap, mode = 'normal',
 }: BatchGeneratorModalProps) {
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const eligible = useMemo(() => winners.filter(isEligibleForBatch), [winners]);
+  const eligible = useMemo(() => {
+    const all = winners.filter(isEligibleForBatch);
+    if (mode === 'forced') return all.filter(w => w.status === 'forcar_pix');
+    return all.filter(w => w.status !== 'forcar_pix');
+  }, [winners, mode]);
   const eligibleNormal = useMemo(() => eligible.filter(w => w.status !== 'forcar_pix'), [eligible]);
   const eligibleForced = useMemo(() => eligible.filter(w => w.status === 'forcar_pix'), [eligible]);
 
