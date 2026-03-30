@@ -279,7 +279,7 @@ export function BatchGeneratorModal({
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between">
+             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={selectedIds.size === eligible.length && eligible.length > 0}
@@ -290,15 +290,39 @@ export function BatchGeneratorModal({
                 </span>
               </div>
               <div className="flex items-center gap-3">
+                {selectedNormal.length > 0 && (
+                  <Badge variant="outline" className="text-[10px]">
+                    Normal: {selectedNormal.length}
+                  </Badge>
+                )}
+                {selectedForced.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] border-warning/50 text-warning">
+                    Forçar PIX: {selectedForced.length}
+                  </Badge>
+                )}
                 <Badge variant="outline" className="text-xs">
                   {formatCurrency(totalValue)}
                 </Badge>
               </div>
             </div>
 
+            {selectedForced.length > 0 && selectedNormal.length > 0 && (
+              <p className="text-[10px] text-warning flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Serão gerados 2 arquivos separados: PIX normal e Forçar PIX
+              </p>
+            )}
+
             <ScrollArea className="flex-1 max-h-[400px] border rounded-lg">
               <div className="divide-y">
-                {eligible.map(w => (
+                {eligibleNormal.length > 0 && (
+                  <div className="px-3 py-1.5 bg-muted/30 sticky top-0 z-10">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      PIX Normal ({eligibleNormal.length})
+                    </span>
+                  </div>
+                )}
+                {eligibleNormal.map(w => (
                   <label
                     key={w.id}
                     className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors"
@@ -310,13 +334,32 @@ export function BatchGeneratorModal({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{w.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {(() => {
-                          const { pixType } = getOperationalPixData(w);
-                          const label = PIX_TYPE_LABELS[pixType];
-                          return w.status === 'forcar_pix' && !w.pixKey
-                            ? `${label} (operacional)`
-                            : label;
-                        })()} · {w.prizeTitle}
+                        {PIX_TYPE_LABELS[getOperationalPixData(w).pixType]} · {w.prizeTitle}
+                      </p>
+                    </div>
+                    <span className="text-sm font-medium shrink-0">{formatCurrency(w.value)}</span>
+                  </label>
+                ))}
+                {eligibleForced.length > 0 && (
+                  <div className="px-3 py-1.5 bg-warning/10 sticky top-0 z-10 border-t-2 border-warning/30">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-warning">
+                      Forçar PIX ({eligibleForced.length})
+                    </span>
+                  </div>
+                )}
+                {eligibleForced.map(w => (
+                  <label
+                    key={w.id}
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-warning/5 cursor-pointer transition-colors"
+                  >
+                    <Checkbox
+                      checked={selectedIds.has(w.id)}
+                      onCheckedChange={() => toggleId(w.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{w.name}</p>
+                      <p className="text-[10px] text-warning">
+                        {PIX_TYPE_LABELS[getOperationalPixData(w).pixType]} (operacional) · {w.prizeTitle}
                       </p>
                     </div>
                     <span className="text-sm font-medium shrink-0">{formatCurrency(w.value)}</span>
