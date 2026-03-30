@@ -1579,6 +1579,20 @@ export default function ActionDetailPage() {
           actionName={action.name}
           userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
           actionsMap={{ [action.id]: action.name }}
+          mode="normal"
+        />
+      )}
+
+      {action && (
+        <BatchGeneratorModal
+          open={batchForcedOpen}
+          onOpenChange={setBatchForcedOpen}
+          winners={winners}
+          actionId={action.id}
+          actionName={action.name}
+          userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
+          actionsMap={{ [action.id]: action.name }}
+          mode="forced"
         />
       )}
 

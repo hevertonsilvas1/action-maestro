@@ -700,7 +700,8 @@ export default function WinnersPage() {
       <BatchStatusModal open={batchStatusOpen} onOpenChange={setBatchStatusOpen} winnerIds={Array.from(selected)} currentStatuses={selectedWinners.map(w => w.status)} onDone={() => setSelected(new Set())} />
       <PixDataModal open={!!pixTarget} onOpenChange={v => { if (!v) setPixTarget(null); }} winner={pixTarget} isAdmin={can(PERMISSIONS.GANHADOR_EDITAR)} userName={userName} actionId={pixTarget?.actionId || ''} />
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
-      <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} />
+      <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} mode="normal" />
+      <BatchGeneratorModal open={batchForcedOpen} onOpenChange={setBatchForcedOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} mode="forced" />
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
       <BatchHistorySheet open={batchHistoryOpen} onOpenChange={setBatchHistoryOpen} />
 
