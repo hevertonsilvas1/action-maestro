@@ -25,6 +25,8 @@ const PIX_TRANSACTION_TYPES: Record<string, string> = {
   random: 'Pix - Chave Aleatória',
 };
 
+export type BatchMode = 'normal' | 'forced';
+
 interface BatchGeneratorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +35,7 @@ interface BatchGeneratorModalProps {
   actionName: string;
   userName: string;
   actionsMap?: Record<string, string>;
+  mode?: BatchMode;
 }
 
 function isEligibleForBatch(w: Winner): boolean {
