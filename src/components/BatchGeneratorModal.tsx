@@ -242,7 +242,7 @@ export function BatchGeneratorModal({
       ].filter(Boolean).join(' + ');
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      toast.success(`Lote PIX gerado com ${selected.length} ganhadores!`);
+      toast.success(`Lote PIX gerado: ${filesSummary} (${selected.length} total)`);
       setSelectedIds(new Set());
       onOpenChange(false);
     } catch (err) {
