@@ -220,21 +220,35 @@ export default function ActionDetailPage() {
   const receiptSentCount = winners.filter(w => w.status === 'receipt_sent').length;
   const receiptAttachedCount = winners.filter(w => w.status === 'receipt_attached' || w.status === 'receipt_sent').length;
 
-  // Prize consumption: group winners by prize title to track planned vs processed
+  // Prize consumption: group winners by prize to track planned vs processed
+  // Match by title first, then fallback to unit value matching
   const prizeConsumption = useMemo(() => {
     if (!prizes.length) return [];
+
+    // Track which winners have been assigned to avoid double-counting
+    const assignedWinnerIds = new Set<string>();
+
     return prizes.map(prize => {
-      const matchingWinners = winners.filter(w => w.prizeTitle === prize.title);
-      const processedCount = matchingWinners.length;
-      const paidCount = matchingWinners.filter(w => paidStatuses.includes(w.status)).length;
-      const paidValue = matchingWinners.filter(w => paidStatuses.includes(w.status)).reduce((s, w) => s + w.value, 0);
+      // Try exact title match first, then match by unit value
+      const matchingWinners = winners.filter(w => {
+        if (assignedWinnerIds.has(w.id)) return false;
+        return w.prizeTitle === prize.title || w.value === prize.unitValue;
+      });
+
+      // Limit to planned quantity and mark as assigned
+      const cappedWinners = matchingWinners.slice(0, Math.max(matchingWinners.length, prize.quantity));
+      cappedWinners.forEach(w => assignedWinnerIds.add(w.id));
+
+      const processedCount = cappedWinners.length;
+      const paidCount = cappedWinners.filter(w => paidStatuses.includes(w.status)).length;
+      const paidValue = cappedWinners.filter(w => paidStatuses.includes(w.status)).reduce((s, w) => s + w.value, 0);
       return {
         ...prize,
         processedCount,
         remainingCount: Math.max(0, prize.quantity - processedCount),
         paidCount,
         paidValue,
-        pendingValue: matchingWinners.reduce((s, w) => s + w.value, 0) - paidValue,
+        pendingValue: cappedWinners.reduce((s, w) => s + w.value, 0) - paidValue,
         progress: prize.quantity > 0 ? (processedCount / prize.quantity) * 100 : 0,
       };
     });
