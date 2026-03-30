@@ -600,10 +600,16 @@ export default function ActionDetailPage() {
                     </Button>
                   )}
                   {isAdmin && (
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
-                      <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                      Gerar Lote PIX
-                    </Button>
+                    <>
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                        Gerar Lote PIX
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-8 text-xs border-warning/50 text-warning hover:text-warning" onClick={() => setBatchForcedOpen(true)}>
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                        Lote Forçar PIX
+                      </Button>
+                    </>
                   )}
                   <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setBatchHistoryOpen(true)}>
                     <History className="h-3.5 w-3.5 mr-1.5" />
