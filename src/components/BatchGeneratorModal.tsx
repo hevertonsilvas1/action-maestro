@@ -264,7 +264,7 @@ export function BatchGeneratorModal({
     }
   };
 
-  const ineligible = winners.filter(w => !isEligibleForBatch(w) && !['receipt_attached', 'receipt_sent'].includes(w.status));
+  const ineligible = winners.filter(w => !isEligibleForBatch(w) && !['receipt_attached', 'receipt_sent', 'sent_to_batch', 'lote_forcado'].includes(w.status));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
