@@ -194,18 +194,25 @@ export function BatchGeneratorModal({
         });
       }
 
-      const MAX_SIZE = 2 * 1024 * 1024;
+      // Separate rows into normal and forced PIX
+      const normalRows = allRows.filter(r => !r['__forcar_pix']);
+      const forcedRows = allRows.filter(r => r['__forcar_pix']);
+      // Remove internal flag before writing
+      normalRows.forEach(r => delete r['__forcar_pix']);
+      forcedRows.forEach(r => delete r['__forcar_pix']);
+
       const filenameActionBase = selected.length === 1
         ? (actionNamesById.get(selected[0].actionId)?.trim() || actionsMap?.[selected[0].actionId]?.trim() || selected[0].actionName || actionName || 'lote_pix').trim()
         : byAction.size === 1
           ? (actionNamesById.get(Array.from(byAction.keys())[0])?.trim() || actionName || 'lote_pix').trim()
           : (actionName || 'lote_pix').trim();
-      const baseFilename = `lote_pix_${filenameActionBase.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const sanitized = filenameActionBase.replace(/\s+/g, '_');
 
-      const buildWorkbook = (rows: Record<string, any>[]) => {
+      const buildWorkbook = (rows: Record<string, any>[], sheetName = 'Lote PIX') => {
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Lote PIX');
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
         ws['!cols'] = [
           { wch: 25 }, { wch: 18 }, { wch: 50 }, { wch: 12 },
           { wch: 20 }, { wch: 25 }, { wch: 50 },
@@ -213,45 +220,24 @@ export function BatchGeneratorModal({
         return wb;
       };
 
-      const fullWb = buildWorkbook(allRows);
-      const fullBuf = XLSX.write(fullWb, { type: 'array', bookType: 'xlsx' });
+      const writeFile = (rows: Record<string, any>[], baseName: string, sheetName = 'Lote PIX') => {
+        if (rows.length === 0) return;
+        const wb = buildWorkbook(rows, sheetName);
+        XLSX.writeFile(wb, `${baseName}.xlsx`);
+      };
 
-      if (fullBuf.byteLength <= MAX_SIZE) {
-        XLSX.writeFile(fullWb, `${baseFilename}.xlsx`);
-      } else {
-        let chunkStart = 0;
-        let part = 1;
-
-        while (chunkStart < allRows.length) {
-          let chunkEnd = allRows.length;
-          let buf: ArrayBuffer;
-
-          while (chunkEnd > chunkStart + 1) {
-            const mid = Math.floor((chunkStart + chunkEnd) / 2);
-            const testWb = buildWorkbook(allRows.slice(chunkStart, mid));
-            buf = XLSX.write(testWb, { type: 'array', bookType: 'xlsx' });
-
-            if (buf.byteLength <= MAX_SIZE) {
-              chunkEnd = mid;
-              const testWb2 = buildWorkbook(allRows.slice(chunkStart, chunkEnd + Math.floor((allRows.length - chunkEnd) / 2)));
-              const buf2 = XLSX.write(testWb2, { type: 'array', bookType: 'xlsx' });
-              if (buf2.byteLength <= MAX_SIZE) {
-                chunkEnd = chunkStart + Math.floor((chunkEnd - chunkStart + (allRows.length - chunkEnd) / 2));
-              }
-              break;
-            } else {
-              chunkEnd = mid;
-            }
-          }
-
-          const chunkWb = buildWorkbook(allRows.slice(chunkStart, chunkEnd));
-          XLSX.writeFile(chunkWb, `${baseFilename}_parte${part}.xlsx`);
-          chunkStart = chunkEnd;
-          part++;
-        }
-
-        toast.info(`Arquivo dividido em ${part - 1} partes (limite 2MB por arquivo).`);
+      // Write separate files
+      if (normalRows.length > 0) {
+        writeFile(normalRows, `lote_pix_${sanitized}_${dateStr}`);
       }
+      if (forcedRows.length > 0) {
+        writeFile(forcedRows, `lote_forcar_pix_${sanitized}_${dateStr}`, 'Forçar PIX');
+      }
+
+      const filesSummary = [
+        normalRows.length > 0 ? `${normalRows.length} normal` : '',
+        forcedRows.length > 0 ? `${forcedRows.length} forçar PIX` : '',
+      ].filter(Boolean).join(' + ');
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
       toast.success(`Lote PIX gerado com ${selected.length} ganhadores!`);
