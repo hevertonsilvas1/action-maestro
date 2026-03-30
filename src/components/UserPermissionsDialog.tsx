@@ -193,7 +193,8 @@ export function UserPermissionsDialog({
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto space-y-5 pr-1 py-2">
+          <ScrollArea className="pr-1 py-2" style={{ height: Math.min(Object.keys(overrides).length * 40 + 400, 500) }}>
+           <div className="space-y-5">
             {/* Legend */}
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground border rounded-lg p-3 bg-muted/30">
               <span className="font-medium text-foreground">Legenda:</span>
