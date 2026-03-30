@@ -145,7 +145,7 @@ export function BatchHistorySheet({ open, onOpenChange, actionId }: BatchHistory
             Nenhum lote PIX gerado ainda.
           </div>
         ) : (
-          <ScrollArea className="flex-1 -mx-6 px-6">
+          <ScrollArea className="-mx-6 px-6" style={{ height: 'calc(100vh - 180px)' }}>
             <div className="space-y-3 pb-4">
               {batches.map(batch => (
                 <div
