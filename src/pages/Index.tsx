@@ -210,9 +210,10 @@ const Index = () => {
 
         {/* ═══ BLOCO OPERAÇÃO ═══ */}
         <DashboardBlock title="Operação" icon={Users}>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
             <MiniCard label="Aguardando PIX" value={String(statusCounts['awaiting_pix'] || 0)} variant="warning" />
             <MiniCard label="PIX Recebido" value={String(statusCounts['pix_received'] || 0)} variant="primary" />
+            <MiniCard label="Forçar PIX" value={String(statusCounts['forcar_pix'] || 0)} variant="destructive" />
             <MiniCard label="Enviados p/ Lote" value={String(statusCounts['sent_to_batch'] || 0)} variant="default" />
             <MiniCard label="Pagos" value={String(statusCounts['paid'] || 0)} variant="success" />
             <MiniCard label="Comp. Enviados" value={String(statusCounts['receipt_sent'] || 0)} variant="success" />
