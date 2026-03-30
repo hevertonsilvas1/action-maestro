@@ -268,7 +268,8 @@ export function UserPermissionsDialog({
                 </div>
               </div>
             ))}
-          </div>
+           </div>
+          </ScrollArea>
         )}
 
         <DialogFooter className="pt-2">
