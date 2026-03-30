@@ -164,7 +164,7 @@ export function BatchGeneratorModal({
         const { error: updateError } = await supabase
           .from('winners')
           .update({
-            status: 'sent_to_batch' as any,
+            status: (mode === 'forced' ? 'lote_forcado' : 'sent_to_batch') as any,
             batch_id: batch.id,
             payment_method: 'lote_pix' as any,
             updated_at: now,
