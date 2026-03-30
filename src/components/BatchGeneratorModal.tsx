@@ -25,6 +25,8 @@ const PIX_TRANSACTION_TYPES: Record<string, string> = {
   random: 'Pix - Chave Aleatória',
 };
 
+export type BatchMode = 'normal' | 'forced';
+
 interface BatchGeneratorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +35,7 @@ interface BatchGeneratorModalProps {
   actionName: string;
   userName: string;
   actionsMap?: Record<string, string>;
+  mode?: BatchMode;
 }
 
 function isEligibleForBatch(w: Winner): boolean {
@@ -73,13 +76,17 @@ function getOperationalPixData(w: Winner): { pixKey: string; pixType: PixType } 
 }
 
 export function BatchGeneratorModal({
-  open, onOpenChange, winners, actionId, actionName, userName, actionsMap,
+  open, onOpenChange, winners, actionId, actionName, userName, actionsMap, mode = 'normal',
 }: BatchGeneratorModalProps) {
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const eligible = useMemo(() => winners.filter(isEligibleForBatch), [winners]);
+  const eligible = useMemo(() => {
+    const all = winners.filter(isEligibleForBatch);
+    if (mode === 'forced') return all.filter(w => w.status === 'forcar_pix');
+    return all.filter(w => w.status !== 'forcar_pix');
+  }, [winners, mode]);
   const eligibleNormal = useMemo(() => eligible.filter(w => w.status !== 'forcar_pix'), [eligible]);
   const eligibleForced = useMemo(() => eligible.filter(w => w.status === 'forcar_pix'), [eligible]);
 
@@ -265,10 +272,12 @@ export function BatchGeneratorModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Gerar Lote PIX
+            {mode === 'forced' ? 'Gerar Lote Forçar PIX' : 'Gerar Lote PIX'}
           </DialogTitle>
           <DialogDescription>
-            Selecione os ganhadores para incluir no arquivo de lote bancário (.xlsx)
+            {mode === 'forced'
+              ? 'Selecione os ganhadores com PIX forçado (CPF/Telefone) para o lote bancário (.xlsx)'
+              : 'Selecione os ganhadores para incluir no arquivo de lote bancário (.xlsx)'}
           </DialogDescription>
         </DialogHeader>
 

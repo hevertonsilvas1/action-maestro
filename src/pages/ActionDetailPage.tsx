@@ -91,6 +91,7 @@ export default function ActionDetailPage() {
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<Set<string>>(new Set());
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [batchForcedOpen, setBatchForcedOpen] = useState(false);
   const [batchHistoryOpen, setBatchHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -599,10 +600,16 @@ export default function ActionDetailPage() {
                     </Button>
                   )}
                   {isAdmin && (
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
-                      <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                      Gerar Lote PIX
-                    </Button>
+                    <>
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                        Gerar Lote PIX
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-8 text-xs border-warning/50 text-warning hover:text-warning" onClick={() => setBatchForcedOpen(true)}>
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                        Lote Forçar PIX
+                      </Button>
+                    </>
                   )}
                   <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setBatchHistoryOpen(true)}>
                     <History className="h-3.5 w-3.5 mr-1.5" />
@@ -1572,6 +1579,20 @@ export default function ActionDetailPage() {
           actionName={action.name}
           userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
           actionsMap={{ [action.id]: action.name }}
+          mode="normal"
+        />
+      )}
+
+      {action && (
+        <BatchGeneratorModal
+          open={batchForcedOpen}
+          onOpenChange={setBatchForcedOpen}
+          winners={winners}
+          actionId={action.id}
+          actionName={action.name}
+          userName={user?.user_metadata?.display_name || user?.email || 'Sistema'}
+          actionsMap={{ [action.id]: action.name }}
+          mode="forced"
         />
       )}
 

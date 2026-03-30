@@ -64,6 +64,7 @@ export default function WinnersPage() {
   const [receiptTarget, setReceiptTarget] = useState<Winner | null>(null);
   const [batchStatusOpen, setBatchStatusOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
+  const [batchForcedOpen, setBatchForcedOpen] = useState(false);
   const [batchHistoryOpen, setBatchHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Winner | null>(null);
   const [importActionSelectorOpen, setImportActionSelectorOpen] = useState(false);
@@ -235,10 +236,16 @@ export default function WinnersPage() {
               </>
             )}
             {can(PERMISSIONS.GANHADOR_GERAR_LOTE) && (
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
-                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                Lote
-              </Button>
+              <>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setBatchGeneratorOpen(true)}>
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                  Lote
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs border-warning/50 text-warning hover:text-warning" onClick={() => setBatchForcedOpen(true)}>
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                  Lote Forçar
+                </Button>
+              </>
             )}
             {can(PERMISSIONS.FINANCEIRO_VER_LOTES) && (
               <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setBatchHistoryOpen(true)}>
@@ -693,7 +700,8 @@ export default function WinnersPage() {
       <BatchStatusModal open={batchStatusOpen} onOpenChange={setBatchStatusOpen} winnerIds={Array.from(selected)} currentStatuses={selectedWinners.map(w => w.status)} onDone={() => setSelected(new Set())} />
       <PixDataModal open={!!pixTarget} onOpenChange={v => { if (!v) setPixTarget(null); }} winner={pixTarget} isAdmin={can(PERMISSIONS.GANHADOR_EDITAR)} userName={userName} actionId={pixTarget?.actionId || ''} />
       <ReceiptManager open={!!receiptTarget} onOpenChange={v => { if (!v) setReceiptTarget(null); }} winner={receiptTarget} userName={userName} actionId={receiptTarget?.actionId || ''} actionName={receiptTarget ? (actionsMap[receiptTarget.actionId] || '') : ''} />
-      <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} />
+      <BatchGeneratorModal open={batchGeneratorOpen} onOpenChange={setBatchGeneratorOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} mode="normal" />
+      <BatchGeneratorModal open={batchForcedOpen} onOpenChange={setBatchForcedOpen} winners={winners} actionId="" actionName="Todos" userName={userName} actionsMap={actionsMap} mode="forced" />
       <StatusHistorySheet open={!!historyTarget} onOpenChange={v => { if (!v) setHistoryTarget(null); }} winnerId={historyTarget?.id || null} winnerName={historyTarget?.name || ''} />
       <BatchHistorySheet open={batchHistoryOpen} onOpenChange={setBatchHistoryOpen} />
 
