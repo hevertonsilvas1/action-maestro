@@ -249,7 +249,7 @@ export function useImportWinners(actionId: string, actionName: string) {
     );
 
     const existingDbKeys = new Set(
-      (existingWinners || [])
+      existingWinners
         .map((w) => buildDbDedupKey(w.cpf, w.prize_type, w.prize_datetime, Number(w.value)))
         .filter((key): key is string => Boolean(key))
     );
