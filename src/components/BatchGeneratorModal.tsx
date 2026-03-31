@@ -117,90 +117,95 @@ export function BatchGeneratorModal({
 
     try {
       const now = new Date().toISOString();
-      const byAction = new Map<string, Winner[]>();
+      const dateStr = new Date().toISOString().slice(0, 10);
 
-      for (const w of selected) {
-        const group = byAction.get(w.actionId) || [];
-        group.push(w);
-        byAction.set(w.actionId, group);
-      }
-
-      const actionIds = Array.from(byAction.keys());
+      // Resolve action names
+      const uniqueActionIds = [...new Set(selected.map(w => w.actionId))];
       const { data: actionsData, error: actionsError } = await supabase
         .from('actions')
         .select('id, name')
-        .in('id', actionIds);
+        .in('id', uniqueActionIds);
 
       if (actionsError) throw actionsError;
 
-      const actionNamesById = new Map((actionsData || []).map(action => [action.id, action.name]));
+      const actionNamesById = new Map((actionsData || []).map(a => [a.id, a.name]));
+
+      const resolveActionName = (aId: string) => {
+        return actionNamesById.get(aId)?.trim() || actionsMap?.[aId]?.trim() || (aId === actionId ? actionName.trim() : '') || 'Ação';
+      };
+
+      // Build filename - use first action_id for DB record, but combine names for display
+      const actionNamesForFile = uniqueActionIds.map(id => resolveActionName(id));
+      const filenameActionBase = uniqueActionIds.length === 1
+        ? actionNamesForFile[0]
+        : 'multiplas_acoes';
+      const sanitizedBase = filenameActionBase.replace(/\s+/g, '_');
+      const batchFilename = `lote_pix_${sanitizedBase}_${dateStr}.xlsx`;
+
+      // Create ONE single batch record
+      const { data: batch, error: batchError } = await supabase
+        .from('pix_batches')
+        .insert({
+          action_id: uniqueActionIds[0],
+          generated_by: userName,
+          generated_at: now,
+          winner_count: selected.length,
+          total_value: totalValue,
+          filename: batchFilename,
+        } as any)
+        .select('id')
+        .single();
+
+      if (batchError) throw batchError;
+
+      // Update ALL selected winners with the single batch_id
+      const winnerIds = selected.map(w => w.id);
+      const { error: updateError } = await supabase
+        .from('winners')
+        .update({
+          status: (mode === 'forced' ? 'lote_forcado' : 'sent_to_batch') as any,
+          batch_id: batch.id,
+          payment_method: 'lote_pix' as any,
+          updated_at: now,
+        } as any)
+        .in('id', winnerIds);
+
+      if (updateError) throw updateError;
+
+      // Build spreadsheet rows
       const allRows: Record<string, any>[] = [];
+      for (const w of selected) {
+        const resolvedName = resolveActionName(w.actionId);
+        const { pixKey, pixType } = getOperationalPixData(w);
+        const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
+        const isForced = w.status === 'forcar_pix';
+        const origemLabel = isForced ? ' [PIX Forçado]' : '';
+        const description = `AÇÃO - ${resolvedName} - ${prizeLabel}${origemLabel}`.slice(0, 240);
 
-      for (const [aId, group] of byAction) {
-        const fetchedActionName = actionNamesById.get(aId)?.trim();
-        const mappedActionName = actionsMap?.[aId]?.trim();
-        const winnerActionName = group.find(w => w.actionName?.trim())?.actionName?.trim();
-        const propActionName = aId === actionId ? actionName.trim() : '';
-        const resolvedActionName = fetchedActionName || mappedActionName || winnerActionName || propActionName || 'Ação';
-        const groupTotal = group.reduce((s, w) => s + w.value, 0);
-        const filename = `lote_pix_${resolvedActionName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        allRows.push({
+          'Apelido': w.name,
+          'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
+          'Dados de Pagamento (Número do Boleto ou Chave Pix)': pixKey,
+          'Valor (R$)': w.value,
+          'Categoria (Opcional)': prizeLabel,
+          'Centro de Custo (Opcional)': 'Premiações Instantâneas',
+          'Descrição (Opcional) (Max. 240 Caractéres)': description,
+          '__forcar_pix': isForced,
+        });
+      }
 
-        const { data: batch, error: batchError } = await supabase
-          .from('pix_batches')
-          .insert({
-            action_id: aId,
-            generated_by: userName,
-            generated_at: now,
-            winner_count: group.length,
-            total_value: groupTotal,
-            filename,
-          } as any)
-          .select('id')
-          .single();
-
-        if (batchError) throw batchError;
-
-        const winnerIds = group.map(w => w.id);
-        const { error: updateError } = await supabase
-          .from('winners')
-          .update({
-            status: (mode === 'forced' ? 'lote_forcado' : 'sent_to_batch') as any,
-            batch_id: batch.id,
-            payment_method: 'lote_pix' as any,
-            updated_at: now,
-          } as any)
-          .in('id', winnerIds);
-
-        if (updateError) throw updateError;
-
-        for (const w of group) {
-          const { pixKey, pixType } = getOperationalPixData(w);
-          const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
-          const isForced = w.status === 'forcar_pix';
-          const origemLabel = isForced ? ' [PIX Forçado]' : '';
-          const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}${origemLabel}`.slice(0, 240);
-
-          allRows.push({
-            'Apelido': w.name,
-            'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
-            'Dados de Pagamento (Número do Boleto ou Chave Pix)': pixKey,
-            'Valor (R$)': w.value,
-            'Categoria (Opcional)': prizeLabel,
-            'Centro de Custo (Opcional)': 'Premiações Instantâneas',
-            'Descrição (Opcional) (Max. 240 Caractéres)': description,
-            '__forcar_pix': isForced,
-          });
-        }
-
+      // Audit log per action
+      for (const aId of uniqueActionIds) {
+        const group = selected.filter(w => w.actionId === aId);
         await insertAuditLog({
           actionId: aId,
-          actionName: resolvedActionName,
+          actionName: resolveActionName(aId),
           tableName: 'winners',
           operation: 'lote_pix_gerado',
           changes: {
             batch_id: batch.id,
             winner_count: group.length,
-            total_value: groupTotal,
+            total_value: group.reduce((s, w) => s + w.value, 0),
             winners: group.map(w => w.name).join(', '),
             status: { before: 'various', after: mode === 'forced' ? 'lote_forcado' : 'sent_to_batch' },
           },
@@ -210,16 +215,8 @@ export function BatchGeneratorModal({
       // Separate rows into normal and forced PIX
       const normalRows = allRows.filter(r => !r['__forcar_pix']);
       const forcedRows = allRows.filter(r => r['__forcar_pix']);
-      // Remove internal flag before writing
       normalRows.forEach(r => delete r['__forcar_pix']);
       forcedRows.forEach(r => delete r['__forcar_pix']);
-
-      const filenameActionBase = selected.length === 1
-        ? (actionNamesById.get(selected[0].actionId)?.trim() || actionsMap?.[selected[0].actionId]?.trim() || selected[0].actionName || actionName || 'lote_pix').trim()
-        : byAction.size === 1
-          ? (actionNamesById.get(Array.from(byAction.keys())[0])?.trim() || actionName || 'lote_pix').trim()
-          : (actionName || 'lote_pix').trim();
-      const dateStr = new Date().toISOString().slice(0, 10);
       const sanitized = filenameActionBase.replace(/\s+/g, '_');
 
       const buildWorkbook = (rows: Record<string, any>[], sheetName = 'Lote PIX') => {
