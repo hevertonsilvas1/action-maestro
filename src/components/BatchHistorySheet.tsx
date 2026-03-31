@@ -73,8 +73,6 @@ async function downloadBatch(batchId: string, filename: string | null) {
     }
 
     const prizeLabel = w.prize_title || w.prize_type || 'Prêmio';
-    const description = `AÇÃO - ${actionName} - ${prizeLabel}`.slice(0, 240);
-
     const isForced = w.status === 'forcar_pix' || w.status === 'lote_forcado' || resolved.source === 'cpf' || resolved.source === 'phone';
     const origemLabel = isForced ? ' [PIX Forçado]' : '';
     const description = `AÇÃO - ${actionName} - ${prizeLabel}${origemLabel}`.slice(0, 240);
