@@ -132,11 +132,9 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
           const hasValue = firstRow.value > 0;
 
           if (hasName && hasValue) {
-            // Auto-mapped successfully, go to preview
-            const result = await checkDuplicatesAndValidate(winners);
-            setParsedWinners(result.winners);
-            setStats(result.stats);
-            setStep('preview');
+            // Auto-mapped successfully, go to select-type
+            setParsedWinners(winners);
+            setStep('select-type');
           } else {
             // Need manual mapping — re-read raw rows and store in state
             const XLSX = await import('xlsx');
