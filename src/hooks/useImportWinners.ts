@@ -203,17 +203,22 @@ export function useImportWinners(actionId: string, actionName: string) {
     let offset = 0;
     const pageSize = 1000;
     while (true) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('winners')
         .select('name, cpf, phone, prize_type, prize_datetime, value')
         .eq('action_id', actionId)
         .is('deleted_at', null)
         .range(offset, offset + pageSize - 1);
+      if (error) {
+        console.error('Erro ao buscar ganhadores existentes para dedup:', error);
+        break;
+      }
       if (!data || data.length === 0) break;
       existingWinners = existingWinners.concat(data);
       if (data.length < pageSize) break;
       offset += pageSize;
     }
+    console.log(`[Dedup] Encontrados ${existingWinners.length} ganhadores existentes na ação ${actionId}`);
 
     function buildDuplicateKey(name: string, cpf: string | null, phone: string | null, prizeType: string, prizeDatetime: string | null, value: number): string {
       const normalizedName = (name || '').trim().toLowerCase();
