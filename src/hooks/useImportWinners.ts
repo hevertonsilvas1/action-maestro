@@ -254,6 +254,18 @@ export function useImportWinners(actionId: string, actionName: string) {
       )
     );
 
+    // Debug: log sample keys
+    if (existingWinners.length > 0) {
+      const sampleExisting = existingWinners.slice(0, 3).map((w) =>
+        buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
+      );
+      const sampleNew = validated.slice(0, 3).map((w) =>
+        buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value)
+      );
+      console.log('[Dedup] Sample existing keys:', sampleExisting);
+      console.log('[Dedup] Sample new keys:', sampleNew);
+    }
+
     const existingDbKeys = new Set(
       existingWinners
         .map((w) => buildDbDedupKey(w.cpf, w.prize_type, w.prize_datetime, Number(w.value)))
