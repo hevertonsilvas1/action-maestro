@@ -114,6 +114,15 @@ const SAO_PAULO_MINUTE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   hourCycle: 'h23',
 });
 
+const ISO_WITH_EXPLICIT_TZ_REGEX =
+  /^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}(?::?\d{2})?)$/i;
+
+function formatToSaoPauloMinute(date: Date): string {
+  const parts = SAO_PAULO_MINUTE_FORMATTER.formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}
+
 function normalizeDatetimeForDedup(prizeDatetime: string | null): string {
   if (!prizeDatetime) return '';
 
@@ -127,8 +136,23 @@ function normalizeDatetimeForDedup(prizeDatetime: string | null): string {
     return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T${hh.padStart(2, '0')}:${min}`;
   }
 
-  // YYYY-MM-DDTHH:mm(:ss)
-  const isoLikeMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+  // YYYY-MM-DDTHH:mm(:ss) with timezone (Z, +00, +0000, +00:00)
+  // Convert to Sao Paulo minute so DB UTC timestamps and imported -03:00 timestamps match.
+  if (ISO_WITH_EXPLICIT_TZ_REGEX.test(raw)) {
+    let normalizedIso = raw.replace(' ', 'T');
+    normalizedIso = normalizedIso.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+    normalizedIso = normalizedIso.replace(/([+-]\d{2})$/, '$1:00');
+
+    const date = new Date(normalizedIso);
+    if (!isNaN(date.getTime())) {
+      return formatToSaoPauloMinute(date);
+    }
+  }
+
+  // YYYY-MM-DDTHH:mm(:ss) without timezone -> keep local minute as-is
+  const isoLikeMatch = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::\d{2}(?:\.\d{1,6})?)?$/
+  );
   if (isoLikeMatch) {
     const [, yyyy, mm, dd, hh, min] = isoLikeMatch;
     return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
@@ -139,9 +163,7 @@ function normalizeDatetimeForDedup(prizeDatetime: string | null): string {
     return raw;
   }
 
-  const parts = SAO_PAULO_MINUTE_FORMATTER.formatToParts(date);
-  const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
-  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+  return formatToSaoPauloMinute(date);
 }
 
 function validateWinner(w: ParsedWinner): { valid: boolean; reason?: string } {
