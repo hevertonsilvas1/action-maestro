@@ -121,7 +121,16 @@ export function useImportWinners(actionId: string, actionName: string) {
         body: { pdfBase64: base64, fileName: file.name },
       });
 
-      if (error) throw error;
+      if (error) {
+        let message = 'Falha ao processar o PDF.';
+        try {
+          const details = await (error as any)?.context?.json?.();
+          message = details?.error || details?.details || message;
+        } catch {
+          message = error.message || message;
+        }
+        throw new Error(message);
+      }
       if (data?.error) throw new Error(data.error);
 
       const winners: ParsedWinner[] = (data?.winners || []).map((w: any) => ({
