@@ -350,7 +350,7 @@ export function ImportWinnersModal({ open, onClose, actionId, actionName }: Impo
               <Button
                 size="sm"
                 onClick={handleApplyMapping}
-                disabled={!columnMapping.name || !columnMapping.value || !columnMapping.prize_type}
+                disabled={!columnMapping.name || !columnMapping.value}
               >
                 Aplicar Mapeamento
               </Button>
