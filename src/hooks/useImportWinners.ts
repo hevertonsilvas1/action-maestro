@@ -225,6 +225,7 @@ export function useImportWinners(actionId: string, actionName: string) {
       const normalizedCpf = cpf ? cpf.replace(/\D/g, '') : '';
       const normalizedPhone = phone ? phone.replace(/\D/g, '') : '';
       const normalizedType = normalizePrizeType(prizeType);
+      const normalizedValue = Number(Number(value).toFixed(2));
       // Normalize datetime to minute precision to handle slight variations
       let normalizedDatetime = '';
       if (prizeDatetime) {
@@ -235,7 +236,7 @@ export function useImportWinners(actionId: string, actionName: string) {
           }
         } catch { /* keep empty */ }
       }
-      return `${normalizedType}|${normalizedDatetime}|${value}|${normalizedName}|${normalizedCpf}|${normalizedPhone}`;
+      return `${normalizedType}|${normalizedDatetime}|${normalizedValue}|${normalizedName}|${normalizedCpf}|${normalizedPhone}`;
     }
 
     // Build DB-level dedup key matching idx_winners_dedup: (action_id, prize_type, cpf, prize_datetime, value)
