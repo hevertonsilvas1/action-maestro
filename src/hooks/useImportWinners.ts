@@ -203,23 +203,29 @@ export function useImportWinners(actionId: string, actionName: string) {
     let offset = 0;
     const pageSize = 1000;
     while (true) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('winners')
         .select('name, cpf, phone, prize_type, prize_datetime, value')
         .eq('action_id', actionId)
         .is('deleted_at', null)
         .range(offset, offset + pageSize - 1);
+      if (error) {
+        console.error('Erro ao buscar ganhadores existentes para dedup:', error);
+        break;
+      }
       if (!data || data.length === 0) break;
       existingWinners = existingWinners.concat(data);
       if (data.length < pageSize) break;
       offset += pageSize;
     }
+    console.log(`[Dedup] Encontrados ${existingWinners.length} ganhadores existentes na ação ${actionId}`);
 
     function buildDuplicateKey(name: string, cpf: string | null, phone: string | null, prizeType: string, prizeDatetime: string | null, value: number): string {
       const normalizedName = (name || '').trim().toLowerCase();
       const normalizedCpf = cpf ? cpf.replace(/\D/g, '') : '';
       const normalizedPhone = phone ? phone.replace(/\D/g, '') : '';
       const normalizedType = normalizePrizeType(prizeType);
+      const normalizedValue = Number(Number(value).toFixed(2));
       // Normalize datetime to minute precision to handle slight variations
       let normalizedDatetime = '';
       if (prizeDatetime) {
@@ -230,7 +236,7 @@ export function useImportWinners(actionId: string, actionName: string) {
           }
         } catch { /* keep empty */ }
       }
-      return `${normalizedType}|${normalizedDatetime}|${value}|${normalizedName}|${normalizedCpf}|${normalizedPhone}`;
+      return `${normalizedType}|${normalizedDatetime}|${normalizedValue}|${normalizedName}|${normalizedCpf}|${normalizedPhone}`;
     }
 
     // Build DB-level dedup key matching idx_winners_dedup: (action_id, prize_type, cpf, prize_datetime, value)
@@ -247,6 +253,18 @@ export function useImportWinners(actionId: string, actionName: string) {
         buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
       )
     );
+
+    // Debug: log sample keys
+    if (existingWinners.length > 0) {
+      const sampleExisting = existingWinners.slice(0, 3).map((w) =>
+        buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
+      );
+      const sampleNew = validated.slice(0, 3).map((w) =>
+        buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value)
+      );
+      console.log('[Dedup] Sample existing keys:', sampleExisting);
+      console.log('[Dedup] Sample new keys:', sampleNew);
+    }
 
     const existingDbKeys = new Set(
       existingWinners
