@@ -198,11 +198,22 @@ export function useImportWinners(actionId: string, actionName: string) {
 
     // Check duplicates against DB using the new composite key:
     // action + prize_datetime + prize_type + value + name + phone/cpf
-    const { data: existingWinners } = await supabase
-      .from('winners')
-      .select('name, cpf, phone, prize_type, prize_datetime, value')
-      .eq('action_id', actionId)
-      .is('deleted_at', null);
+    // Paginate to handle >1000 winners
+    let existingWinners: { name: string; cpf: string | null; phone: string | null; prize_type: string; prize_datetime: string | null; value: number }[] = [];
+    let offset = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data } = await supabase
+        .from('winners')
+        .select('name, cpf, phone, prize_type, prize_datetime, value')
+        .eq('action_id', actionId)
+        .is('deleted_at', null)
+        .range(offset, offset + pageSize - 1);
+      if (!data || data.length === 0) break;
+      existingWinners = existingWinners.concat(data);
+      if (data.length < pageSize) break;
+      offset += pageSize;
+    }
 
     function buildDuplicateKey(name: string, cpf: string | null, phone: string | null, prizeType: string, prizeDatetime: string | null, value: number): string {
       const normalizedName = (name || '').trim().toLowerCase();
@@ -232,13 +243,13 @@ export function useImportWinners(actionId: string, actionName: string) {
     }
 
     const existingKeys = new Set(
-      (existingWinners || []).map((w) =>
+      existingWinners.map((w) =>
         buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
       )
     );
 
     const existingDbKeys = new Set(
-      (existingWinners || [])
+      existingWinners
         .map((w) => buildDbDedupKey(w.cpf, w.prize_type, w.prize_datetime, Number(w.value)))
         .filter((key): key is string => Boolean(key))
     );
