@@ -176,9 +176,10 @@ export function BatchGeneratorModal({
         for (const w of group) {
           const { pixKey, pixType } = getOperationalPixData(w);
           const prizeLabel = w.prizeTitle || w.prizeType || 'Prêmio';
-          const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}`.slice(0, 240);
-
           const isForced = w.status === 'forcar_pix';
+          const origemLabel = isForced ? ' [PIX Forçado]' : '';
+          const description = `AÇÃO - ${resolvedActionName} - ${prizeLabel}${origemLabel}`.slice(0, 240);
+
           allRows.push({
             'Apelido': w.name,
             'Tipo de Transação': PIX_TRANSACTION_TYPES[pixType] || 'Pix - Celular',
@@ -187,8 +188,7 @@ export function BatchGeneratorModal({
             'Categoria (Opcional)': prizeLabel,
             'Centro de Custo (Opcional)': 'Premiações Instantâneas',
             'Descrição (Opcional) (Max. 240 Caractéres)': description,
-            'Origem PIX': isForced ? 'Forçar PIX (dados operacionais)' : 'Chave informada',
-            '__forcar_pix': isForced, // internal flag, removed before export
+            '__forcar_pix': isForced,
           });
         }
 
