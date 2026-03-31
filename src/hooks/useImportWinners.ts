@@ -94,6 +94,56 @@ function normalizeValue(value: any): number {
   return 0;
 }
 
+function normalizeNameForDedup(name: string): string {
+  return (name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+const SAO_PAULO_MINUTE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  hourCycle: 'h23',
+});
+
+function normalizeDatetimeForDedup(prizeDatetime: string | null): string {
+  if (!prizeDatetime) return '';
+
+  const raw = String(prizeDatetime).trim();
+  if (!raw) return '';
+
+  // DD/MM/YYYY HH:mm(:ss)
+  const brMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::\d{2})?)?$/);
+  if (brMatch) {
+    const [, dd, mm, yyyy, hh = '00', min = '00'] = brMatch;
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T${hh.padStart(2, '0')}:${min}`;
+  }
+
+  // YYYY-MM-DDTHH:mm(:ss)
+  const isoLikeMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+  if (isoLikeMatch) {
+    const [, yyyy, mm, dd, hh, min] = isoLikeMatch;
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  }
+
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) {
+    return raw;
+  }
+
+  const parts = SAO_PAULO_MINUTE_FORMATTER.formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}
+
 function validateWinner(w: ParsedWinner): { valid: boolean; reason?: string } {
   if (!w.name || w.name.trim().length === 0) return { valid: false, reason: 'Nome ausente' };
   if (w.value <= 0) return { valid: false, reason: 'Valor inválido' };
@@ -205,16 +255,16 @@ export function useImportWinners(actionId: string, actionName: string) {
       return w;
     });
 
-    // Check duplicates against DB using the new composite key:
-    // action + prize_datetime + prize_type + value + name + phone/cpf
+    // Check duplicates against DB using import rule:
+    // action + name + value + prize_datetime (minute precision)
     // Paginate to handle >1000 winners
-    let existingWinners: { name: string; cpf: string | null; phone: string | null; prize_type: string; prize_datetime: string | null; value: number }[] = [];
+    let existingWinners: { name: string; prize_datetime: string | null; value: number }[] = [];
     let offset = 0;
     const pageSize = 1000;
     while (true) {
       const { data, error } = await supabase
         .from('winners')
-        .select('name, cpf, phone, prize_type, prize_datetime, value')
+        .select('name, prize_datetime, value')
         .eq('action_id', actionId)
         .is('deleted_at', null)
         .range(offset, offset + pageSize - 1);
@@ -229,93 +279,54 @@ export function useImportWinners(actionId: string, actionName: string) {
     }
     console.log(`[Dedup] Encontrados ${existingWinners.length} ganhadores existentes na ação ${actionId}`);
 
-    function buildDuplicateKey(name: string, cpf: string | null, phone: string | null, prizeType: string, prizeDatetime: string | null, value: number): string {
-      const normalizedName = (name || '').trim().toLowerCase();
-      const normalizedCpf = cpf ? cpf.replace(/\D/g, '') : '';
-      const normalizedPhone = phone ? phone.replace(/\D/g, '') : '';
-      const normalizedType = normalizePrizeType(prizeType);
-      const normalizedValue = Number(Number(value).toFixed(2));
-      // Normalize datetime to minute precision to handle slight variations
-      let normalizedDatetime = '';
-      if (prizeDatetime) {
-        try {
-          const d = new Date(prizeDatetime);
-          if (!isNaN(d.getTime())) {
-            normalizedDatetime = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-          }
-        } catch { /* keep empty */ }
-      }
-      return `${normalizedType}|${normalizedDatetime}|${normalizedValue}|${normalizedName}|${normalizedCpf}|${normalizedPhone}`;
-    }
-
-    // Build DB-level dedup key matching idx_winners_dedup: (action_id, prize_type, cpf, prize_datetime, value)
-    // Only applies when cpf IS NOT NULL AND prize_datetime IS NOT NULL
-    function buildDbDedupKey(cpf: string | null, prizeType: string, prizeDatetime: string | null, value: number): string | null {
-      const normalizedCpf = cpf ? cpf.replace(/\D/g, '') : null;
-      if (!normalizedCpf || !prizeDatetime) return null;
-      const normalizedType = normalizePrizeType(prizeType);
-      return `${normalizedType}|${normalizedCpf}|${prizeDatetime}|${value}`;
+    function buildDuplicateKey(name: string, prizeDatetime: string | null, value: number): string {
+      const normalizedName = normalizeNameForDedup(name);
+      const normalizedDatetime = normalizeDatetimeForDedup(prizeDatetime);
+      const normalizedValue = Number(Number(value).toFixed(2)).toFixed(2);
+      return `${normalizedDatetime}|${normalizedValue}|${normalizedName}`;
     }
 
     const existingKeys = new Set(
       existingWinners.map((w) =>
-        buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
+        buildDuplicateKey(w.name, w.prize_datetime, Number(w.value))
       )
     );
 
     // Debug: log sample keys
     if (existingWinners.length > 0) {
       const sampleExisting = existingWinners.slice(0, 3).map((w) =>
-        buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
+        buildDuplicateKey(w.name, w.prize_datetime, Number(w.value))
       );
       const sampleNew = validated.slice(0, 3).map((w) =>
-        buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value)
+        buildDuplicateKey(w.name, w.prize_datetime, w.value)
       );
       console.log('[Dedup] Sample existing keys:', sampleExisting);
       console.log('[Dedup] Sample new keys:', sampleNew);
     }
 
-    const existingDbKeys = new Set(
-      existingWinners
-        .map((w) => buildDbDedupKey(w.cpf, w.prize_type, w.prize_datetime, Number(w.value)))
-        .filter((key): key is string => Boolean(key))
-    );
-
     const result = validated.map((w) => {
       if (w.isInvalid) return w;
 
-      const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
+      const key = buildDuplicateKey(w.name, w.prize_datetime, w.value);
       if (existingKeys.has(key)) {
-        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado encontrado na ação' };
-      }
-
-      const dbKey = buildDbDedupKey(w.cpf, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
-      if (dbKey && existingDbKeys.has(dbKey)) {
-        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado encontrado pela regra CPF + data/hora + tipo + valor' };
+        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado encontrado na ação (nome + valor + data/hora)' };
       }
 
       return w;
     });
 
-    // Also check for duplicates within the batch itself (both app-level and DB-level)
+    // Also check for duplicates within the batch itself
     const seenKeys = new Set<string>();
-    const seenDbKeys = new Set<string>();
     const afterDedupe = result.map((w) => {
       if (w.isInvalid || w.isDuplicate) return w;
 
-      const key = buildDuplicateKey(w.name, w.cpf, w.phone, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
-      const dbKey = buildDbDedupKey(w.cpf, normalizePrizeType(w.prize_type), w.prize_datetime, w.value);
+      const key = buildDuplicateKey(w.name, w.prize_datetime, w.value);
 
       if (seenKeys.has(key)) {
-        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado dentro do arquivo importado' };
-      }
-
-      if (dbKey && seenDbKeys.has(dbKey)) {
-        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado dentro do arquivo pela regra CPF + data/hora + tipo + valor' };
+        return { ...w, isDuplicate: true, duplicateReason: 'Duplicado dentro do arquivo importado (nome + valor + data/hora)' };
       }
 
       seenKeys.add(key);
-      if (dbKey) seenDbKeys.add(dbKey);
       return w;
     });
 
