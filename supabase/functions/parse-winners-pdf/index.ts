@@ -43,7 +43,7 @@ IMPORTANT:
 - Keep each row's data aligned - the name, phone, value, and date must belong to the SAME person.
 - Do NOT skip any rows. Do NOT merge rows.
 - Do NOT invent or modify data. Extract exactly what is in the PDF.
-- CPF field: set to null (this PDF format typically does not include CPF).
+- If there is a "CPF" column, extract the digits only (remove dots and dashes) into the "cpf" field. If no CPF column exists, set cpf to null.
 
 Return ONLY a valid JSON object:
 {
