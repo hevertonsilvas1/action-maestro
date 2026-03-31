@@ -243,7 +243,7 @@ export function useImportWinners(actionId: string, actionName: string) {
     }
 
     const existingKeys = new Set(
-      (existingWinners || []).map((w) =>
+      existingWinners.map((w) =>
         buildDuplicateKey(w.name, w.cpf, w.phone, w.prize_type, w.prize_datetime, Number(w.value))
       )
     );
