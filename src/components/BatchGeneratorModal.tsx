@@ -217,7 +217,7 @@ export function BatchGeneratorModal({
       const forcedRows = allRows.filter(r => r['__forcar_pix']);
       normalRows.forEach(r => delete r['__forcar_pix']);
       forcedRows.forEach(r => delete r['__forcar_pix']);
-      const sanitized = filenameActionBase.replace(/\s+/g, '_');
+      const sanitized = sanitizedBase;
 
       const buildWorkbook = (rows: Record<string, any>[], sheetName = 'Lote PIX') => {
         const ws = XLSX.utils.json_to_sheet(rows);
