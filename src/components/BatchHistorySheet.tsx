@@ -73,7 +73,9 @@ async function downloadBatch(batchId: string, filename: string | null) {
     }
 
     const prizeLabel = w.prize_title || w.prize_type || 'Prêmio';
-    const description = `AÇÃO - ${actionName} - ${prizeLabel}`.slice(0, 240);
+    const isForced = w.status === 'forcar_pix' || w.status === 'lote_forcado' || resolved.source === 'cpf' || resolved.source === 'phone';
+    const origemLabel = isForced ? ' [PIX Forçado]' : '';
+    const description = `AÇÃO - ${actionName} - ${prizeLabel}${origemLabel}`.slice(0, 240);
 
     return {
       'Apelido': w.name,
@@ -83,7 +85,6 @@ async function downloadBatch(batchId: string, filename: string | null) {
       'Categoria (Opcional)': prizeLabel,
       'Centro de Custo (Opcional)': 'Premiações Instantâneas',
       'Descrição (Opcional) (Max. 240 Caractéres)': description,
-      'Origem PIX': (resolved.source === 'cpf' || resolved.source === 'phone') ? 'Forçar PIX (dados operacionais)' : 'Chave informada',
     };
   });
 
