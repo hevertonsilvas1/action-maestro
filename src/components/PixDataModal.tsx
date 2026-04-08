@@ -153,7 +153,11 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         updateData.pix_registered_at = now;
       }
 
-      if (!pixValidationEnabled && isNew) {
+      // Auto-validate only if winner is NOT in forçar pix / lote forçado flow
+      const preserveStatusSlugs = ['forcar_pix', 'lote_forcado'];
+      const shouldAutoAdvance = !pixValidationEnabled && isNew && !preserveStatusSlugs.includes(winner.status);
+
+      if (shouldAutoAdvance) {
         updateData.status = 'pix_received';
         updateData.pix_validated_by = userName;
         updateData.pix_validated_at = now;
