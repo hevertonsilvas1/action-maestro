@@ -189,7 +189,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         changes.admin_reason = adminReason.trim();
       }
 
-      if (!pixValidationEnabled && isNew) {
+      if (shouldAutoAdvance) {
         changes.auto_validated = true;
         changes.status = { before: winner.status, after: 'pix_received' };
       }
