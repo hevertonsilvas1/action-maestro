@@ -198,13 +198,13 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         action_id: actionId,
         table_name: 'winners',
         record_id: winner.id,
-        operation: !pixValidationEnabled && isNew ? 'pix_cadastro_auto_validado' : (isNew ? 'pix_cadastro' : 'pix_edicao'),
+        operation: shouldAutoAdvance ? 'pix_cadastro_auto_validado' : (isNew ? 'pix_cadastro' : 'pix_edicao'),
         user_name: userName,
         changes,
       });
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      if (!pixValidationEnabled && isNew) {
+      if (shouldAutoAdvance) {
         toast.success('PIX cadastrado e validado automaticamente!');
       } else {
         toast.success(isNew ? 'PIX cadastrado com sucesso!' : 'PIX atualizado com sucesso!');
