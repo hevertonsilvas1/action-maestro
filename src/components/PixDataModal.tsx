@@ -153,7 +153,11 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         updateData.pix_registered_at = now;
       }
 
-      if (!pixValidationEnabled && isNew) {
+      // Auto-validate only if winner is NOT in forçar pix / lote forçado flow
+      const preserveStatusSlugs = ['forcar_pix', 'lote_forcado'];
+      const shouldAutoAdvance = !pixValidationEnabled && isNew && !preserveStatusSlugs.includes(winner.status);
+
+      if (shouldAutoAdvance) {
         updateData.status = 'pix_received';
         updateData.pix_validated_by = userName;
         updateData.pix_validated_at = now;
@@ -185,7 +189,7 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         changes.admin_reason = adminReason.trim();
       }
 
-      if (!pixValidationEnabled && isNew) {
+      if (shouldAutoAdvance) {
         changes.auto_validated = true;
         changes.status = { before: winner.status, after: 'pix_received' };
       }
@@ -194,13 +198,13 @@ export function PixDataModal({ open, onOpenChange, winner, isAdmin, userName, ac
         action_id: actionId,
         table_name: 'winners',
         record_id: winner.id,
-        operation: !pixValidationEnabled && isNew ? 'pix_cadastro_auto_validado' : (isNew ? 'pix_cadastro' : 'pix_edicao'),
+        operation: shouldAutoAdvance ? 'pix_cadastro_auto_validado' : (isNew ? 'pix_cadastro' : 'pix_edicao'),
         user_name: userName,
         changes,
       });
 
       await queryClient.invalidateQueries({ queryKey: ['winners'] });
-      if (!pixValidationEnabled && isNew) {
+      if (shouldAutoAdvance) {
         toast.success('PIX cadastrado e validado automaticamente!');
       } else {
         toast.success(isNew ? 'PIX cadastrado com sucesso!' : 'PIX atualizado com sucesso!');
