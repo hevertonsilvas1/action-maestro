@@ -70,16 +70,28 @@ export function useWinners(actionId?: string) {
   return useQuery({
     queryKey: ['winners', actionId ?? 'all'],
     queryFn: async () => {
-      let query = supabase
-        .from('winners')
-        .select('*, winner_statuses!winners_status_id_fkey(slug), actions!winners_action_id_fkey(name)')
-        .is('deleted_at', null)
-        .order('prize_datetime', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: true });
-      if (actionId) query = query.eq('action_id', actionId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data ?? []).map(mapWinner);
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+
+      while (true) {
+        let query = supabase
+          .from('winners')
+          .select('*, winner_statuses!winners_status_id_fkey(slug), actions!winners_action_id_fkey(name)')
+          .is('deleted_at', null)
+          .order('prize_datetime', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
+          .range(offset, offset + PAGE_SIZE - 1);
+        if (actionId) query = query.eq('action_id', actionId);
+        const { data, error } = await query;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allData = allData.concat(data);
+        if (data.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+
+      return allData.map(mapWinner);
     },
   });
 }
