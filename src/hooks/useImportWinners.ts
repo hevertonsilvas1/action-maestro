@@ -233,14 +233,29 @@ export function useImportWinners(actionId: string, actionName: string) {
 
       if (rows.length === 0) return [];
 
+      // Build a case-insensitive column lookup for each row
+      const getCol = (row: any, ...candidates: string[]): any => {
+        for (const c of candidates) {
+          if (row[c] !== undefined && row[c] !== '') return row[c];
+        }
+        // Try case-insensitive match
+        const keys = Object.keys(row);
+        for (const c of candidates) {
+          const lower = c.toLowerCase();
+          const found = keys.find(k => k.toLowerCase().trim() === lower);
+          if (found && row[found] !== undefined && row[found] !== '') return row[found];
+        }
+        return '';
+      };
+
       return rows.map((row) => ({
-        name: String(row.Ganhador || row.ganhador || row.Nome || row.nome || row.NAME || '').trim(),
-        cpf: normalizeCpf(String(row.CPF || row.cpf || row.Cpf || '')),
-        phone: normalizePhone(String(row.Telefone || row.telefone || row.Phone || row.phone || row.TELEFONE || '')),
-        value: normalizeValue(row['Prêmio'] || row.Premio || row.Valor || row.valor || row.Value || row.value || row.VALOR || 0),
-        prize_datetime: excelSerialToISO(row['Associado em'] || row.Data || row.data || row['Data/Hora'] || row.date || null),
-        prize_type: String(row['Tipo de Premiação'] || row['Tipo'] || row.tipo || row.Status || row.status || row['Premio'] || row.prize_type || '').trim(),
-        title: String(row['Título'] || row.Titulo || row.titulo || row.title || '').trim() || undefined,
+        name: String(getCol(row, 'Ganhador', 'ganhador', 'Nome', 'nome', 'NAME', 'NOME')).trim(),
+        cpf: normalizeCpf(String(getCol(row, 'CPF', 'cpf', 'Cpf'))),
+        phone: normalizePhone(String(getCol(row, 'Telefone', 'telefone', 'Phone', 'phone', 'TELEFONE', 'TEL', 'Tel', 'tel', 'Fone', 'fone', 'FONE'))),
+        value: normalizeValue(getCol(row, 'Prêmio', 'Premio', 'Valor', 'valor', 'Value', 'value', 'VALOR', 'R$') || 0),
+        prize_datetime: excelSerialToISO(getCol(row, 'Associado em', 'Data', 'data', 'Data/Hora', 'date', 'DATE', 'STATUS', 'Status') || null),
+        prize_type: String(getCol(row, 'Tipo de Premiação', 'Tipo', 'tipo', 'TIPO', 'Status', 'status', 'Premio', 'prize_type')).trim(),
+        title: String(getCol(row, 'Título', 'Titulo', 'titulo', 'title', 'TITULO')).trim() || undefined,
       }));
     } finally {
       setIsParsing(false);
