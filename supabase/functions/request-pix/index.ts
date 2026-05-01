@@ -124,6 +124,18 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Resolve automation per-winner based on prize value
+        const automation = await getWindowMessage(serviceClient, "solicitar_pix", {
+          actionId: w.action_id,
+          prizeType: w.prize_type,
+          prizeValue: w.prize_value,
+        });
+
+        if (!automation) {
+          throw new Error("Automação 'Solicitar PIX' não encontrada ou inativa. Cadastre em Configurações → Automações.");
+        }
+        console.log(`[request-pix] Winner ${w.winner_id} (R$${w.prize_value}) → automation: "${automation.name}"`);
+
         // Build payload
         const normalizedPhone = normalizePhoneE164(w.winner_phone) || w.winner_phone;
         const payloadBody = buildPayload({
