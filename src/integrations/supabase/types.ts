@@ -762,6 +762,8 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          max_value: number | null
+          min_value: number | null
           name: string
           notes: string | null
           priority: number
@@ -780,6 +782,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          max_value?: number | null
+          min_value?: number | null
           name: string
           notes?: string | null
           priority?: number
@@ -798,6 +802,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          max_value?: number | null
+          min_value?: number | null
           name?: string
           notes?: string | null
           priority?: number
