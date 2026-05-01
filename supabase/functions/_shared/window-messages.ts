@@ -82,7 +82,7 @@ export async function getWindowMessage(
 ): Promise<WindowMessage | null> {
   let query = client
     .from("window_messages")
-    .select("id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority")
+    .select("id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority, min_value, max_value")
     .eq("type", type)
     .eq("is_active", true);
 
@@ -107,23 +107,37 @@ export async function getWindowMessage(
 
   const messages = data as WindowMessage[];
 
+  /** Helper: check if a message matches the prize value range */
+  const matchesValue = (m: WindowMessage): boolean => {
+    if (options?.prizeValue == null) return true; // no value filter → match all
+    if (m.min_value == null && m.max_value == null) return true; // no range set → universal
+    const v = options.prizeValue;
+    if (m.min_value != null && v < m.min_value) return false;
+    if (m.max_value != null && v > m.max_value) return false;
+    return true;
+  };
+
   // Apply scope priority: action > prize_type > operational_context > global
   if (options?.actionId) {
-    const match = messages.find(m => m.scope === 'action' && m.scope_value === options.actionId);
+    const match = messages.find(m => m.scope === 'action' && m.scope_value === options.actionId && matchesValue(m));
     if (match) return match;
   }
 
   if (options?.prizeType) {
-    const match = messages.find(m => m.scope === 'prize_type' && m.scope_value === options.prizeType);
+    const match = messages.find(m => m.scope === 'prize_type' && m.scope_value === options.prizeType && matchesValue(m));
     if (match) return match;
   }
 
   if (options?.operationalContext) {
-    const match = messages.find(m => m.scope === 'operational_context' && m.scope_value === options.operationalContext);
+    const match = messages.find(m => m.scope === 'operational_context' && m.scope_value === options.operationalContext && matchesValue(m));
     if (match) return match;
   }
 
-  const globalMatch = messages.find(m => m.scope === 'global');
+  // Global: prefer value-specific match first, then fallback to universal
+  const globalValueMatch = messages.find(m => m.scope === 'global' && (m.min_value != null || m.max_value != null) && matchesValue(m));
+  if (globalValueMatch) return globalValueMatch;
+
+  const globalMatch = messages.find(m => m.scope === 'global' && m.min_value == null && m.max_value == null);
   return globalMatch || messages[0];
 }
 
