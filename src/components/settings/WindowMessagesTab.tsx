@@ -155,6 +155,55 @@ export function WindowMessagesTab() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestAutomationResult | null>(null);
 
+  // Inline quick-edit
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
+  const [quickForm, setQuickForm] = useState<{
+    min_value: number | null;
+    max_value: number | null;
+    unnichat_trigger_url: string;
+    scope: string;
+    scope_value: string | null;
+  }>({ min_value: null, max_value: null, unnichat_trigger_url: '', scope: 'global', scope_value: null });
+  const [quickSaving, setQuickSaving] = useState(false);
+
+  const openQuickEdit = (msg: WindowMessage) => {
+    if (quickEditId === msg.id) {
+      setQuickEditId(null);
+      return;
+    }
+    setQuickEditId(msg.id);
+    setQuickForm({
+      min_value: msg.min_value,
+      max_value: msg.max_value,
+      unnichat_trigger_url: msg.unnichat_trigger_url,
+      scope: msg.scope,
+      scope_value: msg.scope_value,
+    });
+  };
+
+  const handleQuickSave = async () => {
+    if (!quickEditId) return;
+    setQuickSaving(true);
+    const { error } = await supabase
+      .from('window_messages')
+      .update({
+        min_value: quickForm.min_value,
+        max_value: quickForm.max_value,
+        unnichat_trigger_url: quickForm.unnichat_trigger_url.trim(),
+        scope: quickForm.scope,
+        scope_value: quickForm.scope === 'global' ? null : (quickForm.scope_value?.trim() || null),
+      } as any)
+      .eq('id', quickEditId);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Automação atualizada' });
+      setQuickEditId(null);
+      fetchMessages();
+    }
+    setQuickSaving(false);
+  };
+
   const { data: actions } = useQuery({
     queryKey: ['actions-list-simple'],
     queryFn: async () => {
