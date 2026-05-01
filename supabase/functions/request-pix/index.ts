@@ -54,15 +54,7 @@ Deno.serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // ── Resolve automation from window_messages (single source of truth) ──
-    const automation = await getWindowMessage(serviceClient, "solicitar_pix");
-    if (!automation) {
-      return new Response(
-        JSON.stringify({ error: "Automação 'Solicitar PIX' não encontrada ou inativa. Cadastre em Configurações → Automações." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    console.log(`[request-pix] Using automation: "${automation.name}" (type: solicitar_pix)`);
+    // Automation is now resolved per-winner inside the loop (value-based matching)
 
     // Auth client (respects RLS)
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
