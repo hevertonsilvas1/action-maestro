@@ -166,7 +166,7 @@ export function WindowMessagesTab() {
     setLoading(true);
     const { data, error } = await supabase
       .from('window_messages')
-      .select('id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority, created_at, updated_at')
+      .select('id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority, min_value, max_value, created_at, updated_at')
       .order('type')
       .order('priority')
       .order('name');
