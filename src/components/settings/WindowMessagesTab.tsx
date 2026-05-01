@@ -372,19 +372,29 @@ export function WindowMessagesTab() {
   /* ── Helpers ── */
 
   const getScopeLabel = (msg: WindowMessage) => {
-    if (msg.scope === 'global') return 'Global';
-    if (msg.scope === 'action' && msg.scope_value) {
+    let label = '';
+    if (msg.scope === 'global') label = 'Global';
+    else if (msg.scope === 'action' && msg.scope_value) {
       const action = actions?.find((a: any) => a.id === msg.scope_value);
-      return action ? `Ação: ${action.name}` : 'Ação específica';
-    }
-    if (msg.scope === 'prize_type' && msg.scope_value) {
-      return `Prêmio: ${msg.scope_value.replace(/_/g, ' ')}`;
-    }
-    if (msg.scope === 'operational_context' && msg.scope_value) {
+      label = action ? `Ação: ${action.name}` : 'Ação específica';
+    } else if (msg.scope === 'prize_type' && msg.scope_value) {
+      label = `Prêmio: ${msg.scope_value.replace(/_/g, ' ')}`;
+    } else if (msg.scope === 'operational_context' && msg.scope_value) {
       const ctx = OPERATIONAL_CONTEXT_OPTIONS.find(o => o.value === msg.scope_value);
-      return ctx ? ctx.label : msg.scope_value;
+      label = ctx ? ctx.label : msg.scope_value;
+    } else {
+      label = SCOPE_LABEL_MAP[msg.scope] || msg.scope;
     }
-    return SCOPE_LABEL_MAP[msg.scope] || msg.scope;
+
+    // Append value range info
+    if (msg.min_value != null || msg.max_value != null) {
+      const parts: string[] = [];
+      if (msg.min_value != null) parts.push(`≥ R$${msg.min_value}`);
+      if (msg.max_value != null) parts.push(`≤ R$${msg.max_value}`);
+      label += ` (${parts.join(' e ')})`;
+    }
+
+    return label;
   };
 
   if (loading) {
