@@ -87,6 +87,8 @@ interface WindowMessage {
   scope: string;
   scope_value: string | null;
   priority: number;
+  min_value: number | null;
+  max_value: number | null;
   created_at: string;
   updated_at: string;
 }
