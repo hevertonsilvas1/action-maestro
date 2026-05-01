@@ -717,7 +717,7 @@ export default function WinnersPage() {
                 <SelectValue placeholder="Selecione uma ação..." />
               </SelectTrigger>
               <SelectContent>
-                {actions.filter(a => a.status !== 'planning' && a.status !== 'archived').map(a => (
+                {actions.filter(a => a.status === 'active').map(a => (
                   <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                 ))}
               </SelectContent>
