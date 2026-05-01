@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2, ArrowRightLeft, DollarSign, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { Constants } from '@/integrations/supabase/types';
 
@@ -154,6 +154,55 @@ export function WindowMessagesTab() {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestAutomationResult | null>(null);
+
+  // Inline quick-edit
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
+  const [quickForm, setQuickForm] = useState<{
+    min_value: number | null;
+    max_value: number | null;
+    unnichat_trigger_url: string;
+    scope: string;
+    scope_value: string | null;
+  }>({ min_value: null, max_value: null, unnichat_trigger_url: '', scope: 'global', scope_value: null });
+  const [quickSaving, setQuickSaving] = useState(false);
+
+  const openQuickEdit = (msg: WindowMessage) => {
+    if (quickEditId === msg.id) {
+      setQuickEditId(null);
+      return;
+    }
+    setQuickEditId(msg.id);
+    setQuickForm({
+      min_value: msg.min_value,
+      max_value: msg.max_value,
+      unnichat_trigger_url: msg.unnichat_trigger_url,
+      scope: msg.scope,
+      scope_value: msg.scope_value,
+    });
+  };
+
+  const handleQuickSave = async () => {
+    if (!quickEditId) return;
+    setQuickSaving(true);
+    const { error } = await supabase
+      .from('window_messages')
+      .update({
+        min_value: quickForm.min_value,
+        max_value: quickForm.max_value,
+        unnichat_trigger_url: quickForm.unnichat_trigger_url.trim(),
+        scope: quickForm.scope,
+        scope_value: quickForm.scope === 'global' ? null : (quickForm.scope_value?.trim() || null),
+      } as any)
+      .eq('id', quickEditId);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Automação atualizada' });
+      setQuickEditId(null);
+      fetchMessages();
+    }
+    setQuickSaving(false);
+  };
 
   const { data: actions } = useQuery({
     queryKey: ['actions-list-simple'],
@@ -545,28 +594,137 @@ export function WindowMessagesTab() {
                             rangeLabel = `≤ ${formatCurrency(msg.max_value)}`;
                           }
                         }
+                        const isExpanded = quickEditId === msg.id;
                         return (
-                          <div
-                            key={msg.id}
-                            className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => openEdit(msg)}
-                            title="Clique para editar"
-                          >
-                            <div className="flex items-center gap-3">
-                              <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium">{msg.name}</p>
-                                <p className="text-xs text-muted-foreground">{getScopeLabel(msg).replace(/ \(.*\)/, '')}</p>
+                          <div key={msg.id} className="rounded-lg border bg-muted/30 overflow-hidden transition-colors">
+                            <div
+                              className="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => openQuickEdit(msg)}
+                              title="Clique para edição rápida"
+                            >
+                              <div className="flex items-center gap-3">
+                                <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
+                                <div>
+                                  <p className="text-sm font-medium">{msg.name}</p>
+                                  <p className="text-xs text-muted-foreground">{getScopeLabel(msg).replace(/ \(.*\)/, '')}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={hasRange ? 'default' : 'secondary'} className="text-xs">
+                                  {rangeLabel}
+                                </Badge>
+                                <Badge variant={msg.is_active ? 'default' : 'outline'} className={`text-xs ${msg.is_active ? 'bg-emerald-600' : ''}`}>
+                                  {msg.is_active ? 'Ativa' : 'Inativa'}
+                                </Badge>
+                                {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={hasRange ? 'default' : 'secondary'} className="text-xs">
-                                {rangeLabel}
-                              </Badge>
-                              <Badge variant={msg.is_active ? 'default' : 'outline'} className={`text-xs ${msg.is_active ? 'bg-emerald-600' : ''}`}>
-                                {msg.is_active ? 'Ativa' : 'Inativa'}
-                              </Badge>
-                            </div>
+                            {isExpanded && (
+                              <div className="border-t px-4 py-3 space-y-3 bg-background/50">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Valor mínimo (R$)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step={0.01}
+                                      value={quickForm.min_value ?? ''}
+                                      onChange={(e) => setQuickForm(prev => ({ ...prev, min_value: e.target.value ? Number(e.target.value) : null }))}
+                                      placeholder="Sem mínimo"
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Valor máximo (R$)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step={0.01}
+                                      value={quickForm.max_value ?? ''}
+                                      onChange={(e) => setQuickForm(prev => ({ ...prev, max_value: e.target.value ? Number(e.target.value) : null }))}
+                                      placeholder="Sem máximo"
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">URL de acionamento</Label>
+                                  <Input
+                                    value={quickForm.unnichat_trigger_url}
+                                    onChange={(e) => setQuickForm(prev => ({ ...prev, unnichat_trigger_url: e.target.value }))}
+                                    placeholder="https://..."
+                                    className="h-8 text-sm font-mono"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Escopo</Label>
+                                    <Select value={quickForm.scope} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope: v, scope_value: null }))}>
+                                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {SCOPE_OPTIONS.map((s) => (
+                                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {quickForm.scope === 'action' && (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Ação</Label>
+                                      <Select value={quickForm.scope_value || ''} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope_value: v }))}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                                        <SelectContent>
+                                          {(actions || []).map((a: any) => (
+                                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                  {quickForm.scope === 'prize_type' && (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Tipo de prêmio</Label>
+                                      <Select value={quickForm.scope_value || ''} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope_value: v }))}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                                        <SelectContent>
+                                          {PRIZE_TYPE_OPTIONS.map((p) => (
+                                            <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                  {quickForm.scope === 'operational_context' && (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Contexto</Label>
+                                      <Select value={quickForm.scope_value || ''} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope_value: v }))}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                                        <SelectContent>
+                                          {OPERATIONAL_CONTEXT_OPTIONS.map((c) => (
+                                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center justify-between pt-1">
+                                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => openEdit(msg)}>
+                                    <Pencil className="h-3 w-3 mr-1" />
+                                    Edição completa
+                                  </Button>
+                                  <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setQuickEditId(null)}>
+                                      Cancelar
+                                    </Button>
+                                    <Button size="sm" className="text-xs h-7 gap-1" onClick={handleQuickSave} disabled={quickSaving}>
+                                      {quickSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                      Salvar
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
