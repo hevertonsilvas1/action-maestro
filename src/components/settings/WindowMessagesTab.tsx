@@ -87,6 +87,8 @@ interface WindowMessage {
   scope: string;
   scope_value: string | null;
   priority: number;
+  min_value: number | null;
+  max_value: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -103,6 +105,8 @@ interface FormData {
   scope: string;
   scope_value: string | null;
   priority: number;
+  min_value: number | null;
+  max_value: number | null;
 }
 
 interface TestAutomationResult {
@@ -128,6 +132,8 @@ const emptyForm: FormData = {
   scope: 'global',
   scope_value: null,
   priority: 1,
+  min_value: null,
+  max_value: null,
 };
 
 /* ───────── component ───────── */
@@ -160,7 +166,7 @@ export function WindowMessagesTab() {
     setLoading(true);
     const { data, error } = await supabase
       .from('window_messages')
-      .select('id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority, created_at, updated_at')
+      .select('id, name, type, unnichat_trigger_url, is_active, auto_use, usage_condition, trigger_rule, notes, scope, scope_value, priority, min_value, max_value, created_at, updated_at')
       .order('type')
       .order('priority')
       .order('name');
@@ -196,6 +202,8 @@ export function WindowMessagesTab() {
       scope: msg.scope,
       scope_value: msg.scope_value,
       priority: msg.priority,
+      min_value: msg.min_value,
+      max_value: msg.max_value,
     });
     setDialogOpen(true);
   };
@@ -214,6 +222,8 @@ export function WindowMessagesTab() {
       scope: msg.scope,
       scope_value: msg.scope_value,
       priority: msg.priority,
+      min_value: msg.min_value,
+      max_value: msg.max_value,
     });
     setDialogOpen(true);
   };
@@ -238,6 +248,8 @@ export function WindowMessagesTab() {
       scope: form.scope,
       scope_value: form.scope === 'global' ? null : (form.scope_value?.trim() || null),
       priority: form.priority,
+      min_value: form.min_value,
+      max_value: form.max_value,
     };
 
     let error;
@@ -360,19 +372,29 @@ export function WindowMessagesTab() {
   /* ── Helpers ── */
 
   const getScopeLabel = (msg: WindowMessage) => {
-    if (msg.scope === 'global') return 'Global';
-    if (msg.scope === 'action' && msg.scope_value) {
+    let label = '';
+    if (msg.scope === 'global') label = 'Global';
+    else if (msg.scope === 'action' && msg.scope_value) {
       const action = actions?.find((a: any) => a.id === msg.scope_value);
-      return action ? `Ação: ${action.name}` : 'Ação específica';
-    }
-    if (msg.scope === 'prize_type' && msg.scope_value) {
-      return `Prêmio: ${msg.scope_value.replace(/_/g, ' ')}`;
-    }
-    if (msg.scope === 'operational_context' && msg.scope_value) {
+      label = action ? `Ação: ${action.name}` : 'Ação específica';
+    } else if (msg.scope === 'prize_type' && msg.scope_value) {
+      label = `Prêmio: ${msg.scope_value.replace(/_/g, ' ')}`;
+    } else if (msg.scope === 'operational_context' && msg.scope_value) {
       const ctx = OPERATIONAL_CONTEXT_OPTIONS.find(o => o.value === msg.scope_value);
-      return ctx ? ctx.label : msg.scope_value;
+      label = ctx ? ctx.label : msg.scope_value;
+    } else {
+      label = SCOPE_LABEL_MAP[msg.scope] || msg.scope;
     }
-    return SCOPE_LABEL_MAP[msg.scope] || msg.scope;
+
+    // Append value range info
+    if (msg.min_value != null || msg.max_value != null) {
+      const parts: string[] = [];
+      if (msg.min_value != null) parts.push(`≥ R$${msg.min_value}`);
+      if (msg.max_value != null) parts.push(`≤ R$${msg.max_value}`);
+      label += ` (${parts.join(' e ')})`;
+    }
+
+    return label;
   };
 
   if (loading) {
@@ -606,7 +628,40 @@ export function WindowMessagesTab() {
               </div>
             )}
 
-            {/* Toggles */}
+            {/* Value range filter */}
+            {(form.type === 'solicitar_pix' || form.type === 'enviar_comprovante') && (
+              <div className="space-y-2">
+                <Label>Faixa de valor do prêmio (opcional)</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Valor mínimo (R$)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={form.min_value ?? ''}
+                      onChange={(e) => setForm(prev => ({ ...prev, min_value: e.target.value ? Number(e.target.value) : null }))}
+                      placeholder="Sem mínimo"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Valor máximo (R$)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={form.max_value ?? ''}
+                      onChange={(e) => setForm(prev => ({ ...prev, max_value: e.target.value ? Number(e.target.value) : null }))}
+                      placeholder="Sem máximo"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se preenchido, esta automação só será usada para ganhadores cujo valor do prêmio esteja dentro da faixa. Deixe vazio para aplicar a qualquer valor.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <Switch
