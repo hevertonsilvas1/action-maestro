@@ -108,7 +108,7 @@ export default function WinnersPage() {
   // Operational actions only (exclude planning) — for NewWinnerModal and other operational flows
   const operationalActionsMap = useMemo(() => {
     const map: Record<string, string> = {};
-    actions.filter((a) => a.status !== 'planning').forEach((a) => { map[a.id] = a.name; });
+    actions.filter((a) => a.status !== 'planning' && a.status !== 'completed').forEach((a) => { map[a.id] = a.name; });
     return map;
   }, [actions]);
 

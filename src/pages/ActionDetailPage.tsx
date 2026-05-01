@@ -297,7 +297,9 @@ export default function ActionDetailPage() {
 
   const isArchived = action.status === 'archived';
   const isPlanning = action.status === 'planning';
+  const isCompleted = action.status === 'completed';
   const isOperational = !isPlanning && !isArchived;
+  const canAddWinners = isOperational && !isCompleted;
 
   // Support users should not see action details page at all for financial data
   // but they can see winners pipeline. We hide financial KPIs and restrict actions.
@@ -575,7 +577,7 @@ export default function ActionDetailPage() {
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              {isOperational && (
+              {canAddWinners && (
                 <>
                   <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setNewWinnerOpen(true)}>
                     <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
