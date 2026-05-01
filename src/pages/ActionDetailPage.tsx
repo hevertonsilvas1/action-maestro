@@ -577,7 +577,7 @@ export default function ActionDetailPage() {
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              {isOperational && (
+              {canAddWinners && (
                 <>
                   <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setNewWinnerOpen(true)}>
                     <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
