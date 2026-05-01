@@ -297,7 +297,9 @@ export default function ActionDetailPage() {
 
   const isArchived = action.status === 'archived';
   const isPlanning = action.status === 'planning';
+  const isCompleted = action.status === 'completed';
   const isOperational = !isPlanning && !isArchived;
+  const canAddWinners = isOperational && !isCompleted;
 
   // Support users should not see action details page at all for financial data
   // but they can see winners pipeline. We hide financial KPIs and restrict actions.
