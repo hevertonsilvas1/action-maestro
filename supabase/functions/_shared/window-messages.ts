@@ -21,6 +21,8 @@ export interface WindowMessage {
   scope: string;
   scope_value: string | null;
   priority: number;
+  min_value: number | null;
+  max_value: number | null;
 }
 
 export interface WindowMessageQuery {
@@ -29,6 +31,7 @@ export interface WindowMessageQuery {
   actionId?: string;
   prizeType?: string;
   operationalContext?: string;
+  prizeValue?: number;
 }
 
 /**
