@@ -132,6 +132,8 @@ const emptyForm: FormData = {
   scope: 'global',
   scope_value: null,
   priority: 1,
+  min_value: null,
+  max_value: null,
 };
 
 /* ───────── component ───────── */
