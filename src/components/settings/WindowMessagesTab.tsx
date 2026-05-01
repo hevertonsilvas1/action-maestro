@@ -594,28 +594,137 @@ export function WindowMessagesTab() {
                             rangeLabel = `≤ ${formatCurrency(msg.max_value)}`;
                           }
                         }
+                        const isExpanded = quickEditId === msg.id;
                         return (
-                          <div
-                            key={msg.id}
-                            className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => openEdit(msg)}
-                            title="Clique para editar"
-                          >
-                            <div className="flex items-center gap-3">
-                              <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium">{msg.name}</p>
-                                <p className="text-xs text-muted-foreground">{getScopeLabel(msg).replace(/ \(.*\)/, '')}</p>
+                          <div key={msg.id} className="rounded-lg border bg-muted/30 overflow-hidden transition-colors">
+                            <div
+                              className="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => openQuickEdit(msg)}
+                              title="Clique para edição rápida"
+                            >
+                              <div className="flex items-center gap-3">
+                                <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
+                                <div>
+                                  <p className="text-sm font-medium">{msg.name}</p>
+                                  <p className="text-xs text-muted-foreground">{getScopeLabel(msg).replace(/ \(.*\)/, '')}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={hasRange ? 'default' : 'secondary'} className="text-xs">
+                                  {rangeLabel}
+                                </Badge>
+                                <Badge variant={msg.is_active ? 'default' : 'outline'} className={`text-xs ${msg.is_active ? 'bg-emerald-600' : ''}`}>
+                                  {msg.is_active ? 'Ativa' : 'Inativa'}
+                                </Badge>
+                                {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={hasRange ? 'default' : 'secondary'} className="text-xs">
-                                {rangeLabel}
-                              </Badge>
-                              <Badge variant={msg.is_active ? 'default' : 'outline'} className={`text-xs ${msg.is_active ? 'bg-emerald-600' : ''}`}>
-                                {msg.is_active ? 'Ativa' : 'Inativa'}
-                              </Badge>
-                            </div>
+                            {isExpanded && (
+                              <div className="border-t px-4 py-3 space-y-3 bg-background/50">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Valor mínimo (R$)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step={0.01}
+                                      value={quickForm.min_value ?? ''}
+                                      onChange={(e) => setQuickForm(prev => ({ ...prev, min_value: e.target.value ? Number(e.target.value) : null }))}
+                                      placeholder="Sem mínimo"
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Valor máximo (R$)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step={0.01}
+                                      value={quickForm.max_value ?? ''}
+                                      onChange={(e) => setQuickForm(prev => ({ ...prev, max_value: e.target.value ? Number(e.target.value) : null }))}
+                                      placeholder="Sem máximo"
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">URL de acionamento</Label>
+                                  <Input
+                                    value={quickForm.unnichat_trigger_url}
+                                    onChange={(e) => setQuickForm(prev => ({ ...prev, unnichat_trigger_url: e.target.value }))}
+                                    placeholder="https://..."
+                                    className="h-8 text-sm font-mono"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Escopo</Label>
+                                    <Select value={quickForm.scope} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope: v, scope_value: null }))}>
+                                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {SCOPE_OPTIONS.map((s) => (
+                                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {quickForm.scope === 'action' && (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Ação</Label>
+                                      <Select value={quickForm.scope_value || ''} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope_value: v }))}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                                        <SelectContent>
+                                          {(actions || []).map((a: any) => (
+                                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                  {quickForm.scope === 'prize_type' && (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Tipo de prêmio</Label>
+                                      <Select value={quickForm.scope_value || ''} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope_value: v }))}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                                        <SelectContent>
+                                          {PRIZE_TYPE_OPTIONS.map((p) => (
+                                            <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                  {quickForm.scope === 'operational_context' && (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Contexto</Label>
+                                      <Select value={quickForm.scope_value || ''} onValueChange={(v) => setQuickForm(prev => ({ ...prev, scope_value: v }))}>
+                                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                                        <SelectContent>
+                                          {OPERATIONAL_CONTEXT_OPTIONS.map((c) => (
+                                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center justify-between pt-1">
+                                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => openEdit(msg)}>
+                                    <Pencil className="h-3 w-3 mr-1" />
+                                    Edição completa
+                                  </Button>
+                                  <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setQuickEditId(null)}>
+                                      Cancelar
+                                    </Button>
+                                    <Button size="sm" className="text-xs h-7 gap-1" onClick={handleQuickSave} disabled={quickSaving}>
+                                      {quickSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                      Salvar
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
