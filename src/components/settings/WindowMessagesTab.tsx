@@ -618,7 +618,40 @@ export function WindowMessagesTab() {
               </div>
             )}
 
-            {/* Toggles */}
+            {/* Value range filter */}
+            {(form.type === 'solicitar_pix' || form.type === 'enviar_comprovante') && (
+              <div className="space-y-2">
+                <Label>Faixa de valor do prêmio (opcional)</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Valor mínimo (R$)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={form.min_value ?? ''}
+                      onChange={(e) => setForm(prev => ({ ...prev, min_value: e.target.value ? Number(e.target.value) : null }))}
+                      placeholder="Sem mínimo"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Valor máximo (R$)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={form.max_value ?? ''}
+                      onChange={(e) => setForm(prev => ({ ...prev, max_value: e.target.value ? Number(e.target.value) : null }))}
+                      placeholder="Sem máximo"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se preenchido, esta automação só será usada para ganhadores cujo valor do prêmio esteja dentro da faixa. Deixe vazio para aplicar a qualquer valor.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <Switch
