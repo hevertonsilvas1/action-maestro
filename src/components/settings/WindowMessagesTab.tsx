@@ -202,6 +202,8 @@ export function WindowMessagesTab() {
       scope: msg.scope,
       scope_value: msg.scope_value,
       priority: msg.priority,
+      min_value: msg.min_value,
+      max_value: msg.max_value,
     });
     setDialogOpen(true);
   };
