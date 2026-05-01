@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2 } from 'lucide-react';
+import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { formatCurrency } from '@/lib/format';
 import { Constants } from '@/integrations/supabase/types';
 
 /* ───────── constants ───────── */
@@ -496,6 +497,87 @@ export function WindowMessagesTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Value routing summary ── */}
+      {(() => {
+        const valueRoutedTypes = ['solicitar_pix', 'enviar_comprovante'];
+        const routedMessages = messages.filter(m => valueRoutedTypes.includes(m.type));
+        const grouped = valueRoutedTypes.reduce<Record<string, typeof messages>>((acc, type) => {
+          acc[type] = routedMessages
+            .filter(m => m.type === type)
+            .sort((a, b) => (a.min_value ?? -Infinity) - (b.min_value ?? -Infinity));
+          return acc;
+        }, {});
+        const hasAny = Object.values(grouped).some(arr => arr.length > 0);
+
+        if (!hasAny) return null;
+
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ArrowRightLeft className="h-4 w-4" />
+                Roteamento por Valor
+              </CardTitle>
+              <CardDescription>
+                Resumo das regras de roteamento automático. Quando um PIX é solicitado, o sistema seleciona a automação correta baseado no valor do prêmio. Edite as faixas diretamente na automação.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {valueRoutedTypes.map(type => {
+                const items = grouped[type];
+                if (!items || items.length === 0) return null;
+                return (
+                  <div key={type} className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {TYPE_LABEL_MAP[type] || type}
+                    </p>
+                    <div className="grid gap-2">
+                      {items.map(msg => {
+                        const hasRange = msg.min_value != null || msg.max_value != null;
+                        let rangeLabel = 'Qualquer valor (universal)';
+                        if (hasRange) {
+                          if (msg.min_value != null && msg.max_value != null) {
+                            rangeLabel = `${formatCurrency(msg.min_value)} — ${formatCurrency(msg.max_value)}`;
+                          } else if (msg.min_value != null) {
+                            rangeLabel = `≥ ${formatCurrency(msg.min_value)}`;
+                          } else if (msg.max_value != null) {
+                            rangeLabel = `≤ ${formatCurrency(msg.max_value)}`;
+                          }
+                        }
+                        return (
+                          <div
+                            key={msg.id}
+                            className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => openEdit(msg)}
+                            title="Clique para editar"
+                          >
+                            <div className="flex items-center gap-3">
+                              <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <div>
+                                <p className="text-sm font-medium">{msg.name}</p>
+                                <p className="text-xs text-muted-foreground">{getScopeLabel(msg).replace(/ \(.*\)/, '')}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={hasRange ? 'default' : 'secondary'} className="text-xs">
+                                {rangeLabel}
+                              </Badge>
+                              <Badge variant={msg.is_active ? 'default' : 'outline'} className={`text-xs ${msg.is_active ? 'bg-emerald-600' : ''}`}>
+                                {msg.is_active ? 'Ativa' : 'Inativa'}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* ── Payload reference ── */}
       <Card>
