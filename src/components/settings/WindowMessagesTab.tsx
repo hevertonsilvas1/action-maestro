@@ -248,6 +248,8 @@ export function WindowMessagesTab() {
       scope: form.scope,
       scope_value: form.scope === 'global' ? null : (form.scope_value?.trim() || null),
       priority: form.priority,
+      min_value: form.min_value,
+      max_value: form.max_value,
     };
 
     let error;
