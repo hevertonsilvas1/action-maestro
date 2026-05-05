@@ -737,6 +737,9 @@ export function WindowMessagesTab() {
         );
       })()}
 
+      {/* ── Resolution simulator ── */}
+      <ResolutionSimulator messages={messages} actions={actions} getScopeLabel={getScopeLabel} />
+
       {/* ── Payload reference ── */}
       <Card>
         <CardHeader>
