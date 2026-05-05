@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2, ArrowRightLeft, DollarSign, ChevronDown, ChevronUp, Save } from 'lucide-react';
+import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2, ArrowRightLeft, DollarSign, ChevronDown, ChevronUp, Save, Search, CheckCircle2, XCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { Constants } from '@/integrations/supabase/types';
 
@@ -136,6 +136,195 @@ const emptyForm: FormData = {
   min_value: null,
   max_value: null,
 };
+
+/* ───────── Resolution Simulator ───────── */
+
+function ResolutionSimulator({ messages, actions, getScopeLabel }: {
+  messages: WindowMessage[];
+  actions: { id: string; name: string }[] | undefined;
+  getScopeLabel: (msg: WindowMessage) => string;
+}) {
+  const [simType, setSimType] = useState<string>('solicitar_pix');
+  const [simValue, setSimValue] = useState<string>('');
+  const [simScope, setSimScope] = useState<string>('global');
+  const [simScopeValue, setSimScopeValue] = useState<string>('');
+  const [simResult, setSimResult] = useState<WindowMessage | null | undefined>(undefined);
+
+  const runSimulation = () => {
+    const prizeValue = simValue ? Number(simValue) : undefined;
+    const candidates = messages.filter(m => m.type === simType && m.is_active);
+    if (candidates.length === 0) { setSimResult(null); return; }
+
+    const sorted = [...candidates].sort((a, b) => a.priority - b.priority);
+
+    const matchesValue = (m: WindowMessage): boolean => {
+      if (prizeValue == null) return true;
+      if (m.min_value == null && m.max_value == null) return true;
+      if (m.min_value != null && prizeValue < m.min_value) return false;
+      if (m.max_value != null && prizeValue > m.max_value) return false;
+      return true;
+    };
+
+    if (simScope === 'action' && simScopeValue) {
+      const match = sorted.find(m => m.scope === 'action' && m.scope_value === simScopeValue && matchesValue(m));
+      if (match) { setSimResult(match); return; }
+    }
+    if (simScope === 'prize_type' && simScopeValue) {
+      const match = sorted.find(m => m.scope === 'prize_type' && m.scope_value === simScopeValue && matchesValue(m));
+      if (match) { setSimResult(match); return; }
+    }
+    if (simScope === 'operational_context' && simScopeValue) {
+      const match = sorted.find(m => m.scope === 'operational_context' && m.scope_value === simScopeValue && matchesValue(m));
+      if (match) { setSimResult(match); return; }
+    }
+
+    const globalValue = sorted.find(m => m.scope === 'global' && (m.min_value != null || m.max_value != null) && matchesValue(m));
+    if (globalValue) { setSimResult(globalValue); return; }
+
+    const globalUniversal = sorted.find(m => m.scope === 'global' && m.min_value == null && m.max_value == null);
+    setSimResult(globalUniversal || sorted[0] || null);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Search className="h-4 w-4" />
+          Simulador de Resolução
+        </CardTitle>
+        <CardDescription>
+          Teste qual automação seria acionada para um determinado tipo, valor e escopo — sem disparar nada.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Tipo</Label>
+            <Select value={simType} onValueChange={(v) => { setSimType(v); setSimResult(undefined); }}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MESSAGE_TYPES.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Valor do prêmio (R$)</Label>
+            <Input
+              type="number"
+              min={0}
+              step={0.01}
+              value={simValue}
+              onChange={(e) => { setSimValue(e.target.value); setSimResult(undefined); }}
+              placeholder="Ex: 250"
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Escopo</Label>
+            <Select value={simScope} onValueChange={(v) => { setSimScope(v); setSimScopeValue(''); setSimResult(undefined); }}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SCOPE_OPTIONS.map(s => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {simScope === 'action' && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Ação</Label>
+              <Select value={simScopeValue} onValueChange={(v) => { setSimScopeValue(v); setSimResult(undefined); }}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                <SelectContent>
+                  {(actions || []).map((a: any) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {simScope === 'prize_type' && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Tipo de prêmio</Label>
+              <Select value={simScopeValue} onValueChange={(v) => { setSimScopeValue(v); setSimResult(undefined); }}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                <SelectContent>
+                  {PRIZE_TYPE_OPTIONS.map(p => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {simScope === 'operational_context' && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Contexto</Label>
+              <Select value={simScopeValue} onValueChange={(v) => { setSimScopeValue(v); setSimResult(undefined); }}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Escolha" /></SelectTrigger>
+                <SelectContent>
+                  {OPERATIONAL_CONTEXT_OPTIONS.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        <Button size="sm" className="gap-1.5" onClick={runSimulation}>
+          <Search className="h-3.5 w-3.5" />
+          Simular
+        </Button>
+
+        {simResult !== undefined && (
+          <div className={`rounded-lg border p-4 ${simResult ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-destructive/5 border-destructive/20'}`}>
+            {simResult ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm font-medium">Automação resolvida</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Nome:</span>{' '}
+                    <span className="font-medium">{simResult.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Escopo:</span>{' '}
+                    <span className="font-medium">{getScopeLabel(simResult)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Prioridade:</span>{' '}
+                    <Badge variant="secondary" className="text-xs font-mono">{simResult.priority}</Badge>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Faixa:</span>{' '}
+                    <span className="font-medium">
+                      {simResult.min_value != null || simResult.max_value != null
+                        ? `${simResult.min_value != null ? `≥ ${formatCurrency(simResult.min_value)}` : ''}${simResult.min_value != null && simResult.max_value != null ? ' e ' : ''}${simResult.max_value != null ? `≤ ${formatCurrency(simResult.max_value)}` : ''}`
+                        : 'Universal'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-xs mt-1">
+                  <span className="text-muted-foreground">URL:</span>{' '}
+                  <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded break-all">{simResult.unnichat_trigger_url}</code>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-medium">Nenhuma automação ativa encontrada para esses parâmetros.</span>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 /* ───────── component ───────── */
 
@@ -736,6 +925,9 @@ export function WindowMessagesTab() {
           </Card>
         );
       })()}
+
+      {/* ── Resolution simulator ── */}
+      <ResolutionSimulator messages={messages} actions={actions} getScopeLabel={getScopeLabel} />
 
       {/* ── Payload reference ── */}
       <Card>
