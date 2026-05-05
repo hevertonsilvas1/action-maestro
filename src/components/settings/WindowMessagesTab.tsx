@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2, ArrowRightLeft, DollarSign, ChevronDown, ChevronUp, Save } from 'lucide-react';
+import { Plus, Pencil, Loader2, Link2, Link2Off, Zap, Copy, Play, Settings2, ArrowRightLeft, DollarSign, ChevronDown, ChevronUp, Save, Search, CheckCircle2, XCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { Constants } from '@/integrations/supabase/types';
 
